@@ -1,0 +1,264 @@
+<div class="flex flex-col gap-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-1">
+    <h1 class="text-[22px] md:text-[26px] font-black text-[#1b1c1a] tracking-tight">Dashboard</h1>
+    <p class="text-[13px] text-[#827565]">
+      Visão geral da operação de <span class="font-semibold text-[#4f4537]">{{ companyGreetingName }}</span> — estoque,
+      validade e financeiro em um só lugar.
+    </p>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <!-- Estoque abaixo do mínimo -->
+    <a
+      routerLink="/produtos"
+      class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex items-start justify-between gap-3 hover:border-[#d8a34a] transition-colors cursor-pointer"
+    >
+      <div class="flex flex-col gap-1 min-w-0">
+        <span class="text-[12px] font-semibold text-[#827565] uppercase tracking-wide">Estoque Baixo</span>
+        <span class="text-[26px] font-black text-[#1b1c1a] leading-none">{{ lowStockProducts.length }}</span>
+        <span class="text-[11px] text-[#827565]">produto(s) abaixo do estoque mínimo</span>
+      </div>
+      <div class="w-11 h-11 shrink-0 rounded-xl bg-[#ba1a1a]/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[22px] text-[#ba1a1a]">inventory_2</span>
+      </div>
+    </a>
+
+    <!-- Lotes vencendo em breve -->
+    <a
+      routerLink="/estoque"
+      class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex items-start justify-between gap-3 hover:border-[#d8a34a] transition-colors cursor-pointer"
+    >
+      <div class="flex flex-col gap-1 min-w-0">
+        <span class="text-[12px] font-semibold text-[#827565] uppercase tracking-wide">Validade</span>
+        <span class="text-[26px] font-black text-[#1b1c1a] leading-none">{{ expiringBatches.length }}</span>
+        <span class="text-[11px] text-[#827565]">lote(s) vencendo em breve</span>
+      </div>
+      <div class="w-11 h-11 shrink-0 rounded-xl bg-[#f59e0b]/15 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[22px] text-[#b45309]">schedule</span>
+      </div>
+    </a>
+
+    <!-- Contas a pagar em aberto -->
+    <a
+      routerLink="/contas-pagar"
+      class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex items-start justify-between gap-3 hover:border-[#d8a34a] transition-colors cursor-pointer"
+    >
+      <div class="flex flex-col gap-1 min-w-0">
+        <span class="text-[12px] font-semibold text-[#827565] uppercase tracking-wide">A Pagar</span>
+        <span class="text-[20px] md:text-[22px] font-black text-[#1b1c1a] leading-none truncate">{{
+          formatCurrency(totalPayableOpen)
+        }}</span>
+        <span class="text-[11px] text-[#827565]">{{ openPayables.length }} título(s) em aberto</span>
+      </div>
+      <div class="w-11 h-11 shrink-0 rounded-xl bg-[#0F1F3D]/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[22px] text-[#0F1F3D]">payments</span>
+      </div>
+    </a>
+
+    <!-- Contas a receber em aberto -->
+    <a
+      routerLink="/clientes-receber"
+      class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex items-start justify-between gap-3 hover:border-[#d8a34a] transition-colors cursor-pointer"
+    >
+      <div class="flex flex-col gap-1 min-w-0">
+        <span class="text-[12px] font-semibold text-[#827565] uppercase tracking-wide">A Receber</span>
+        <span class="text-[20px] md:text-[22px] font-black text-[#1b1c1a] leading-none truncate">{{
+          formatCurrency(totalReceivableOpen)
+        }}</span>
+        <span class="text-[11px] text-[#827565]">{{ openReceivables.length }} título(s) em aberto</span>
+      </div>
+      <div class="w-11 h-11 shrink-0 rounded-xl bg-[#4caf50]/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[22px] text-[#2e7d32]">trending_up</span>
+      </div>
+    </a>
+  </div>
+
+  <!-- Validade crítica + Movimentações -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <!-- Produtos com validade crítica -->
+    <div class="xl:col-span-2 bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-[#ba1a1a]">warning</span>
+          <h2 class="text-[15px] font-bold text-[#1b1c1a]">Produtos com Validade Crítica</h2>
+        </div>
+        <a routerLink="/estoque" class="text-[12px] font-semibold text-[#7f5700] hover:underline cursor-pointer">
+          Ver estoque completo
+        </a>
+      </div>
+
+      @if (criticalProducts.length === 0) {
+        <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+          <span class="material-symbols-outlined text-[32px] text-[#4caf50]">check_circle</span>
+          <p class="text-[13px] text-[#827565]">Nenhum produto em situação crítica ou vencido no momento.</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto -mx-2">
+          <table class="w-full text-[13px]">
+            <thead>
+              <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565] border-b border-[#e4e2df]">
+                <th class="px-2 py-2 font-semibold">Produto</th>
+                <th class="px-2 py-2 font-semibold">Lote</th>
+                <th class="px-2 py-2 font-semibold text-right">Estoque</th>
+                <th class="px-2 py-2 font-semibold">Validade</th>
+                <th class="px-2 py-2 font-semibold text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (product of criticalProducts; track product.id) {
+                <tr class="border-b border-[#f0efec] last:border-0 hover:bg-[#fbf9f6]">
+                  <td class="px-2 py-2.5">
+                    <div class="flex flex-col">
+                      <span class="font-semibold text-[#1b1c1a] truncate max-w-[220px]">{{ product.name }}</span>
+                      <span class="text-[11px] text-[#827565]">{{ product.code }} • {{ product.supplier }}</span>
+                    </div>
+                  </td>
+                  <td class="px-2 py-2.5 text-[#4f4537]">{{ product.lotNumber }}</td>
+                  <td class="px-2 py-2.5 text-right text-[#4f4537]">{{ product.stock }} {{ product.unit }}</td>
+                  <td class="px-2 py-2.5">
+                    <div class="flex flex-col">
+                      <span class="text-[#4f4537]">{{ product.nearestExpiry }}</span>
+                      <span class="text-[11px] text-[#827565]">
+                        @if (product.expiryDaysRemaining < 0) {
+                          Vencido há {{ -product.expiryDaysRemaining }} dia(s)
+                        } @else {
+                          Faltam {{ product.expiryDaysRemaining }} dia(s)
+                        }
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-2 py-2.5 text-right">
+                    <span [class]="'px-2 py-0.5 rounded-full text-[11px] font-bold ' + expiryBadgeClass(product.expiryStatus)">
+                      {{ expiryStatusLabel(product.expiryStatus) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <!-- Últimas movimentações de estoque -->
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-[#0F1F3D]">history</span>
+          <h2 class="text-[15px] font-bold text-[#1b1c1a]">Últimas Movimentações</h2>
+        </div>
+        <a routerLink="/estoque" class="text-[12px] font-semibold text-[#7f5700] hover:underline cursor-pointer">
+          Ver tudo
+        </a>
+      </div>
+
+      @if (recentMovements.length === 0) {
+        <p class="text-[13px] text-[#827565] py-6 text-center">Nenhuma movimentação registrada ainda.</p>
+      } @else {
+        <div class="flex flex-col gap-3">
+          @for (movement of recentMovements; track movement.id) {
+            <div class="flex items-start gap-3">
+              <div
+                [class]="'w-9 h-9 shrink-0 rounded-lg flex items-center justify-center ' + movementIconClass(movement.type)"
+              >
+                <span class="material-symbols-outlined text-[18px]">{{ movementIcon(movement.type) }}</span>
+              </div>
+              <div class="flex flex-col min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[13px] font-semibold text-[#1b1c1a] truncate">{{ movement.title }}</span>
+                  <span [class]="'text-[12px] font-bold shrink-0 ' + movementAmountClass(movement.amountKg)">
+                    {{ movement.amountKg > 0 ? '+' : '' }}{{ movement.amountKg }} kg
+                  </span>
+                </div>
+                <span class="text-[11px] text-[#827565] truncate">{{ movement.docInfo }}</span>
+                <span class="text-[10px] text-[#a19b8f] mt-0.5">{{ movement.timestamp }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Lembretes de recebimento -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px] text-[#2e7d32]">notifications_active</span>
+        <h2 class="text-[15px] font-bold text-[#1b1c1a]">Lembretes de Recebimento</h2>
+      </div>
+      <a routerLink="/clientes-receber" class="text-[12px] font-semibold text-[#7f5700] hover:underline cursor-pointer">
+        Ver tudo
+      </a>
+    </div>
+
+    @if (upcomingReceivables.length === 0) {
+      <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <span class="material-symbols-outlined text-[32px] text-[#4caf50]">check_circle</span>
+        <p class="text-[13px] text-[#827565]">Nenhum título em aberto para receber no momento.</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto -mx-2">
+        <table class="w-full text-[13px]">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565] border-b border-[#e4e2df]">
+              <th class="px-2 py-2 font-semibold">Cliente / Origem</th>
+              <th class="px-2 py-2 font-semibold">Vencimento</th>
+              <th class="px-2 py-2 font-semibold text-right">Valor Líquido</th>
+              <th class="px-2 py-2 font-semibold text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (title of upcomingReceivables; track title.id) {
+              <tr class="border-b border-[#f0efec] last:border-0 hover:bg-[#fbf9f6]">
+                <td class="px-2 py-2.5">
+                  <div class="flex flex-col">
+                    <span class="font-semibold text-[#1b1c1a] truncate max-w-[260px]">{{ title.clientOrOrigin }}</span>
+                    <span class="text-[11px] text-[#827565]">{{ title.subCategory }}</span>
+                  </div>
+                </td>
+                <td class="px-2 py-2.5">
+                  <div class="flex flex-col">
+                    <span class="text-[#4f4537]">{{ title.dueDate }}</span>
+                    <span class="text-[11px] text-[#827565]">{{ title.dueLabel }}</span>
+                  </div>
+                </td>
+                <td class="px-2 py-2.5 text-right font-semibold text-[#1b1c1a]">
+                  {{ formatCurrency(title.netAmount) }}
+                </td>
+                <td class="px-2 py-2.5 text-right">
+                  <span [class]="'px-2 py-0.5 rounded-full text-[11px] font-bold ' + receivableStatusClass(title.status)">
+                    {{ receivableStatusLabel(title.status) }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- Atalhos rápidos -->
+  <div class="flex flex-col gap-3">
+    <h2 class="text-[15px] font-bold text-[#1b1c1a]">Atalhos Rápidos</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      @for (link of quickLinks; track link.path) {
+        <a
+          [routerLink]="link.path"
+          class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 flex items-center gap-3 hover:border-[#d8a34a] hover:shadow-sm transition-all cursor-pointer"
+        >
+          <div class="w-11 h-11 shrink-0 rounded-xl bg-[#d8a34a]/15 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[22px] text-[#7f5700]">{{ link.icon }}</span>
+          </div>
+          <div class="flex flex-col min-w-0">
+            <span class="text-[14px] font-bold text-[#1b1c1a] truncate">{{ link.label }}</span>
+            <span class="text-[11px] text-[#827565] truncate">{{ link.description }}</span>
+          </div>
+        </a>
+      }
+    </div>
+  </div>
+</div>

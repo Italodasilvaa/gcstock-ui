@@ -1,0 +1,651 @@
+<div class="flex flex-col gap-5 md:gap-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#d8a34a] text-2xl">payments</span>
+        Financeiro &amp; DRE
+      </h1>
+      <p class="text-sm text-[#827565] mt-1">
+        Visão consolidada de contas a pagar, contas a receber e liquidação de cartões.
+      </p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex items-center gap-2 border-b border-[#e4e2df] overflow-x-auto">
+    <button
+      type="button"
+      (click)="setTab('dre')"
+      [class]="
+        activeTab() === 'dre'
+          ? 'px-4 py-2.5 text-sm font-semibold text-[#0F1F3D] border-b-2 border-[#d8a34a] flex items-center gap-2 cursor-pointer shrink-0'
+          : 'px-4 py-2.5 text-sm font-medium text-[#827565] hover:text-[#1b1c1a] flex items-center gap-2 cursor-pointer shrink-0'
+      "
+    >
+      <span class="material-symbols-outlined text-[18px]">monitoring</span>
+      DRE
+    </button>
+    <button
+      type="button"
+      (click)="setTab('pagar')"
+      [class]="
+        activeTab() === 'pagar'
+          ? 'px-4 py-2.5 text-sm font-semibold text-[#0F1F3D] border-b-2 border-[#d8a34a] flex items-center gap-2 cursor-pointer shrink-0'
+          : 'px-4 py-2.5 text-sm font-medium text-[#827565] hover:text-[#1b1c1a] flex items-center gap-2 cursor-pointer shrink-0'
+      "
+    >
+      <span class="material-symbols-outlined text-[18px]">trending_down</span>
+      Contas a Pagar
+    </button>
+    <button
+      type="button"
+      (click)="setTab('receber')"
+      [class]="
+        activeTab() === 'receber'
+          ? 'px-4 py-2.5 text-sm font-semibold text-[#0F1F3D] border-b-2 border-[#d8a34a] flex items-center gap-2 cursor-pointer shrink-0'
+          : 'px-4 py-2.5 text-sm font-medium text-[#827565] hover:text-[#1b1c1a] flex items-center gap-2 cursor-pointer shrink-0'
+      "
+    >
+      <span class="material-symbols-outlined text-[18px]">trending_up</span>
+      Contas a Receber
+    </button>
+    <button
+      type="button"
+      (click)="setTab('cartoes')"
+      [class]="
+        activeTab() === 'cartoes'
+          ? 'px-4 py-2.5 text-sm font-semibold text-[#0F1F3D] border-b-2 border-[#d8a34a] flex items-center gap-2 cursor-pointer shrink-0'
+          : 'px-4 py-2.5 text-sm font-medium text-[#827565] hover:text-[#1b1c1a] flex items-center gap-2 cursor-pointer shrink-0'
+      "
+    >
+      <span class="material-symbols-outlined text-[18px]">credit_card</span>
+      Liquidação de Cartões
+    </button>
+  </div>
+
+  <!-- ==================== ABA: DRE ==================== -->
+  @if (activeTab() === 'dre') {
+    <div class="flex flex-col gap-5">
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] uppercase font-semibold text-[#827565]">A Pagar em Aberto</span>
+            <span class="w-9 h-9 rounded-full bg-[#ba1a1a]/10 text-[#ba1a1a] flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]">trending_down</span>
+            </span>
+          </div>
+          <span class="text-xl md:text-2xl font-black text-[#1b1c1a]">{{ formatCurrency(totalPayableOpen()) }}</span>
+          <span class="text-[11px] text-[#827565]">Soma de títulos não pagos</span>
+        </div>
+
+        <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] uppercase font-semibold text-[#827565]">Total Vencido a Pagar</span>
+            <span class="w-9 h-9 rounded-full bg-[#ba1a1a]/10 text-[#ba1a1a] flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]">warning</span>
+            </span>
+          </div>
+          <span class="text-xl md:text-2xl font-black text-[#ba1a1a]">{{ formatCurrency(totalPayableOverdue()) }}</span>
+          <span class="text-[11px] text-[#827565]">Títulos já vencidos, ação imediata</span>
+        </div>
+
+        <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] uppercase font-semibold text-[#827565]">A Receber em Aberto</span>
+            <span class="w-9 h-9 rounded-full bg-[#4caf50]/10 text-[#4caf50] flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]">trending_up</span>
+            </span>
+          </div>
+          <span class="text-xl md:text-2xl font-black text-[#1b1c1a]">{{ formatCurrency(totalReceivableOpen()) }}</span>
+          <span class="text-[11px] text-[#827565]">Soma de títulos não recebidos (valor líquido)</span>
+        </div>
+
+        <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] uppercase font-semibold text-[#827565]">Saldo Projetado</span>
+            <span
+              class="w-9 h-9 rounded-full flex items-center justify-center"
+              [class]="projectedBalance() >= 0 ? 'bg-[#4caf50]/10 text-[#4caf50]' : 'bg-[#ba1a1a]/10 text-[#ba1a1a]'"
+            >
+              <span class="material-symbols-outlined text-[18px]">account_balance</span>
+            </span>
+          </div>
+          <span
+            class="text-xl md:text-2xl font-black"
+            [class]="projectedBalance() >= 0 ? 'text-[#4caf50]' : 'text-[#ba1a1a]'"
+          >
+            {{ formatCurrency(projectedBalance()) }}
+          </span>
+          <span class="text-[11px] text-[#827565]">A receber (líquido) − a pagar</span>
+        </div>
+      </div>
+
+      <!-- Resumo de Liquidações de Cartão Pendentes -->
+      <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-full bg-[#0F1F3D]/10 text-[#0F1F3D] flex items-center justify-center">
+              <span class="material-symbols-outlined text-[20px]">credit_card</span>
+            </span>
+            <div>
+              <h2 class="text-base font-bold text-[#1b1c1a]">Liquidações de Cartão Pendentes</h2>
+              <p class="text-xs text-[#827565] mt-0.5">
+                {{ pendingCardSettlements().length }} lote(s) aguardando liquidação de adquirentes.
+              </p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-[11px] uppercase font-semibold text-[#827565]">Valor líquido a liquidar</p>
+            <p class="text-lg font-black text-[#f59e0b]">{{ formatCurrency(pendingCardSettlementsTotal()) }}</p>
+          </div>
+        </div>
+
+        @if (pendingCardSettlements().length > 0) {
+          <div class="flex flex-col mt-4 divide-y divide-[#e4e2df]">
+            @for (item of pendingCardSettlements(); track item.id) {
+              <div class="flex items-center justify-between py-2.5 gap-3 flex-wrap">
+                <div class="flex flex-col">
+                  <span class="text-sm font-semibold text-[#1b1c1a]">{{ item.acquirer }}</span>
+                  <span class="text-[11px] text-[#827565]">{{ item.cardBrand }} • Liquidação em {{ item.settlementDate }}</span>
+                </div>
+                <span class="text-sm font-bold text-[#1b1c1a]">{{ formatCurrency(item.netAmount) }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-center text-[#827565] text-sm py-6">Nenhuma liquidação de cartão pendente no momento.</p>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ==================== ABA: CONTAS A PAGAR ==================== -->
+  @if (activeTab() === 'pagar') {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+      <div class="p-4 md:p-6 pb-0 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="text-base font-bold text-[#1b1c1a]">Contas a Pagar</h2>
+          <p class="text-xs text-[#827565] mt-0.5">Fornecedores, despesas fixas e obrigações da operação.</p>
+        </div>
+        <button
+          type="button"
+          (click)="openNewPayableModal()"
+          class="flex items-center gap-2 bg-[#d8a34a] hover:bg-[#c8933d] text-[#1b1c1a] font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[20px]">add</span>
+          Novo Lançamento
+        </button>
+      </div>
+
+      <div class="overflow-x-auto p-4 md:p-6">
+        <table class="w-full text-sm border-separate border-spacing-y-2">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+              <th class="px-3 py-2 font-semibold">Fornecedor</th>
+              <th class="px-3 py-2 font-semibold">Descrição</th>
+              <th class="px-3 py-2 font-semibold">Vencimento</th>
+              <th class="px-3 py-2 font-semibold text-right">Valor</th>
+              <th class="px-3 py-2 font-semibold">Forma de Pagamento</th>
+              <th class="px-3 py-2 font-semibold">Status</th>
+              <th class="px-3 py-2 font-semibold text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of payables(); track item.id) {
+              <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
+                <td class="px-3 py-3 rounded-l-xl font-semibold text-[#1b1c1a]">{{ item.supplier }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">
+                  <div class="flex flex-col">
+                    <span>{{ item.description }}</span>
+                    <span class="text-[11px] text-[#827565]">{{ item.nfeReference }}</span>
+                  </div>
+                </td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.dueLabel }}</td>
+                <td class="px-3 py-3 text-right font-semibold text-[#1b1c1a]">{{ formatCurrency(item.amount) }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.paymentMethod }}</td>
+                <td class="px-3 py-3">
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                    [class]="payableStatusClasses(item.status)"
+                  >
+                    {{ payableStatusLabel(item.status) }}
+                  </span>
+                </td>
+                <td class="px-3 py-3 rounded-r-xl text-right">
+                  @if (item.status !== 'pago') {
+                    <button
+                      type="button"
+                      (click)="settlePayable(item)"
+                      class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#4caf50] border border-[#4caf50]/40 hover:bg-[#4caf50]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                      Dar Baixa
+                    </button>
+                  } @else {
+                    <span class="text-[11px] text-[#827565]">Pago em {{ item.paidDate }}</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="px-3 py-8 text-center text-[#827565]">
+                  Nenhuma conta a pagar cadastrada.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== ABA: CONTAS A RECEBER ==================== -->
+  @if (activeTab() === 'receber') {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+      <div class="p-4 md:p-6 pb-0 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="text-base font-bold text-[#1b1c1a]">Contas a Receber</h2>
+          <p class="text-xs text-[#827565] mt-0.5">Clientes B2B, adquirentes de cartão e eventos.</p>
+        </div>
+        <button
+          type="button"
+          (click)="openNewReceivableModal()"
+          class="flex items-center gap-2 bg-[#d8a34a] hover:bg-[#c8933d] text-[#1b1c1a] font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[20px]">add</span>
+          Novo Lançamento
+        </button>
+      </div>
+
+      <div class="overflow-x-auto p-4 md:p-6">
+        <table class="w-full text-sm border-separate border-spacing-y-2">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+              <th class="px-3 py-2 font-semibold">Cliente / Origem</th>
+              <th class="px-3 py-2 font-semibold">Referência</th>
+              <th class="px-3 py-2 font-semibold">Vencimento</th>
+              <th class="px-3 py-2 font-semibold text-right">Valor Bruto</th>
+              <th class="px-3 py-2 font-semibold text-right">Taxa Retida</th>
+              <th class="px-3 py-2 font-semibold text-right">Valor Líquido</th>
+              <th class="px-3 py-2 font-semibold">Tipo</th>
+              <th class="px-3 py-2 font-semibold">Status</th>
+              <th class="px-3 py-2 font-semibold text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of receivables(); track item.id) {
+              <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
+                <td class="px-3 py-3 rounded-l-xl">
+                  <div class="flex flex-col">
+                    <span class="font-semibold text-[#1b1c1a]">{{ item.clientOrOrigin }}</span>
+                    <span class="text-[11px] text-[#827565]">{{ item.subCategory }}</span>
+                  </div>
+                </td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.reference }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.dueLabel }}</td>
+                <td class="px-3 py-3 text-right text-[#4f4537]">{{ formatCurrency(item.grossAmount) }}</td>
+                <td class="px-3 py-3 text-right text-[#ba1a1a]">{{ formatCurrency(item.feeRetention) }}</td>
+                <td class="px-3 py-3 text-right font-semibold text-[#1b1c1a]">{{ formatCurrency(item.netAmount) }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ receivableTypeLabel(item.type) }}</td>
+                <td class="px-3 py-3">
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                    [class]="receivableStatusClasses(item.status)"
+                  >
+                    {{ receivableStatusLabel(item.status) }}
+                  </span>
+                </td>
+                <td class="px-3 py-3 rounded-r-xl text-right">
+                  @if (item.status !== 'recebido') {
+                    <button
+                      type="button"
+                      (click)="settleReceivable(item)"
+                      class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#4caf50] border border-[#4caf50]/40 hover:bg-[#4caf50]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                      Marcar como Recebido
+                    </button>
+                  } @else {
+                    <span class="text-[11px] text-[#827565]">{{ item.paymentModeDesc }}</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="px-3 py-8 text-center text-[#827565]">
+                  Nenhuma conta a receber cadastrada.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== ABA: LIQUIDAÇÃO DE CARTÕES ==================== -->
+  @if (activeTab() === 'cartoes') {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+      <div class="p-4 md:p-6 pb-0">
+        <h2 class="text-base font-bold text-[#1b1c1a]">Liquidação de Cartões</h2>
+        <p class="text-xs text-[#827565] mt-0.5">Lotes de cartão por adquirente, bandeira e status de liquidação.</p>
+      </div>
+
+      <div class="overflow-x-auto p-4 md:p-6">
+        <table class="w-full text-sm border-separate border-spacing-y-2">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+              <th class="px-3 py-2 font-semibold">Adquirente</th>
+              <th class="px-3 py-2 font-semibold">Bandeira</th>
+              <th class="px-3 py-2 font-semibold">Data da Venda</th>
+              <th class="px-3 py-2 font-semibold">Data de Liquidação</th>
+              <th class="px-3 py-2 font-semibold text-right">Valor Bruto</th>
+              <th class="px-3 py-2 font-semibold text-right">Taxa MDR</th>
+              <th class="px-3 py-2 font-semibold text-right">Valor Líquido</th>
+              <th class="px-3 py-2 font-semibold">Status</th>
+              <th class="px-3 py-2 font-semibold text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of cardSettlements(); track item.id) {
+              <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
+                <td class="px-3 py-3 rounded-l-xl font-semibold text-[#1b1c1a]">{{ item.acquirer }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.cardBrand }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.saleDate }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.settlementDate }}</td>
+                <td class="px-3 py-3 text-right text-[#4f4537]">{{ formatCurrency(item.grossAmount) }}</td>
+                <td class="px-3 py-3 text-right text-[#ba1a1a]">{{ formatCurrency(item.mdrFeeAmount) }}</td>
+                <td class="px-3 py-3 text-right font-semibold text-[#1b1c1a]">{{ formatCurrency(item.netAmount) }}</td>
+                <td class="px-3 py-3">
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                    [class]="cardStatusClasses(item.status)"
+                  >
+                    {{ cardStatusLabel(item.status) }}
+                  </span>
+                </td>
+                <td class="px-3 py-3 rounded-r-xl text-right">
+                  @if (item.status === 'a_liquidar') {
+                    <button
+                      type="button"
+                      (click)="anticipateCard(item)"
+                      class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#0F1F3D]/30 hover:bg-[#0F1F3D]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">bolt</span>
+                      Antecipar Recebível
+                    </button>
+                  } @else if (item.status === 'antecipado') {
+                    <span class="text-[11px] text-[#827565]">Taxa: {{ formatCurrency(item.anticipatedFee || 0) }}</span>
+                  } @else {
+                    <span class="text-[11px] text-[#827565]">Liquidado</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="px-3 py-8 text-center text-[#827565]">
+                  Nenhuma liquidação de cartão registrada.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Modal: Novo Lançamento - Contas a Pagar -->
+@if (isPayableModalOpen()) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closePayableModal()">
+    <div
+      class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
+        <h2 class="text-lg font-bold text-[#1b1c1a]">Novo Lançamento - Contas a Pagar</h2>
+        <button
+          type="button"
+          (click)="closePayableModal()"
+          class="text-[#827565] hover:text-[#1b1c1a] cursor-pointer"
+          aria-label="Fechar"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form class="p-5 flex flex-col gap-4" (ngSubmit)="savePayable()">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Fornecedor</label>
+          <input
+            type="text"
+            [(ngModel)]="payableForm.supplier"
+            name="supplier"
+            placeholder="Ex.: Minerva Foods S.A."
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Descrição</label>
+          <input
+            type="text"
+            [(ngModel)]="payableForm.description"
+            name="description"
+            placeholder="Ex.: Compra de insumos • NF-e 12345"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Referência / NF-e</label>
+            <input
+              type="text"
+              [(ngModel)]="payableForm.nfeReference"
+              name="nfeReference"
+              placeholder="Ex.: NF-e 44892"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Vencimento</label>
+            <input
+              type="date"
+              [(ngModel)]="payableForm.dueDate"
+              name="dueDate"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Valor (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              [(ngModel)]="payableForm.amount"
+              name="amount"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Forma de Pagamento</label>
+            <input
+              type="text"
+              [(ngModel)]="payableForm.paymentMethod"
+              name="paymentMethod"
+              placeholder="Ex.: Boleto Bancário"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Origem</label>
+          <input
+            type="text"
+            [(ngModel)]="payableForm.origin"
+            name="origin"
+            placeholder="Ex.: Despesa Fixa / Módulo Compras"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-[#e4e2df] mt-1">
+          <button
+            type="button"
+            (click)="closePayableModal()"
+            class="px-4 py-2.5 rounded-xl text-sm font-semibold text-[#4f4537] border border-[#e4e2df] hover:bg-[#f5f3f0] cursor-pointer transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] cursor-pointer transition-colors"
+          >
+            Criar Lançamento
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal: Novo Lançamento - Contas a Receber -->
+@if (isReceivableModalOpen()) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeReceivableModal()">
+    <div
+      class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
+        <h2 class="text-lg font-bold text-[#1b1c1a]">Novo Lançamento - Contas a Receber</h2>
+        <button
+          type="button"
+          (click)="closeReceivableModal()"
+          class="text-[#827565] hover:text-[#1b1c1a] cursor-pointer"
+          aria-label="Fechar"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form class="p-5 flex flex-col gap-4" (ngSubmit)="saveReceivable()">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Cliente / Origem</label>
+          <input
+            type="text"
+            [(ngModel)]="receivableForm.clientOrOrigin"
+            name="clientOrOrigin"
+            placeholder="Ex.: Restaurante Fogo de Chão Moema"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Subcategoria</label>
+          <input
+            type="text"
+            [(ngModel)]="receivableForm.subCategory"
+            name="subCategory"
+            placeholder="Ex.: B2B Food Service • Boleto 14 DDL"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Referência</label>
+            <input
+              type="text"
+              [(ngModel)]="receivableForm.reference"
+              name="reference"
+              placeholder="Ex.: Venda #1088"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Vencimento</label>
+            <input
+              type="date"
+              [(ngModel)]="receivableForm.dueDate"
+              name="dueDate"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Valor Bruto (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              [(ngModel)]="receivableForm.grossAmount"
+              name="grossAmount"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Taxa / Retenção (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              [(ngModel)]="receivableForm.feeRetention"
+              name="feeRetention"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Tipo</label>
+            <select
+              [(ngModel)]="receivableForm.type"
+              name="type"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            >
+              <option value="b2b">B2B</option>
+              <option value="adquirente">Adquirente</option>
+              <option value="evento">Evento</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Forma de Recebimento</label>
+            <input
+              type="text"
+              [(ngModel)]="receivableForm.paymentModeDesc"
+              name="paymentModeDesc"
+              placeholder="Ex.: Boleto Bancário (Itaú)"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-[#e4e2df] mt-1">
+          <button
+            type="button"
+            (click)="closeReceivableModal()"
+            class="px-4 py-2.5 rounded-xl text-sm font-semibold text-[#4f4537] border border-[#e4e2df] hover:bg-[#f5f3f0] cursor-pointer transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] cursor-pointer transition-colors"
+          >
+            Criar Lançamento
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

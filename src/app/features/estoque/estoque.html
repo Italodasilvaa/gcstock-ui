@@ -1,0 +1,185 @@
+<div class="flex flex-col gap-5 md:gap-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#d8a34a] text-2xl">inventory_2</span>
+        Estoque &amp; Validades
+      </h1>
+      <p class="text-sm text-[#827565] mt-1">
+        Controle de lotes por FEFO (primeiro que vence, primeiro que sai) e histórico de movimentações.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="bg-white rounded-xl border border-[#e4e2df] shadow-xs px-4 py-2 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#ba1a1a] text-[20px]">schedule</span>
+        <div class="flex flex-col leading-tight">
+          <span class="text-[11px] text-[#827565]">Lotes urgentes</span>
+          <span class="text-sm font-bold text-[#1b1c1a]">{{ urgentCount() }}</span>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-[#e4e2df] shadow-xs px-4 py-2 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">scale</span>
+        <div class="flex flex-col leading-tight">
+          <span class="text-[11px] text-[#827565]">Total disponível</span>
+          <span class="text-sm font-bold text-[#1b1c1a]">{{ totalKg().toFixed(1) }} kg</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex items-center gap-2 border-b border-[#e4e2df]">
+    <button
+      type="button"
+      (click)="setTab('lotes')"
+      [class]="
+        activeTab() === 'lotes'
+          ? 'px-4 py-2.5 text-sm font-semibold text-[#0F1F3D] border-b-2 border-[#d8a34a] flex items-center gap-2 cursor-pointer'
+          : 'px-4 py-2.5 text-sm font-medium text-[#827565] hover:text-[#1b1c1a] flex items-center gap-2 cursor-pointer'
+      "
+    >
+      <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+      Lotes em Estoque
+    </button>
+    <button
+      type="button"
+      (click)="setTab('movimentacoes')"
+      [class]="
+        activeTab() === 'movimentacoes'
+          ? 'px-4 py-2.5 text-sm font-semibold text-[#0F1F3D] border-b-2 border-[#d8a34a] flex items-center gap-2 cursor-pointer'
+          : 'px-4 py-2.5 text-sm font-medium text-[#827565] hover:text-[#1b1c1a] flex items-center gap-2 cursor-pointer'
+      "
+    >
+      <span class="material-symbols-outlined text-[18px]">history</span>
+      Movimentações Recentes
+    </button>
+  </div>
+
+  <!-- Lotes em Estoque -->
+  @if (activeTab() === 'lotes') {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+      <div class="p-4 md:p-6 pb-0">
+        <h2 class="text-base font-bold text-[#1b1c1a]">Lotes em Estoque</h2>
+        <p class="text-xs text-[#827565] mt-0.5">
+          Ordenado por dias restantes até o vencimento (urgências primeiro).
+        </p>
+      </div>
+
+      <div class="overflow-x-auto p-4 md:p-6">
+        <table class="w-full text-sm border-separate border-spacing-y-2">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+              <th class="px-3 py-2 font-semibold">Produto</th>
+              <th class="px-3 py-2 font-semibold">Lote</th>
+              <th class="px-3 py-2 font-semibold">Disponível</th>
+              <th class="px-3 py-2 font-semibold">Entrada</th>
+              <th class="px-3 py-2 font-semibold">Validade</th>
+              <th class="px-3 py-2 font-semibold">Dias restantes</th>
+              <th class="px-3 py-2 font-semibold">Fornecedor</th>
+              <th class="px-3 py-2 font-semibold">Documento fiscal</th>
+              <th class="px-3 py-2 font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (batch of sortedBatches(); track batch.id) {
+              <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
+                <td class="px-3 py-3 rounded-l-xl">
+                  <div class="flex flex-col">
+                    <span class="font-semibold text-[#1b1c1a]">{{ batch.productName }}</span>
+                    <span class="text-[11px] text-[#827565]">{{ batch.sku }}</span>
+                  </div>
+                </td>
+                <td class="px-3 py-3 text-[#4f4537] font-medium">{{ batch.lotNumber }}</td>
+                <td class="px-3 py-3 text-[#1b1c1a] font-semibold">{{ batch.availableKg.toFixed(1) }} kg</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ batch.entryDate }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ batch.expiryDate }}</td>
+                <td class="px-3 py-3">
+                  <span
+                    class="inline-flex items-center gap-1 text-xs font-semibold"
+                    [class]="batch.daysRemaining < 0 ? 'text-[#ba1a1a]' : batch.daysRemaining <= 3 ? 'text-[#ba1a1a]' : batch.daysRemaining <= 10 ? 'text-[#f59e0b]' : 'text-[#4caf50]'"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">schedule</span>
+                    {{ daysRemainingLabel(batch.daysRemaining) }}
+                  </span>
+                </td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ batch.supplier }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ batch.fiscalDoc }}</td>
+                <td class="px-3 py-3 rounded-r-xl">
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                    [class]="statusClasses(batch.status)"
+                  >
+                    {{ statusLabel(batch.status) }}
+                  </span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="px-3 py-8 text-center text-[#827565]">
+                  Nenhum lote encontrado em estoque.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- Movimentações Recentes -->
+  @if (activeTab() === 'movimentacoes') {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+      <h2 class="text-base font-bold text-[#1b1c1a]">Movimentações Recentes</h2>
+      <p class="text-xs text-[#827565] mt-0.5 mb-4">
+        Histórico de entradas, baixas de PDV e perdas/quebras registradas no estoque.
+      </p>
+
+      <div class="flex flex-col">
+        @for (movement of sortedMovements(); track movement.id; let last = $last) {
+          <div class="flex gap-4" [class.pb-5]="!last" [class.mb-5]="!last" [class.border-b]="!last" [class.border-[#e4e2df]]="!last">
+            <div class="flex flex-col items-center shrink-0">
+              <div
+                class="w-10 h-10 rounded-full flex items-center justify-center"
+                [class]="movementIconClasses(movement.type)"
+              >
+                <span class="material-symbols-outlined text-[20px]">{{ movementIcon(movement.type) }}</span>
+              </div>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-col">
+                  <span class="font-semibold text-[#1b1c1a] text-sm">{{ movement.title }}</span>
+                  <span class="text-[11px] text-[#827565]">{{ movement.docInfo }} • {{ movement.timestamp }}</span>
+                </div>
+                <span class="text-sm font-bold" [class]="amountClasses(movement.amountKg)">
+                  {{ amountLabel(movement.amountKg) }}
+                </span>
+              </div>
+
+              <p class="text-sm text-[#4f4537] mt-2">{{ movement.description }}</p>
+
+              <div class="flex items-center gap-2 mt-2">
+                <span
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#0F1F3D]/5 text-[#0F1F3D] border border-[#0F1F3D]/10"
+                >
+                  {{ movement.badgeLabel }}
+                </span>
+                <button
+                  type="button"
+                  class="text-[11px] font-semibold text-[#d8a34a] hover:underline cursor-pointer"
+                >
+                  {{ movement.auditLink }}
+                </button>
+              </div>
+            </div>
+          </div>
+        } @empty {
+          <p class="text-center text-[#827565] py-8">Nenhuma movimentação registrada.</p>
+        }
+      </div>
+    </div>
+  }
+</div>

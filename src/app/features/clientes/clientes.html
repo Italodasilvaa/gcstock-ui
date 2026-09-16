@@ -1,0 +1,242 @@
+<div class="p-6 max-w-[1400px] mx-auto">
+  <!-- Cabeçalho -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-[#1b1c1a]">Clientes & Fidelidade</h1>
+      <p class="text-sm text-[#827565] mt-1">
+        Cadastro de clientes, limites de crédito e histórico de pontos de fidelidade.
+      </p>
+    </div>
+    <button
+      (click)="openNewClientModal()"
+      class="flex items-center gap-2 bg-[#d8a34a] hover:bg-[#c8933d] text-[#1b1c1a] font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer shrink-0"
+    >
+      <span class="material-symbols-outlined text-[20px]">add</span>
+      Novo Cliente
+    </button>
+  </div>
+
+  <!-- Busca -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-3 md:p-4 mb-5">
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#827565] text-[20px]">
+        search
+      </span>
+      <input
+        type="text"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="searchTerm.set($event)"
+        placeholder="Buscar por nome ou CPF/CNPJ..."
+        class="w-full border border-[#e4e2df] rounded-xl pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+      />
+    </div>
+  </div>
+
+  <!-- Lista de Clientes -->
+  @if (filteredClients().length === 0) {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-10 text-center text-[#827565]">
+      <span class="material-symbols-outlined text-[40px] text-[#d8a34a] mb-2 block">group</span>
+      Nenhum cliente encontrado.
+    </div>
+  } @else {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[960px]">
+          <thead class="bg-[#f5f3f0] text-[#827565] text-[11px] uppercase">
+            <tr>
+              <th class="text-left px-4 py-3 font-semibold">Cliente</th>
+              <th class="text-left px-4 py-3 font-semibold">Documento</th>
+              <th class="text-left px-4 py-3 font-semibold">Telefone</th>
+              <th class="text-left px-4 py-3 font-semibold">Fidelidade</th>
+              <th class="text-right px-4 py-3 font-semibold">Limite de crédito</th>
+              <th class="text-right px-4 py-3 font-semibold">Total gasto</th>
+              <th class="text-left px-4 py-3 font-semibold">Cortes favoritos</th>
+              <th class="text-right px-4 py-3 font-semibold">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (client of filteredClients(); track client.id) {
+              <tr class="border-t border-[#e4e2df] hover:bg-[#f5f3f0]/50 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="w-8 h-8 rounded-full bg-[#0F1F3D]/10 flex items-center justify-center shrink-0"
+                    >
+                      <span class="material-symbols-outlined text-[18px] text-[#0F1F3D]">
+                        {{ client.type === 'pj' ? 'badge' : 'person' }}
+                      </span>
+                    </span>
+                    <div class="min-w-0">
+                      <p class="font-semibold text-[#1b1c1a] truncate">{{ client.name }}</p>
+                      <span
+                        class="inline-block text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full mt-0.5"
+                        [class]="typeBadgeClass(client.type)"
+                      >
+                        {{ typeLabel(client.type) }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-[#4f4537]">{{ client.document }}</td>
+                <td class="px-4 py-3 text-[#4f4537]">{{ client.phone }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-1 text-[#8a6a2e] font-semibold">
+                    <span class="material-symbols-outlined text-[16px] text-[#d8a34a]">loyalty</span>
+                    {{ client.fidelityPoints }} pts
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-right text-[#4f4537]">{{ formatCurrency(client.creditLimit) }}</td>
+                <td class="px-4 py-3 text-right font-bold text-[#0F1F3D]">{{ formatCurrency(client.totalSpent) }}</td>
+                <td class="px-4 py-3 text-[#827565] max-w-[220px] truncate" [title]="client.favoriteCuts">
+                  {{ client.favoriteCuts }}
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <button
+                    (click)="openEditClientModal(client)"
+                    class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">edit</span>
+                    Editar
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Modal de Criar/Editar Cliente -->
+@if (isModalOpen()) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeModal()">
+    <div
+      class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
+        <h2 class="text-lg font-bold text-[#1b1c1a]">
+          {{ isEditing() ? 'Editar Cliente' : 'Novo Cliente' }}
+        </h2>
+        <button
+          (click)="closeModal()"
+          class="text-[#827565] hover:text-[#1b1c1a] cursor-pointer"
+          aria-label="Fechar"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form class="p-5 flex flex-col gap-4" (ngSubmit)="saveClient()">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Nome / Razão social</label>
+          <input
+            type="text"
+            [(ngModel)]="form.name"
+            name="name"
+            placeholder="Ex.: Bruno Silva ou Restaurante Braseiro Ltda"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Tipo</label>
+            <select
+              [(ngModel)]="form.type"
+              name="type"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 bg-white"
+            >
+              <option value="pf">Pessoa Física (PF)</option>
+              <option value="pj">Pessoa Jurídica (PJ)</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">CPF / CNPJ</label>
+            <input
+              type="text"
+              [(ngModel)]="form.document"
+              name="document"
+              placeholder="000.000.000-00"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Telefone</label>
+            <input
+              type="text"
+              [(ngModel)]="form.phone"
+              name="phone"
+              placeholder="(11) 90000-0000"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">E-mail</label>
+            <input
+              type="email"
+              [(ngModel)]="form.email"
+              name="email"
+              placeholder="cliente@email.com"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Limite de crédito (R$)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            [(ngModel)]="form.creditLimit"
+            name="creditLimit"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Cortes favoritos</label>
+          <input
+            type="text"
+            [(ngModel)]="form.favoriteCuts"
+            name="favoriteCuts"
+            placeholder="Ex.: Picanha Angus, Fraldinha Grill"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Observações</label>
+          <textarea
+            [(ngModel)]="form.notes"
+            name="notes"
+            rows="3"
+            placeholder="Preferências, ponto da carne, condições de entrega..."
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 resize-none"
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-[#e4e2df] mt-1">
+          <button
+            type="button"
+            (click)="closeModal()"
+            class="px-4 py-2.5 rounded-xl text-sm font-semibold text-[#4f4537] border border-[#e4e2df] hover:bg-[#f5f3f0] cursor-pointer transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] cursor-pointer transition-colors"
+          >
+            {{ isEditing() ? 'Salvar alterações' : 'Cadastrar cliente' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

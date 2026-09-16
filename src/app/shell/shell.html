@@ -1,0 +1,122 @@
+<div class="min-h-screen bg-[#f5f3f0] text-[#1b1c1a] font-sans antialiased flex flex-col">
+  <!-- Toast Notification -->
+  @if (appState.toastMessage()) {
+    <div
+      class="fixed bottom-6 right-6 z-50 bg-[#0F1F3D] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-[#d8a34a]/40 animate-in fade-in slide-in-from-bottom duration-200"
+    >
+      <span class="material-symbols-outlined text-[#4caf50] text-[22px]">check_circle</span>
+      <span class="text-[13px] font-medium">{{ appState.toastMessage() }}</span>
+    </div>
+  }
+
+  <!-- Fixed Left Navigation Sidebar -->
+  <app-sidebar
+    (openApiConsole)="showApiConsole.set(true)"
+    (openCompanySwitch)="isCompanyModalOpen.set(true)"
+    (logout)="logout()"
+  ></app-sidebar>
+
+  <!-- Top Fixed Application Bar -->
+  <app-navbar (openCompanySwitch)="isCompanyModalOpen.set(true)" (logout)="logout()"></app-navbar>
+
+  <!-- Main Content View with left offset for sidebar and top offset for navbar -->
+  <main class="ml-64 mt-16 flex-1 p-6 md:p-8 max-w-[1600px] w-[calc(100%-16rem)]">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Multi-Tenant Company Switcher Modal -->
+  @if (isCompanyModalOpen()) {
+    <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-[#e4e2df] animate-in zoom-in-95">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#efeeeb]">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[22px] text-[#7f5700]">apartment</span>
+            <div>
+              <h3 class="text-[17px] font-bold text-[#1b1c1a]">Empresas Cadastradas no Girus</h3>
+              <p class="text-xs text-[#827565]">Gerenciamento multi-empresa e troca instantânea de ambiente</p>
+            </div>
+          </div>
+          <button
+            (click)="isCompanyModalOpen.set(false)"
+            class="p-1 rounded-lg text-[#827565] hover:bg-[#efeeeb] cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <div class="space-y-3 mb-6 max-h-[380px] overflow-y-auto pr-1">
+          @for (comp of companies(); track comp.id) {
+            <div
+              (click)="switchCompany(comp.id)"
+              [class]="
+                'p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ' +
+                (isCurrentCompany(comp)
+                  ? 'border-[#7f5700] bg-[#ffdeae]/25 ring-1 ring-[#7f5700]/30'
+                  : 'border-[#e4e2df] hover:bg-[#fbf9f6] hover:border-[#d8a34a]')
+              "
+            >
+              <div class="min-w-0 flex-1 pr-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="font-bold text-[14px] text-[#1b1c1a]">
+                    {{ comp.tradeName }}
+                  </h4>
+                  @if (isCurrentCompany(comp)) {
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#7f5700] text-white">
+                      EMPRESA ATIVA
+                    </span>
+                  }
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-[#efeeeb] text-[#4f4537] font-semibold">
+                    {{ comp.segment }}
+                  </span>
+                </div>
+                <p class="text-xs text-[#827565] mt-1 truncate">
+                  {{ comp.corporateName }} • CNPJ: {{ comp.document }}
+                </p>
+                <p class="text-[11px] text-[#827565] mt-0.5">
+                  {{ comp.city }} / {{ comp.state }} • Responsável: {{ comp.ownerName }}
+                </p>
+              </div>
+
+              <div class="shrink-0">
+                @if (isCurrentCompany(comp)) {
+                  <span class="material-symbols-outlined text-[#7f5700] text-[24px]">check_circle</span>
+                } @else {
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 text-xs font-bold text-[#7f5700] bg-white border border-[#d8a34a] rounded-lg hover:bg-[#ffdeae]/30"
+                  >
+                    Acessar
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="flex items-center justify-between pt-3 border-t border-[#efeeeb]">
+          <button
+            type="button"
+            (click)="registerNewCompany()"
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#7f5700] hover:bg-[#604100] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-xs"
+          >
+            <span class="material-symbols-outlined text-[16px]">add_business</span>
+            <span>+ Cadastrar Nova Empresa</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="isCompanyModalOpen.set(false)"
+            class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- JSON Mock API Console Modal -->
+  @if (showApiConsole()) {
+    <app-api-console (close)="showApiConsole.set(false)"></app-api-console>
+  }
+</div>

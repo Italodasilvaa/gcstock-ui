@@ -1,0 +1,253 @@
+<div
+  class="min-h-screen w-full bg-gradient-to-br from-[#0a1428] via-[#0F1F3D] to-[#16294F] flex flex-col justify-center items-center p-4 sm:p-6 text-[#1b1c1a] font-sans antialiased"
+>
+  <!-- Background Decor Elements -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-32 -left-32 w-96 h-96 bg-[#d8a34a]/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-[#ba1a1a]/15 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="relative z-10 w-full max-w-2xl">
+    <!-- Brand Header -->
+    <div class="text-center mb-6">
+      <div class="inline-flex items-center justify-center gap-3 mb-2">
+        <div
+          class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#d8a34a] to-[#ffdeae] flex items-center justify-center shadow-lg shadow-[#d8a34a]/20 border border-white/20"
+        >
+          <span class="text-[#0F1F3D] font-black text-2xl tracking-tighter">G</span>
+        </div>
+        <div class="flex flex-col items-start">
+          <span class="font-black text-2xl text-white tracking-tight leading-none">GIRUS</span>
+          <span class="text-[10px] uppercase font-bold text-[#d8a34a] tracking-widest">ERP Multi-Empresas</span>
+        </div>
+      </div>
+      <p class="text-[#A0B0CB] text-sm max-w-md mx-auto">
+        Gestão completa de açougues, boutiques de carnes, frigoríficos e kits de churrasco.
+      </p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
+      <!-- Tabs -->
+      <div class="flex border-b border-[#efeeeb]">
+        <button
+          type="button"
+          (click)="activeTab.set('login')"
+          [class]="
+            'flex-1 py-3.5 text-center text-[13px] font-bold transition-colors cursor-pointer ' +
+            (activeTab() === 'login'
+              ? 'text-[#0F1F3D] border-b-2 border-[#d8a34a] bg-[#fbf9f6]'
+              : 'text-[#827565] hover:bg-[#fbf9f6]')
+          "
+        >
+          Entrar
+        </button>
+        <button
+          type="button"
+          (click)="activeTab.set('register')"
+          [class]="
+            'flex-1 py-3.5 text-center text-[13px] font-bold transition-colors cursor-pointer ' +
+            (activeTab() === 'register'
+              ? 'text-[#0F1F3D] border-b-2 border-[#d8a34a] bg-[#fbf9f6]'
+              : 'text-[#827565] hover:bg-[#fbf9f6]')
+          "
+        >
+          Cadastrar Empresa
+        </button>
+      </div>
+
+      <div class="p-6 sm:p-8">
+        <!-- LOGIN TAB -->
+        @if (activeTab() === 'login') {
+          <form (ngSubmit)="handleLogin()" class="flex flex-col gap-4">
+            <div>
+              <label class="block text-xs font-bold text-[#4f4537] mb-1.5">E-mail de acesso</label>
+              <input
+                type="email"
+                [(ngModel)]="loginEmail"
+                name="loginEmail"
+                placeholder="voce@suaempresa.com.br"
+                class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Senha</label>
+              <input
+                type="password"
+                [(ngModel)]="loginPassword"
+                name="loginPassword"
+                placeholder="••••••"
+                class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+              />
+            </div>
+
+            <label class="flex items-center gap-2 text-xs text-[#827565] cursor-pointer">
+              <input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe" class="accent-[#d8a34a]" />
+              Manter conectado neste dispositivo
+            </label>
+
+            @if (loginError()) {
+              <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#ffdad6]/60 text-[#ba1a1a] text-xs font-medium">
+                <span class="material-symbols-outlined text-[16px]">error</span>
+                {{ loginError() }}
+              </div>
+            }
+
+            <button
+              type="submit"
+              class="w-full py-2.5 rounded-lg bg-[#0F1F3D] hover:bg-[#16294F] text-white text-sm font-bold cursor-pointer transition-colors shadow-xs"
+            >
+              Entrar no Girus
+            </button>
+          </form>
+
+          <!-- Demo companies quick login -->
+          <div class="mt-6 pt-5 border-t border-[#efeeeb]">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-[#827565] mb-3">
+              Acesso rápido (empresas de demonstração)
+            </p>
+            <div class="flex flex-col gap-2">
+              @for (comp of companies(); track comp.id) {
+                <button
+                  type="button"
+                  (click)="handleQuickLoginCompany(comp)"
+                  class="flex items-center justify-between p-3 rounded-lg border border-[#e4e2df] hover:border-[#d8a34a] hover:bg-[#fbf9f6] transition-colors text-left cursor-pointer"
+                >
+                  <div class="min-w-0">
+                    <p class="text-[13px] font-bold text-[#1b1c1a] truncate">{{ comp.tradeName }}</p>
+                    <p class="text-[11px] text-[#827565] truncate">{{ comp.segment }} • {{ comp.city }}/{{ comp.state }}</p>
+                  </div>
+                  <span class="material-symbols-outlined text-[18px] text-[#827565] shrink-0">login</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- REGISTER TAB -->
+        @if (activeTab() === 'register') {
+          <form (ngSubmit)="handleRegisterCompany()" class="flex flex-col gap-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Razão Social *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="corporateName"
+                  name="corporateName"
+                  placeholder="Ex: M&C Frig Distribuição de Carnes Ltda"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Nome Fantasia</label>
+                <input
+                  type="text"
+                  [(ngModel)]="tradeName"
+                  name="tradeName"
+                  placeholder="Ex: M&C Frig Carnes Nobres"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">CNPJ / CPF *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="document"
+                  name="document"
+                  placeholder="00.000.000/0001-00"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Responsável *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="ownerName"
+                  name="ownerName"
+                  placeholder="Nome completo"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Telefone</label>
+                <input
+                  type="text"
+                  [(ngModel)]="phone"
+                  name="phone"
+                  placeholder="(11) 99999-0000"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">E-mail de acesso *</label>
+                <input
+                  type="email"
+                  [(ngModel)]="email"
+                  name="email"
+                  placeholder="voce@suaempresa.com.br"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Senha</label>
+                <input
+                  type="password"
+                  [(ngModel)]="password"
+                  name="password"
+                  placeholder="Mínimo 6 caracteres"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Segmento</label>
+                <select
+                  [(ngModel)]="segment"
+                  name="segment"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                >
+                  <option>Açougue Boutique & Carnes Nobres</option>
+                  <option>Casa de Carnes & Cortes Nobres</option>
+                  <option>Frigorífico & Distribuidora B2B</option>
+                  <option>Steakhouse & Restaurante</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Cidade</label>
+                <input
+                  type="text"
+                  [(ngModel)]="city"
+                  name="city"
+                  placeholder="São Paulo"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#4f4537] mb-1.5">UF</label>
+                <input
+                  type="text"
+                  [(ngModel)]="stateUf"
+                  name="stateUf"
+                  maxlength="2"
+                  placeholder="SP"
+                  class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm uppercase focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              [disabled]="isRegistering()"
+              class="w-full py-2.5 rounded-lg bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-sm font-bold cursor-pointer transition-colors shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {{ isRegistering() ? 'Cadastrando empresa...' : 'Criar minha conta no Girus' }}
+            </button>
+          </form>
+        }
+      </div>
+    </div>
+
+    <p class="text-center text-[11px] text-[#6B7A99] mt-6">
+      Girus ERP • Plataforma multi-empresa para gestão de açougues e frigoríficos
+    </p>
+  </div>
+</div>

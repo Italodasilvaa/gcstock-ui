@@ -1,0 +1,175 @@
+<div
+  class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+  (click)="onOverlayClick($event)"
+>
+  <div
+    class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[80vh] border border-[#e4e2df] flex flex-col overflow-hidden animate-in zoom-in-95"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-[#efeeeb] shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[22px] text-[#0F1F3D]">terminal</span>
+        <div>
+          <h3 class="text-[17px] font-bold text-[#1b1c1a]">Console API Mock</h3>
+          <p class="text-xs text-[#827565]">
+            Log de chamadas simuladas geradas pelo MockDataService — nenhuma requisição de rede real é feita
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        (click)="close.emit()"
+        class="p-1 rounded-lg text-[#827565] hover:bg-[#efeeeb] cursor-pointer"
+      >
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+
+    <!-- Actions bar -->
+    <div
+      class="flex flex-wrap items-center gap-4 px-6 py-3 border-b border-[#efeeeb] bg-[#f5f3f0]/60 shrink-0"
+    >
+      <div class="flex items-center gap-2 min-w-[260px]">
+        <span class="material-symbols-outlined text-[18px] text-[#827565]">schedule</span>
+        <label class="text-xs font-semibold text-[#4f4537] whitespace-nowrap">Latência simulada</label>
+        <input
+          type="range"
+          min="0"
+          max="2000"
+          step="10"
+          [value]="latencyMs()"
+          (input)="onLatencyInput($any($event.target).value)"
+          class="w-32 accent-[#d8a34a] cursor-pointer"
+        />
+        <input
+          type="number"
+          min="0"
+          [value]="latencyMs()"
+          (change)="onLatencyInput($any($event.target).value)"
+          class="w-16 text-xs border border-[#e4e2df] rounded-md px-2 py-1 text-[#1b1c1a]"
+        />
+        <span class="text-xs text-[#827565]">ms</span>
+      </div>
+
+      <div class="flex-1"></div>
+
+      <button
+        type="button"
+        (click)="exportLogs()"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#e4e2df] hover:bg-[#f5f3f0] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+      >
+        <span class="material-symbols-outlined text-[16px]">download</span>
+        Exportar JSON
+      </button>
+
+      <button
+        type="button"
+        (click)="clearLogs()"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#e4e2df] hover:bg-[#f5f3f0] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+      >
+        <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+        Limpar Logs
+      </button>
+
+      <button
+        type="button"
+        (click)="resetDemoData()"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#ba1a1a]/10 hover:bg-[#ba1a1a]/20 text-[#ba1a1a] text-xs font-bold rounded-lg cursor-pointer transition-colors"
+      >
+        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+        Resetar Dados
+      </button>
+    </div>
+
+    <!-- Body: two columns -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Logs list -->
+      <div class="w-[46%] border-r border-[#e4e2df] overflow-y-auto">
+        @if (logs().length === 0) {
+          <div class="h-full flex flex-col items-center justify-center gap-2 p-8 text-center">
+            <span class="material-symbols-outlined text-[32px] text-[#c9c5bd]">database</span>
+            <p class="text-xs text-[#827565]">
+              Nenhum log registrado ainda. Navegue pelo sistema para gerar chamadas simuladas.
+            </p>
+          </div>
+        } @else {
+          @for (log of logs(); track log.id) {
+            <div
+              (click)="selectLog(log)"
+              [class]="
+                'px-4 py-3 border-b border-[#efeeeb] cursor-pointer transition-colors ' +
+                (selectedLog()?.id === log.id ? 'bg-[#ffdeae]/25 border-l-4 border-l-[#d8a34a]' : 'hover:bg-[#f5f3f0]')
+              "
+            >
+              <div class="flex items-center gap-2 flex-wrap">
+                <span [class]="'px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ' + methodBadgeClass(log.method)">
+                  {{ log.method }}
+                </span>
+                <span class="text-xs font-mono text-[#1b1c1a] truncate">{{ log.endpoint }}</span>
+              </div>
+              <div class="flex items-center gap-3 mt-1.5">
+                <span class="flex items-center gap-1 text-[11px] font-semibold" [class]="statusClass(log.statusCode)">
+                  <span [class]="'w-1.5 h-1.5 rounded-full ' + statusDotClass(log.statusCode)"></span>
+                  {{ log.statusCode }}
+                </span>
+                <span class="text-[11px] text-[#827565]">{{ log.durationMs }} ms</span>
+                <span class="text-[11px] text-[#827565] ml-auto">{{ log.timestamp }}</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Detail panel -->
+      <div class="flex-1 overflow-y-auto p-5">
+        @if (selectedLog(); as log) {
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span [class]="'px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ' + methodBadgeClass(log.method)">
+              {{ log.method }}
+            </span>
+            <span class="text-sm font-mono font-semibold text-[#1b1c1a]">{{ log.endpoint }}</span>
+          </div>
+          <div class="flex items-center gap-4 mb-5">
+            <span class="flex items-center gap-1 text-xs font-bold" [class]="statusClass(log.statusCode)">
+              <span [class]="'w-1.5 h-1.5 rounded-full ' + statusDotClass(log.statusCode)"></span>
+              Status {{ log.statusCode }}
+            </span>
+            <span class="text-xs text-[#827565]">{{ log.durationMs }} ms</span>
+            <span class="text-xs text-[#827565]">{{ log.timestamp }}</span>
+          </div>
+
+          <div class="mb-4">
+            <p class="flex items-center gap-1.5 text-xs font-bold text-[#4f4537] mb-1.5">
+              <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+              Request Payload
+            </p>
+            <pre
+              class="font-mono text-xs bg-[#0F1F3D] text-[#d8a34a] rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words"
+            >{{ formatPayload(log.requestPayload) }}</pre>
+          </div>
+
+          <div>
+            <p class="flex items-center gap-1.5 text-xs font-bold text-[#4f4537] mb-1.5">
+              <span class="material-symbols-outlined text-[16px]">code</span>
+              Response Payload
+            </p>
+            <pre
+              class="font-mono text-xs bg-[#0F1F3D] text-[#d8a34a] rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words"
+            >{{ formatPayload(log.responsePayload) }}</pre>
+          </div>
+        } @else {
+          <div class="h-full flex flex-col items-center justify-center gap-2 text-center">
+            <span class="material-symbols-outlined text-[32px] text-[#c9c5bd]">code</span>
+            <p class="text-xs text-[#827565]">Selecione um log à esquerda para ver os detalhes da chamada.</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-2.5 border-t border-[#efeeeb] shrink-0 flex items-center justify-between">
+      <p class="text-[11px] text-[#827565]">{{ logs().length }} log(s) registrado(s) nesta sessão</p>
+      <p class="text-[11px] text-[#827565]">Backend 100% simulado (localStorage) — sem chamadas de rede reais</p>
+    </div>
+  </div>
+</div>

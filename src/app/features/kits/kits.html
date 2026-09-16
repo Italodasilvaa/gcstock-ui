@@ -1,0 +1,278 @@
+<div class="p-6 max-w-[1400px] mx-auto">
+  <!-- Cabeçalho -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-[#1b1c1a]">Kits de Churrasco</h1>
+      <p class="text-sm text-[#827565] mt-1">
+        Monte, edite e venda combos prontos para churrasco direto do PDV.
+      </p>
+    </div>
+    <button
+      (click)="openNewKitModal()"
+      class="flex items-center gap-2 bg-[#d8a34a] hover:bg-[#c8933d] text-[#1b1c1a] font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer"
+    >
+      <span class="material-symbols-outlined text-[20px]">add</span>
+      Novo Kit
+    </button>
+  </div>
+
+  <!-- Grid de Kits -->
+  @if (kits().length === 0) {
+    <div class="bg-white border border-[#e4e2df] rounded-2xl p-10 text-center text-[#827565]">
+      <span class="material-symbols-outlined text-[40px] text-[#d8a34a] mb-2 block">outdoor_grill</span>
+      Nenhum kit de churrasco cadastrado ainda.
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      @for (kit of kits(); track kit.id) {
+        <div class="bg-white border border-[#e4e2df] rounded-2xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative h-40 w-full bg-[#f5f3f0]">
+            <img [src]="kit.imageUrl" [alt]="kit.name" class="w-full h-full object-cover" />
+            <span
+              class="absolute top-2 right-2 text-[10px] font-bold uppercase px-2 py-1 rounded-full"
+              [class]="stockBadgeClass(kit.stockStatus)"
+            >
+              {{ stockLabel(kit.stockStatus) }}
+            </span>
+          </div>
+
+          <div class="p-4 flex flex-col gap-2 flex-1">
+            <div class="flex items-center gap-2">
+              <span
+                class="text-[10px] uppercase font-bold text-[#d8a34a] bg-[#d8a34a]/10 border border-[#d8a34a]/30 px-2 py-0.5 rounded-full"
+              >
+                {{ kit.tag }}
+              </span>
+              <span class="text-[11px] text-[#827565]">{{ kit.code }}</span>
+            </div>
+
+            <h3 class="text-base font-bold text-[#1b1c1a] leading-snug">{{ kit.name }}</h3>
+
+            <div class="flex items-center gap-1 text-[12px] text-[#4f4537]">
+              <span class="material-symbols-outlined text-[16px] text-[#827565]">groups</span>
+              {{ kit.serveLabel }}
+              <span class="text-[#827565]">• {{ kit.totalWeightKg }} kg</span>
+            </div>
+
+            <p class="text-[12px] text-[#827565] line-clamp-2">{{ kit.componentsSummary }}</p>
+
+            <div class="flex items-end justify-between mt-1">
+              <div>
+                <p class="text-[10px] text-[#827565] uppercase font-semibold">Preço sugerido</p>
+                <p class="text-xl font-black text-[#d8a34a]">{{ formatCurrency(kit.suggestedPrice) }}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-[#827565] uppercase font-semibold">Margem</p>
+                <p class="text-sm font-bold text-[#4caf50]">{{ kit.marginPercent }}%</p>
+              </div>
+            </div>
+
+            <button
+              (click)="toggleExpand(kit)"
+              class="text-[12px] text-[#0F1F3D] font-semibold flex items-center gap-1 mt-1 cursor-pointer hover:underline w-fit"
+            >
+              <span class="material-symbols-outlined text-[16px]">
+                {{ expandedKitId() === kit.id ? 'expand_less' : 'expand_more' }}
+              </span>
+              {{ expandedKitId() === kit.id ? 'Ocultar componentes' : 'Ver componentes' }}
+            </button>
+
+            @if (expandedKitId() === kit.id) {
+              <div class="border border-[#e4e2df] rounded-xl overflow-hidden mt-1">
+                <table class="w-full text-[11px]">
+                  <thead class="bg-[#f5f3f0] text-[#827565] uppercase">
+                    <tr>
+                      <th class="text-left px-2 py-1.5 font-semibold">Produto</th>
+                      <th class="text-right px-2 py-1.5 font-semibold">Qtd</th>
+                      <th class="text-right px-2 py-1.5 font-semibold">Unit.</th>
+                      <th class="text-right px-2 py-1.5 font-semibold">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (comp of kit.components; track comp.productId) {
+                      <tr class="border-t border-[#e4e2df]">
+                        <td class="px-2 py-1.5 text-[#1b1c1a]">{{ comp.name }}</td>
+                        <td class="px-2 py-1.5 text-right text-[#4f4537]">{{ comp.quantity }} {{ comp.unit }}</td>
+                        <td class="px-2 py-1.5 text-right text-[#4f4537]">{{ formatCurrency(comp.unitCost) }}</td>
+                        <td class="px-2 py-1.5 text-right font-semibold text-[#1b1c1a]">
+                          {{ formatCurrency(comp.subtotal) }}
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4" class="px-2 py-2 text-center text-[#827565]">
+                          Nenhum componente cadastrado.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <div class="flex items-center gap-2 mt-auto pt-3 border-t border-[#e4e2df]">
+              <button
+                (click)="openEditKitModal(kit)"
+                class="flex-1 flex items-center justify-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg py-2 cursor-pointer transition-colors"
+              >
+                <span class="material-symbols-outlined text-[16px]">edit</span>
+                Editar
+              </button>
+              <button
+                (click)="sellKit(kit)"
+                class="flex-1 flex items-center justify-center gap-1 text-[12px] font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] rounded-lg py-2 cursor-pointer transition-colors"
+              >
+                <span class="material-symbols-outlined text-[16px]">point_of_sale</span>
+                Vender este Kit
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Modal de Criar/Editar Kit -->
+@if (isModalOpen()) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeModal()">
+    <div
+      class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
+        <h2 class="text-lg font-bold text-[#1b1c1a]">
+          {{ isEditing() ? 'Editar Kit de Churrasco' : 'Novo Kit de Churrasco' }}
+        </h2>
+        <button
+          (click)="closeModal()"
+          class="text-[#827565] hover:text-[#1b1c1a] cursor-pointer"
+          aria-label="Fechar"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form class="p-5 flex flex-col gap-4" (ngSubmit)="saveKit()">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Nome do kit</label>
+          <input
+            type="text"
+            [(ngModel)]="form.name"
+            name="name"
+            placeholder="Ex.: Kit Churrasco Premium Master"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Tag / Categoria</label>
+            <input
+              type="text"
+              [(ngModel)]="form.tag"
+              name="tag"
+              placeholder="Ex.: Mais Vendido"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Rendimento</label>
+            <input
+              type="text"
+              [(ngModel)]="form.serveLabel"
+              name="serveLabel"
+              placeholder="Ex.: Serve 6 a 8 pessoas"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Descrição</label>
+          <textarea
+            [(ngModel)]="form.description"
+            name="description"
+            rows="2"
+            placeholder="Descrição do kit exibida ao cliente"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 resize-none"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Preço sugerido (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              [(ngModel)]="form.suggestedPrice"
+              name="suggestedPrice"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Preço de custo (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              [(ngModel)]="form.costPrice"
+              name="costPrice"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[12px] font-semibold text-[#4f4537]">Peso total (kg)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              [(ngModel)]="form.totalWeightKg"
+              name="totalWeightKg"
+              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">URL da imagem</label>
+          <input
+            type="text"
+            [(ngModel)]="form.imageUrl"
+            name="imageUrl"
+            placeholder="https://..."
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Resumo dos componentes</label>
+          <textarea
+            [(ngModel)]="form.componentsSummary"
+            name="componentsSummary"
+            rows="3"
+            placeholder="Ex.: Picanha Angus (1.5kg), Bife Ancho (1.2kg), Pão de Alho (1un)..."
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 resize-none"
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2 border-t border-[#e4e2df] mt-1">
+          <button
+            type="button"
+            (click)="closeModal()"
+            class="px-4 py-2.5 rounded-xl text-sm font-semibold text-[#4f4537] border border-[#e4e2df] hover:bg-[#f5f3f0] cursor-pointer transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2.5 rounded-xl text-sm font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] cursor-pointer transition-colors"
+          >
+            {{ isEditing() ? 'Salvar alterações' : 'Criar kit' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

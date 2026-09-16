@@ -1,0 +1,375 @@
+<div class="flex flex-col gap-5 md:gap-6">
+  <!-- Header -->
+  <div>
+    <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
+      <span class="material-symbols-outlined text-[#d8a34a] text-2xl">settings</span>
+      Configurações
+    </h1>
+    <p class="text-sm text-[#827565] mt-1">
+      Gerencie taxas de pagamento, adquirentes e alertas sanitários e de validade do sistema.
+    </p>
+  </div>
+
+  <!-- Taxas de Pagamento -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+    <div class="p-4 md:p-6 pb-0">
+      <h2 class="text-base font-bold text-[#1b1c1a] flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">credit_card</span>
+        Taxas de Pagamento
+      </h2>
+      <p class="text-xs text-[#827565] mt-0.5">
+        Configure percentuais de taxa, canais/adquirentes e prazos de liquidação de cada forma de pagamento.
+      </p>
+    </div>
+
+    <div class="overflow-x-auto p-4 md:p-6">
+      <table class="w-full text-sm border-separate border-spacing-y-2">
+        <thead>
+          <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+            <th class="px-3 py-2 font-semibold">Método</th>
+            <th class="px-3 py-2 font-semibold">Canal / Adquirente</th>
+            <th class="px-3 py-2 font-semibold">Taxa (%)</th>
+            <th class="px-3 py-2 font-semibold">Prazo de liquidação</th>
+            <th class="px-3 py-2 font-semibold text-center">Ativo</th>
+            <th class="px-3 py-2 font-semibold text-center">Editar</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (fee of fees(); track fee.id) {
+            <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors" [class.opacity-50]="!fee.active">
+              <td class="px-3 py-3 rounded-l-xl">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-9 h-9 rounded-lg bg-white border border-[#e4e2df] flex items-center justify-center shrink-0"
+                  >
+                    <span class="material-symbols-outlined text-[18px] text-[#d8a34a]">{{ fee.icon }}</span>
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-semibold text-[#1b1c1a] truncate">{{ fee.method }}</span>
+                    <span class="text-[11px] text-[#827565] truncate">{{ fee.subtitle }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="px-3 py-3 text-[#4f4537]">{{ fee.channel }}</td>
+              <td class="px-3 py-3">
+                <div class="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    [(ngModel)]="fee.feePercent"
+                    [name]="'feePercent-' + fee.id"
+                    (change)="onFeeUpdated(fee)"
+                    class="w-20 border border-[#e4e2df] rounded-lg px-2 py-1.5 text-sm font-semibold text-[#1b1c1a] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                  />
+                  <span class="text-[#827565] text-xs">%</span>
+                  @if (fee.fixedFee) {
+                    <span class="text-[11px] text-[#827565] ml-1">+ R$ {{ fee.fixedFee.toFixed(2) }}</span>
+                  }
+                </div>
+              </td>
+              <td class="px-3 py-3 text-[#4f4537]">{{ fee.settlementTerm }}</td>
+              <td class="px-3 py-3 rounded-r-xl text-center">
+                <button
+                  type="button"
+                  (click)="toggleFeeActive(fee)"
+                  [attr.aria-pressed]="fee.active"
+                  [title]="fee.active ? 'Clique para desativar' : 'Clique para ativar'"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
+                  [class]="fee.active ? 'bg-[#4caf50]' : 'bg-[#e4e2df]'"
+                >
+                  <span
+                    class="inline-block h-[18px] w-[18px] transform rounded-full bg-white shadow transition-transform"
+                    [class]="fee.active ? 'translate-x-6' : 'translate-x-1'"
+                  ></span>
+                </button>
+              </td>
+              <td class="px-3 py-3 text-center">
+                <button
+                  type="button"
+                  (click)="openEditFeeModal(fee)"
+                  class="p-1.5 rounded-lg text-[#827565] hover:text-[#0F1F3D] hover:bg-white cursor-pointer"
+                  title="Editar todos os dados desta taxa"
+                >
+                  <span class="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="px-3 py-8 text-center text-[#827565]">
+                Nenhuma taxa de pagamento cadastrada.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Alertas Sanitários e de Validade -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+    <div class="p-4 md:p-6 pb-0">
+      <h2 class="text-base font-bold text-[#1b1c1a] flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#f59e0b] text-[20px]">emergency_home</span>
+        Alertas Sanitários e de Validade
+      </h2>
+      <p class="text-xs text-[#827565] mt-0.5">
+        Defina antecedência dos alertas de vencimento, horário do resumo matinal e canais de notificação.
+      </p>
+    </div>
+
+    <form class="p-4 md:p-6 flex flex-col gap-5" (ngSubmit)="saveAlertConfig()">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Dias de antecedência do alerta</label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            [(ngModel)]="alertForm.alertLeadDays"
+            name="alertLeadDays"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+          <span class="text-[11px] text-[#827565]"
+            >Produtos serão sinalizados quando faltarem este número de dias para o vencimento.</span
+          >
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Horário do resumo matinal</label>
+          <input
+            type="time"
+            [(ngModel)]="alertForm.morningSummaryTime"
+            name="morningSummaryTime"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+          <span class="text-[11px] text-[#827565]"
+            >Horário de envio do resumo diário de estoque e validades.</span
+          >
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-[12px] font-semibold text-[#4f4537]">Canais de notificação</label>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center gap-2 text-sm text-[#1b1c1a] cursor-pointer">
+            <input
+              type="checkbox"
+              [(ngModel)]="alertForm.notifyTopbar"
+              name="notifyTopbar"
+              class="w-4 h-4 rounded border-[#e4e2df] text-[#d8a34a] focus:ring-[#d8a34a]/40 cursor-pointer"
+            />
+            <span class="material-symbols-outlined text-[18px] text-[#827565]">notifications</span>
+            Notificar no topo da tela
+          </label>
+          <label class="flex items-center gap-2 text-sm text-[#1b1c1a] cursor-pointer">
+            <input
+              type="checkbox"
+              [(ngModel)]="alertForm.notifyEmail"
+              name="notifyEmail"
+              class="w-4 h-4 rounded border-[#e4e2df] text-[#d8a34a] focus:ring-[#d8a34a]/40 cursor-pointer"
+            />
+            <span class="material-symbols-outlined text-[18px] text-[#827565]">mail</span>
+            Notificar por e-mail
+          </label>
+          <label class="flex items-center gap-2 text-sm text-[#1b1c1a] cursor-pointer">
+            <input
+              type="checkbox"
+              [(ngModel)]="alertForm.notifyWhatsapp"
+              name="notifyWhatsapp"
+              class="w-4 h-4 rounded border-[#e4e2df] text-[#d8a34a] focus:ring-[#d8a34a]/40 cursor-pointer"
+            />
+            <span class="material-symbols-outlined text-[18px] text-[#827565]">chat</span>
+            Notificar por WhatsApp
+          </label>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-[12px] font-semibold text-[#4f4537]">Destinatários dos alertas</label>
+
+        <div class="flex flex-col gap-2">
+          @for (recipient of alertForm.recipients; track recipient; let i = $index) {
+            <div
+              class="flex items-center justify-between gap-3 bg-[#f5f3f0] border border-[#e4e2df] rounded-xl px-3 py-2"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="material-symbols-outlined text-[16px] text-[#827565] shrink-0">person</span>
+                <span class="text-sm text-[#1b1c1a] truncate">{{ recipient }}</span>
+              </div>
+              <button
+                type="button"
+                (click)="removeRecipient(i)"
+                class="text-[#ba1a1a] hover:bg-[#ba1a1a]/10 rounded-lg p-1 cursor-pointer shrink-0"
+                title="Remover destinatário"
+              >
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+            </div>
+          } @empty {
+            <p class="text-[12px] text-[#827565]">Nenhum destinatário cadastrado.</p>
+          }
+        </div>
+
+        <div class="flex items-center gap-2 mt-1">
+          <input
+            type="text"
+            [ngModel]="newRecipient()"
+            (ngModelChange)="newRecipient.set($event)"
+            name="newRecipient"
+            placeholder="E-mail ou telefone do destinatário"
+            class="flex-1 border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            (keydown.enter)="$event.preventDefault(); addRecipient()"
+          />
+          <button
+            type="button"
+            (click)="addRecipient()"
+            class="flex items-center gap-1 text-sm font-semibold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-xl px-3 py-2 cursor-pointer transition-colors"
+          >
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#e4e2df]">
+        <button
+          type="submit"
+          class="px-5 py-2.5 rounded-xl text-sm font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] cursor-pointer transition-colors flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined text-[18px]">save</span>
+          Salvar Configurações
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de edição completa da taxa -->
+@if (editingFee(); as fee) {
+  <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-[#e4e2df]">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#efeeeb]">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[22px] text-[#7f5700]">credit_card</span>
+          <h3 class="text-[17px] font-bold text-[#1b1c1a]">Editar Taxa de Pagamento</h3>
+        </div>
+        <button
+          type="button"
+          (click)="closeEditFeeModal()"
+          class="p-1 rounded-lg text-[#827565] hover:bg-[#efeeeb] cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <form (ngSubmit)="saveEditingFee()" class="flex flex-col gap-3.5">
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Método *</label>
+          <input
+            type="text"
+            [(ngModel)]="fee.method"
+            name="feeMethod"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Subtítulo</label>
+          <input
+            type="text"
+            [(ngModel)]="fee.subtitle"
+            name="feeSubtitle"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Canal / Adquirente *</label>
+          <input
+            type="text"
+            [(ngModel)]="fee.channel"
+            name="feeChannel"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Taxa (%)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              [(ngModel)]="fee.feePercent"
+              name="feeFeePercent"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Taxa Fixa (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              [ngModel]="fee.fixedFee ?? 0"
+              (ngModelChange)="fee.fixedFee = $event"
+              name="feeFixedFee"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Prazo de Liquidação</label>
+          <input
+            type="text"
+            [(ngModel)]="fee.settlementTerm"
+            name="feeSettlementTerm"
+            placeholder="Ex: 1 dia útil (D+1)"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Ícone (Material Symbols)</label>
+          <input
+            type="text"
+            [(ngModel)]="fee.icon"
+            name="feeIcon"
+            placeholder="Ex: credit_card"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <label class="flex items-center gap-2 text-sm text-[#1b1c1a] cursor-pointer">
+          <input
+            type="checkbox"
+            [(ngModel)]="fee.active"
+            name="feeActive"
+            class="w-4 h-4 rounded border-[#e4e2df] text-[#d8a34a] focus:ring-[#d8a34a]/40 cursor-pointer"
+          />
+          Taxa ativa
+        </label>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#efeeeb]">
+          <button
+            type="button"
+            (click)="closeEditFeeModal()"
+            class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#7f5700] hover:bg-[#604100] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-xs"
+          >
+            <span class="material-symbols-outlined text-[16px]">save</span>
+            Salvar Taxa
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

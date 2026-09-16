@@ -1,0 +1,111 @@
+<aside
+  class="fixed left-0 top-0 bottom-0 w-64 bg-[#0F1F3D] text-white z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)] select-none"
+>
+  <div class="flex flex-col">
+    <!-- Brand Header - GIRUS ERP -->
+    <div
+      (click)="openCompanySwitch.emit()"
+      class="p-4 flex items-center gap-3 bg-[#0A162D] cursor-pointer hover:bg-[#0c1a35] transition-colors border-b border-[#16294F]/80"
+      title="Clique para alternar ou cadastrar empresas"
+    >
+      <!-- GIRUS Stylized Monogram -->
+      <div
+        class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#d8a34a] to-[#ffdeae] flex items-center justify-center shrink-0 shadow-md shadow-[#d8a34a]/20"
+      >
+        <span class="text-[#0F1F3D] font-black text-xl tracking-tighter">G</span>
+      </div>
+
+      <div class="flex flex-col min-w-0">
+        <div class="flex items-center gap-1.5">
+          <span class="font-black text-[18px] text-white tracking-tight leading-tight"> GIRUS </span>
+          <span
+            class="text-[10px] uppercase font-bold bg-[#d8a34a]/20 text-[#d8a34a] px-1.5 py-0.2 rounded border border-[#d8a34a]/30"
+          >
+            ERP
+          </span>
+        </div>
+        <div class="flex items-center gap-1 text-[11px] text-[#A0B0CB] tracking-wide truncate">
+          <span class="truncate font-medium">{{ companyDisplayName }}</span>
+          <span class="material-symbols-outlined text-[14px] text-[#d8a34a] shrink-0">unfold_more</span>
+        </div>
+        <span class="text-[9px] text-[#6B7A99] truncate">
+          {{ companyLocation }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Navigation Group -->
+    <div class="px-3 py-3">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-[#A0AEC0]/70 px-3 mb-2">
+        Operação & Gestão
+      </p>
+      <nav class="flex flex-col gap-1">
+        @for (item of menuItems; track item.path) {
+          <a
+            [routerLink]="item.path"
+            [class]="
+              isActive(item)
+                ? 'flex items-center gap-3 px-3.5 py-2 text-left text-[14px] transition-all cursor-pointer bg-[#16294F] text-[#d8a34a] font-semibold border-l-4 border-[#d8a34a] rounded-r-lg'
+                : 'flex items-center gap-3 px-3.5 py-2 text-left text-[14px] transition-all cursor-pointer text-[#A0AEC0] hover:bg-[#16294F] hover:text-white rounded-lg'
+            "
+          >
+            <span
+              class="material-symbols-outlined text-[20px]"
+              [class]="isActive(item) ? 'text-[#d8a34a]' : 'text-[#A0AEC0]'"
+            >
+              {{ item.icon }}
+            </span>
+            <span class="truncate">{{ item.label }}</span>
+          </a>
+        }
+      </nav>
+    </div>
+  </div>
+
+  <!-- Footer Info Box with Switch Company & Logout -->
+  <div class="flex flex-col gap-2 p-2">
+    <div class="p-3 bg-[#0A162D] rounded-xl flex flex-col gap-2 text-[11px]">
+      <!-- Active Company Badge -->
+      <div
+        (click)="openCompanySwitch.emit()"
+        class="flex items-center justify-between p-2 rounded-lg bg-[#16294F]/60 hover:bg-[#16294F] cursor-pointer transition-colors border border-white/5"
+        title="Clique para alternar entre empresas"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="material-symbols-outlined text-[16px] text-[#d8a34a]">apartment</span>
+          <span class="text-white font-semibold truncate text-[11px]">
+            {{ companyDisplayName }}
+          </span>
+        </div>
+        <span class="text-[10px] text-[#d8a34a] font-bold shrink-0">Trocar</span>
+      </div>
+
+      <div class="flex items-center justify-between text-[#A0AEC0] px-1">
+        <span>Servidor Multi-Tenant</span>
+        <span class="flex items-center gap-1 text-[#4caf50] font-semibold">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#4caf50] animate-pulse"></span>
+          Girus Cloud
+        </span>
+      </div>
+
+      <div class="pt-2 text-[#6B7A99] border-t border-[#16294F]/60 flex items-center justify-between px-1">
+        <button
+          (click)="openApiConsole.emit()"
+          class="text-[#D8A34A] hover:underline cursor-pointer font-medium text-[10px]"
+          title="Abrir Console de Serviços JSON / API Mock"
+        >
+          JSON Mock API
+        </button>
+
+        <button
+          (click)="logout.emit()"
+          class="text-[#ffdad6] hover:text-white flex items-center gap-1 font-semibold text-[10px] cursor-pointer"
+          title="Sair do sistema e ir para tela de login"
+        >
+          <span class="material-symbols-outlined text-[13px]">logout</span>
+          <span>Sair</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</aside>

@@ -1,0 +1,98 @@
+<header
+  class="fixed top-0 left-64 right-0 h-16 bg-white shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-6 flex items-center justify-between select-none"
+>
+  <!-- Left side breadcrumbs & active company -->
+  <div class="flex items-center gap-4">
+    <!-- Brand Icon Mini -->
+    <div class="flex items-center gap-2">
+      <div
+        class="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#0F1F3D] to-[#16294F] flex items-center justify-center text-[#d8a34a] shadow-xs"
+      >
+        <span class="font-black text-sm">G</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-[13px] text-[#4f4537]">
+        <span class="font-bold text-[#0F1F3D] tracking-tight">Girus ERP</span>
+        <span class="material-symbols-outlined text-[14px] text-[#827565]">chevron_right</span>
+      </div>
+    </div>
+
+    <!-- Active Company Pill with Switcher -->
+    <button
+      (click)="openCompanySwitch.emit()"
+      class="flex items-center gap-2 px-3 py-1.5 bg-[#f5f3f0] hover:bg-[#ffdeae]/30 border border-[#e4e2df] hover:border-[#d8a34a] transition-all rounded-xl text-[#1b1c1a] text-[13px] font-semibold cursor-pointer group"
+      title="Clique para alternar ou cadastrar novas empresas"
+    >
+      <span class="material-symbols-outlined text-[17px] text-[#7f5700]">apartment</span>
+      <span class="max-w-[200px] truncate">{{ companyName }}</span>
+      <span class="text-[10px] uppercase font-bold bg-[#7f5700]/10 text-[#7f5700] px-1.5 py-0.5 rounded">
+        Empresa Ativa
+      </span>
+      <span class="material-symbols-outlined text-[16px] text-[#827565] group-hover:text-[#7f5700]">
+        unfold_more
+      </span>
+    </button>
+  </div>
+
+  <!-- Right side quick actions & operator profile -->
+  <div class="flex items-center gap-3 sm:gap-4">
+    <!-- Quick New Sale button (F2) -->
+    <button
+      (click)="goToNewSale()"
+      class="hidden sm:flex items-center gap-2 bg-[#d8a34a] hover:bg-[#c79238] active:bg-[#b58229] text-[#583b00] font-bold text-[13px] px-3.5 py-2 rounded-lg transition-colors shadow-xs cursor-pointer"
+      type="button"
+    >
+      <span class="material-symbols-outlined text-[18px]">shopping_cart_checkout</span>
+      <span>+ Nova Venda (F2)</span>
+    </button>
+
+    <!-- Notifications Bell -->
+    <div class="relative flex items-center">
+      <button
+        (click)="goToStockAlerts()"
+        aria-label="Notificações e Alertas"
+        class="relative p-2 rounded-lg text-[#505e80] hover:bg-[#efeeeb] hover:text-[#1b1c1a] transition-colors cursor-pointer"
+        type="button"
+        title="Lotes com alerta sanitário / validade próxima"
+      >
+        <span class="material-symbols-outlined text-[24px]">notifications</span>
+        @if (notificationsCount > 0) {
+          <span
+            class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#ba1a1a] text-white text-[10px] font-bold ring-2 ring-white animate-pulse"
+          >
+            {{ notificationsCount }}
+          </span>
+        }
+      </button>
+    </div>
+
+    <div class="h-6 w-px bg-[#e4e2df]"></div>
+
+    <!-- User Profile & Logout -->
+    <div class="flex items-center gap-2.5">
+      <div class="relative flex items-center">
+        <div
+          class="w-8 h-8 rounded-full bg-[#0F1F3D] text-[#d8a34a] font-bold flex items-center justify-center text-xs"
+        >
+          {{ userName.charAt(0) }}
+        </div>
+        <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#4caf50] ring-2 ring-white"></span>
+      </div>
+      <div class="hidden xl:flex flex-col text-left">
+        <span class="text-[13px] text-[#1b1c1a] font-bold leading-tight">
+          {{ userName }}
+        </span>
+        <span class="text-[10px] text-[#827565] leading-tight">
+          {{ userRole }}
+        </span>
+      </div>
+
+      <button
+        (click)="logout.emit()"
+        class="ml-1 p-2 text-[#827565] hover:text-[#ba1a1a] hover:bg-[#ffdad6]/40 rounded-lg transition-colors cursor-pointer"
+        title="Sair do sistema (Logout)"
+      >
+        <span class="material-symbols-outlined text-[20px]">logout</span>
+      </button>
+    </div>
+  </div>
+</header>

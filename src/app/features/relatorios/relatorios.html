@@ -1,0 +1,220 @@
+<div class="flex flex-col gap-5 md:gap-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#d8a34a] text-2xl">analytics</span>
+        Relatórios &amp; Desossa
+      </h1>
+      <p class="text-sm text-[#827565] mt-1">
+        Indicadores consolidados de estoque, compras, movimentações, kits e clientes.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="bg-white rounded-xl border border-[#e4e2df] shadow-xs px-4 py-2 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">scale</span>
+        <div class="flex flex-col leading-tight">
+          <span class="text-[11px] text-[#827565]">Estoque (kg)</span>
+          <span class="text-sm font-bold text-[#1b1c1a]">{{ formatKg(totalStockKg()) }}</span>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-[#e4e2df] shadow-xs px-4 py-2 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#4caf50] text-[20px]">payments</span>
+        <div class="flex flex-col leading-tight">
+          <span class="text-[11px] text-[#827565]">Valor em estoque</span>
+          <span class="text-sm font-bold text-[#1b1c1a]">{{ formatCurrency(totalStockValue()) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Valor total em estoque -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-[#0F1F3D]/5 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-[#0F1F3D] text-[22px]">inventory_2</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-xs text-[#827565]">Valor total em estoque (custo)</span>
+        <span class="text-2xl font-bold text-[#1b1c1a]">{{ formatCurrency(totalStockValue()) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+    <!-- Produtos por categoria -->
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">bar_chart</span>
+        <h2 class="text-base font-bold text-[#1b1c1a]">Produtos por Categoria</h2>
+      </div>
+      <p class="text-xs text-[#827565] mb-4">Quantidade de itens e valor de estoque (custo) por categoria.</p>
+
+      <div class="flex flex-col gap-4">
+        @for (item of categorySummaries(); track item.category) {
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between gap-2 text-sm">
+              <span class="font-semibold text-[#1b1c1a] truncate">{{ item.category }}</span>
+              <span class="text-[#827565] shrink-0">{{ item.count }} itens • {{ formatCurrency(item.totalValue) }}</span>
+            </div>
+            <div class="h-2 rounded-full bg-[#f5f3f0] overflow-hidden">
+              <div class="h-full rounded-full bg-[#d8a34a]" [style.width.%]="item.percent"></div>
+            </div>
+          </div>
+        } @empty {
+          <p class="text-center text-[#827565] py-6">Nenhum produto cadastrado.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Movimentações do período -->
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">insights</span>
+        <h2 class="text-base font-bold text-[#1b1c1a]">Movimentações do Período</h2>
+      </div>
+      <p class="text-xs text-[#827565] mb-4">Contagem e volume (kg) por tipo de movimentação de estoque.</p>
+
+      <div class="flex flex-col gap-4">
+        @for (item of movementSummaries(); track item.type) {
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between gap-2 text-sm">
+              <span class="flex items-center gap-2 font-semibold text-[#1b1c1a]">
+                <span
+                  class="w-7 h-7 rounded-full flex items-center justify-center"
+                  [class]="movementTypeClasses(item.type)"
+                >
+                  <span class="material-symbols-outlined text-[16px]">{{ item.icon }}</span>
+                </span>
+                {{ item.label }}
+              </span>
+              <span class="text-[#827565] shrink-0">{{ item.count }} mov. • {{ formatKg(item.totalKg) }}</span>
+            </div>
+            <div class="h-2 rounded-full bg-[#f5f3f0] overflow-hidden">
+              <div class="h-full rounded-full" [class]="movementBarClasses(item.type)" [style.width.%]="item.percent"></div>
+            </div>
+          </div>
+        } @empty {
+          <p class="text-center text-[#827565] py-6">Nenhuma movimentação registrada.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Resumo de compras por fornecedor -->
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 lg:col-span-2">
+      <div class="flex items-center justify-between gap-2 mb-1">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">local_shipping</span>
+          <h2 class="text-base font-bold text-[#1b1c1a]">Resumo de Compras por Fornecedor</h2>
+        </div>
+        <span class="text-xs text-[#827565]">Total: {{ formatCurrency(totalPurchasesAmount()) }}</span>
+      </div>
+      <p class="text-xs text-[#827565] mb-4">Valor total e peso comprado, agrupados por fornecedor.</p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border-separate border-spacing-y-2">
+          <thead>
+            <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+              <th class="px-3 py-2 font-semibold">Fornecedor</th>
+              <th class="px-3 py-2 font-semibold">Pedidos</th>
+              <th class="px-3 py-2 font-semibold">Peso total</th>
+              <th class="px-3 py-2 font-semibold">Valor total</th>
+              <th class="px-3 py-2 font-semibold w-1/3">Participação</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of supplierSummaries(); track item.supplier) {
+              <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
+                <td class="px-3 py-3 rounded-l-xl font-semibold text-[#1b1c1a]">{{ item.supplier }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ item.ordersCount }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ formatKg(item.totalWeightKg) }}</td>
+                <td class="px-3 py-3 font-semibold text-[#1b1c1a]">{{ formatCurrency(item.totalAmount) }}</td>
+                <td class="px-3 py-3 rounded-r-xl">
+                  <div class="h-2 rounded-full bg-white border border-[#e4e2df] overflow-hidden">
+                    <div class="h-full rounded-full bg-[#0F1F3D]" [style.width.%]="item.percent"></div>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="px-3 py-8 text-center text-[#827565]">Nenhuma compra registrada.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Kits mais rentáveis -->
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">outdoor_grill</span>
+        <h2 class="text-base font-bold text-[#1b1c1a]">Kits Mais Rentáveis</h2>
+      </div>
+      <p class="text-xs text-[#827565] mb-4">Kits de churrasco ordenados por margem de contribuição.</p>
+
+      <div class="flex flex-col">
+        @for (kit of kitsByMargin(); track kit.id; let last = $last) {
+          <div
+            class="flex items-center justify-between gap-3"
+            [class.pb-4]="!last"
+            [class.mb-4]="!last"
+            [class.border-b]="!last"
+            [class.border-[#e4e2df]]="!last"
+          >
+            <div class="flex flex-col min-w-0">
+              <span class="font-semibold text-[#1b1c1a] text-sm truncate">{{ kit.name }}</span>
+              <span class="text-[11px] text-[#827565]">{{ kit.code }} • {{ formatCurrency(kit.suggestedPrice) }}</span>
+              <span
+                class="inline-flex items-center w-fit mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                [class]="kitStockBadgeClasses(kit.stockStatus)"
+              >
+                {{ kitStockLabel(kit.stockStatus) }}
+              </span>
+            </div>
+            <div class="flex flex-col items-end shrink-0">
+              <span class="text-lg font-bold text-[#4caf50]">{{ kit.marginPercent.toFixed(1) }}%</span>
+              <span class="text-[11px] text-[#827565]">margem</span>
+            </div>
+          </div>
+        } @empty {
+          <p class="text-center text-[#827565] py-6">Nenhum kit cadastrado.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Top clientes por gasto -->
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">group</span>
+        <h2 class="text-base font-bold text-[#1b1c1a]">Top Clientes por Gasto</h2>
+      </div>
+      <p class="text-xs text-[#827565] mb-4">Clientes ordenados pelo total gasto acumulado.</p>
+
+      <div class="flex flex-col gap-4">
+        @for (client of clientsBySpend(); track client.id) {
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between gap-2 text-sm">
+              <div class="flex items-center gap-2 min-w-0">
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
+                  [class]="client.type === 'pj' ? 'bg-[#0F1F3D]/10 text-[#0F1F3D]' : 'bg-[#d8a34a]/15 text-[#7f5700]'"
+                >
+                  {{ client.type === 'pj' ? 'PJ' : 'PF' }}
+                </span>
+                <span class="font-semibold text-[#1b1c1a] truncate">{{ client.name }}</span>
+              </div>
+              <span class="text-[#827565] shrink-0 font-semibold">{{ formatCurrency(client.totalSpent) }}</span>
+            </div>
+            <div class="h-2 rounded-full bg-[#f5f3f0] overflow-hidden">
+              <div class="h-full rounded-full bg-[#4caf50]" [style.width.%]="clientSpendPercent(client)"></div>
+            </div>
+          </div>
+        } @empty {
+          <p class="text-center text-[#827565] py-6">Nenhum cliente cadastrado.</p>
+        }
+      </div>
+    </div>
+  </div>
+</div>
