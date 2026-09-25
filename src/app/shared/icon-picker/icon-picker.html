@@ -1,0 +1,171 @@
+<button
+  type="button"
+  (click)="open()"
+  [title]="value() ? 'Ícone: ' + value() + ' — clique para trocar' : placeholder()"
+  [class]="
+    compact()
+      ? 'w-9 h-9 shrink-0 rounded-lg bg-[#d8a34a]/10 hover:bg-[#d8a34a]/20 border border-transparent hover:border-[#d8a34a] flex items-center justify-center cursor-pointer transition-colors'
+      : 'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-[#e4e2df] hover:border-[#d8a34a] text-left cursor-pointer transition-colors'
+  "
+>
+  <span class="material-symbols-outlined text-[20px] text-[#d8a34a]">{{ value() || 'category' }}</span>
+  @if (!compact()) {
+    <span class="flex-1 min-w-0 truncate text-sm" [class.text-[#827565]]="!value()" [class.text-[#1b1c1a]]="!!value()">
+      {{ value() || placeholder() }}
+    </span>
+    <span class="text-[11px] font-semibold text-[#a07a2f]">Trocar</span>
+  }
+</button>
+
+@if (isOpen()) {
+  <div
+    class="fixed inset-0 bg-[#0F1F3D]/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+    (click)="close()"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-xl w-full max-w-2xl h-[85vh] flex flex-col overflow-hidden"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-label="Escolher ícone"
+    >
+      <!-- Cabeçalho + busca -->
+      <div class="px-5 pt-4 pb-3 border-b border-[#efeeeb] flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-[#1b1c1a] flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">interests</span>
+            Escolher ícone
+          </h3>
+          <button
+            type="button"
+            (click)="close()"
+            class="p-1 rounded-lg text-[#827565] hover:bg-[#efeeeb] cursor-pointer"
+            aria-label="Fechar"
+          >
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#827565] text-[20px]">
+            search
+          </span>
+          <input
+            type="text"
+            [value]="search()"
+            (input)="setSearch($any($event.target).value)"
+            placeholder="Buscar: carne, bebida, dinheiro, cartão, credit_card..."
+            autofocus
+            class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-[#e4e2df] text-sm text-[#1b1c1a] placeholder:text-[#827565] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          <button
+            type="button"
+            (click)="setCategory(null)"
+            [class]="
+              categoryIndex() === null
+                ? 'shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#0F1F3D] text-white cursor-pointer'
+                : 'shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f5f3f0] text-[#4f4537] hover:bg-[#e4e2df] cursor-pointer'
+            "
+          >
+            Todos
+          </button>
+          @for (cat of categories(); track cat.index) {
+            <button
+              type="button"
+              (click)="setCategory(cat.index)"
+              [class]="
+                categoryIndex() === cat.index
+                  ? 'shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#0F1F3D] text-white cursor-pointer'
+                  : 'shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f5f3f0] text-[#4f4537] hover:bg-[#e4e2df] cursor-pointer'
+              "
+            >
+              {{ cat.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Grade -->
+      <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+        @if (!search() && categoryIndex() === null) {
+          <div class="flex flex-col gap-2">
+            <span class="text-[11px] font-semibold text-[#827565] uppercase tracking-wide">Sugeridos</span>
+            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
+              @for (name of featuredIcons; track name) {
+                <button
+                  type="button"
+                  (click)="select(name)"
+                  [title]="name"
+                  [class]="
+                    value() === name
+                      ? 'flex flex-col items-center gap-1 p-2 rounded-lg border-2 border-[#d8a34a] bg-[#d8a34a]/10 cursor-pointer'
+                      : 'flex flex-col items-center gap-1 p-2 rounded-lg border border-[#e4e2df] hover:border-[#d8a34a] hover:bg-[#d8a34a]/5 cursor-pointer'
+                  "
+                >
+                  <span class="material-symbols-outlined text-[24px] text-[#1b1c1a]">{{ name }}</span>
+                  <span class="w-full truncate text-center text-[9px] text-[#827565]">{{ name }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (isLoading()) {
+          <div class="flex items-center justify-center gap-2 py-10 text-sm text-[#827565]">
+            <span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+            Carregando ícones...
+          </div>
+        } @else if (loadError()) {
+          <div class="flex flex-col items-center gap-2 py-10 text-sm text-[#827565]">
+            Não foi possível carregar a lista de ícones.
+            <button
+              type="button"
+              (click)="fetchCatalog()"
+              class="px-3 py-1.5 rounded-lg bg-[#f5f3f0] hover:bg-[#efeeeb] text-xs font-semibold text-[#1b1c1a] cursor-pointer"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-2">
+            <span class="text-[11px] font-semibold text-[#827565] uppercase tracking-wide">
+              {{ search() || categoryIndex() !== null ? 'Resultados' : 'Todos os ícones' }} ({{ results().length }})
+            </span>
+            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
+              @for (icon of visibleResults(); track icon.name) {
+                <button
+                  type="button"
+                  (click)="select(icon.name)"
+                  [title]="icon.name"
+                  [class]="
+                    value() === icon.name
+                      ? 'flex flex-col items-center gap-1 p-2 rounded-lg border-2 border-[#d8a34a] bg-[#d8a34a]/10 cursor-pointer'
+                      : 'flex flex-col items-center gap-1 p-2 rounded-lg border border-transparent hover:border-[#d8a34a] hover:bg-[#d8a34a]/5 cursor-pointer'
+                  "
+                >
+                  <span class="material-symbols-outlined text-[24px] text-[#1b1c1a]">{{ icon.name }}</span>
+                  <span class="w-full truncate text-center text-[9px] text-[#827565]">{{ icon.name }}</span>
+                </button>
+              } @empty {
+                <span class="col-span-full text-center text-sm text-[#827565] py-8">
+                  Nenhum ícone encontrado. Tente um termo em inglês (ex.: "meat", "drink").
+                </span>
+              }
+            </div>
+            @if (visibleResults().length < results().length) {
+              <button
+                type="button"
+                (click)="showMore()"
+                class="self-center mt-2 px-4 py-2 rounded-lg bg-[#f5f3f0] hover:bg-[#efeeeb] text-xs font-semibold text-[#1b1c1a] cursor-pointer"
+              >
+                Mostrar mais ({{ results().length - visibleResults().length }} restantes)
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

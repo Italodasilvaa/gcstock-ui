@@ -23,6 +23,17 @@
     </button>
   </div>
 
+  <!-- Filtro de período -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
+    <app-date-range-filter label="Data de entrada" [(range)]="dateRange" />
+    @if (filteredPurchases().length !== purchases().length) {
+      <p class="text-xs text-[#827565]">
+        Exibindo {{ filteredPurchases().length }} de {{ purchases().length }} entradas •
+        Total no período: <span class="font-semibold text-[#1b1c1a]">{{ formatCurrency(filteredTotalAmount()) }}</span>
+      </p>
+    }
+  </div>
+
   <!-- List -->
   <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
     @if (purchases().length === 0) {
@@ -30,6 +41,12 @@
         <span class="material-symbols-outlined text-[36px] text-[#827565]">receipt_long</span>
         <p class="text-sm font-semibold text-[#1b1c1a]">Nenhuma entrada registrada</p>
         <p class="text-xs text-[#827565]">Clique em "+ Nova Entrada" para registrar a primeira compra.</p>
+      </div>
+    } @else if (filteredPurchases().length === 0) {
+      <div class="p-10 flex flex-col items-center justify-center text-center gap-2">
+        <span class="material-symbols-outlined text-[36px] text-[#827565]">event_busy</span>
+        <p class="text-sm font-semibold text-[#1b1c1a]">Nenhuma entrada no período selecionado</p>
+        <p class="text-xs text-[#827565]">Escolha outro mês ou ajuste as datas do filtro.</p>
       </div>
     } @else {
       <!-- Desktop table -->
@@ -46,10 +63,11 @@
               <th class="px-4 py-3 text-right">Valor Total</th>
               <th class="px-4 py-3">Condição</th>
               <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3 text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
-            @for (purchase of purchases(); track purchase.id) {
+            @for (purchase of filteredPurchases(); track purchase.id) {
               <tr
                 (click)="toggleExpand(purchase)"
                 class="border-t border-[#efeeeb] hover:bg-[#fbf9f6] cursor-pointer transition-colors"
@@ -66,7 +84,7 @@
                   </div>
                 </td>
                 <td class="px-4 py-3 text-[13px] text-[#4f4537]">{{ purchase.nfeNumber }} • {{ purchase.nfeSeries }}</td>
-                <td class="px-4 py-3 text-[13px] text-[#4f4537]">{{ purchase.entryDate }} {{ purchase.entryTime }}</td>
+                <td class="px-4 py-3 text-[13px] text-[#4f4537]">{{ purchase.entryDate | date:'dd/MM/yyyy' }} {{ purchase.entryTime }}</td>
                 <td class="px-4 py-3">
                   <p class="text-[13px] font-semibold text-[#1b1c1a]">{{ purchase.supplierName }}</p>
                   <p class="text-[11px] text-[#827565]">{{ purchase.supplierCity }}</p>
@@ -87,10 +105,29 @@
                     {{ paymentStatusLabel(purchase.paymentStatus) }}
                   </span>
                 </td>
+                <td class="px-4 py-3 text-right">
+                  @if (isLocked(purchase)) {
+                    <span
+                      class="inline-flex p-1.5 text-[#a19b8f] cursor-not-allowed"
+                      title="Compra paga — não pode mais ser alterada"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">lock</span>
+                    </span>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
+                      class="p-1.5 rounded-lg text-[#827565] hover:text-[#0F1F3D] hover:bg-white cursor-pointer"
+                      title="Editar entrada"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                  }
+                </td>
               </tr>
               @if (expandedPurchaseId() === purchase.id) {
                 <tr class="border-t border-[#efeeeb] bg-[#f5f3f0]/60">
-                  <td colspan="9" class="px-4 py-4">
+                  <td colspan="10" class="px-4 py-4">
                     <div class="flex flex-col gap-3">
                       <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px] text-[#4f4537]">
                         <span><span class="font-semibold">CNPJ:</span> {{ purchase.supplierCnpj || 'Não informado' }}</span>
@@ -130,7 +167,7 @@
                                     {{ formatCurrency(item.subtotal) }}
                                   </td>
                                   <td class="px-3 py-2 text-[12px] text-[#4f4537]">
-                                    {{ item.expiryDate || '—' }}
+                                    {{ item.expiryDate ? (item.expiryDate | date:'dd/MM/yyyy') : '—' }}
                                   </td>
                                   <td class="px-3 py-2 text-[12px] text-[#4f4537]">{{ item.lotNumber || '—' }}</td>
                                 </tr>
@@ -150,13 +187,13 @@
 
       <!-- Mobile cards -->
       <div class="md:hidden divide-y divide-[#efeeeb]">
-        @for (purchase of purchases(); track purchase.id) {
+        @for (purchase of filteredPurchases(); track purchase.id) {
           <div class="p-4" (click)="toggleExpand(purchase)">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
                 <p class="text-[13px] font-bold text-[#1b1c1a]">{{ purchase.orderCode }}</p>
                 <p class="text-[12px] text-[#4f4537] truncate">{{ purchase.supplierName }}</p>
-                <p class="text-[11px] text-[#827565]">{{ purchase.entryDate }} {{ purchase.entryTime }} • {{ purchase.nfeNumber }}</p>
+                <p class="text-[11px] text-[#827565]">{{ purchase.entryDate | date:'dd/MM/yyyy' }} {{ purchase.entryTime }} • {{ purchase.nfeNumber }}</p>
               </div>
               <span
                 [class]="
@@ -170,6 +207,24 @@
             <div class="flex items-center justify-between mt-2 text-[12px] text-[#4f4537]">
               <span>{{ purchase.itemsCount }} itens • {{ purchase.totalWeightKg }} kg</span>
               <span class="font-bold text-[#1b1c1a]">{{ formatCurrency(purchase.totalAmount) }}</span>
+            </div>
+
+            <div class="flex justify-end mt-1">
+              @if (isLocked(purchase)) {
+                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#a19b8f]">
+                  <span class="material-symbols-outlined text-[14px]">lock</span>
+                  Paga — bloqueada
+                </span>
+              } @else {
+                <button
+                  type="button"
+                  (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
+                  class="inline-flex items-center gap-1 text-[11px] font-bold text-[#0F1F3D] cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[14px]">edit</span>
+                  Editar
+                </button>
+              }
             </div>
 
             @if (expandedPurchaseId() === purchase.id) {
@@ -209,7 +264,9 @@
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-[22px] text-[#7f5700]">receipt_long</span>
           <div>
-            <h3 class="text-[17px] font-bold text-[#1b1c1a]">Nova Entrada de Compra</h3>
+            <h3 class="text-[17px] font-bold text-[#1b1c1a]">
+              {{ isEditing() ? 'Editar Entrada de Compra' : 'Nova Entrada de Compra' }}
+            </h3>
             <p class="text-xs text-[#827565]">Registro de nota fiscal de entrada e dados do fornecedor</p>
           </div>
         </div>
@@ -258,7 +315,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Número da NF-e *</label>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Número da NF-e</label>
             <input
               type="text"
               [(ngModel)]="form.nfeNumber"
@@ -280,36 +337,14 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Qtd. de Itens</label>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Data da Entrada *</label>
             <input
-              type="number"
-              min="0"
-              [(ngModel)]="form.itemsCount"
-              name="itemsCount"
-              class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Peso Total (kg)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.1"
-              [(ngModel)]="form.totalWeightKg"
-              name="totalWeightKg"
-              class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
-            />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Valor Total (R$)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              [(ngModel)]="form.totalAmount"
-              name="totalAmount"
+              type="date"
+              [(ngModel)]="form.entryDate"
+              name="entryDate"
+              [max]="today"
+              required
+              title="Dia em que a mercadoria chegou — usado no lote do estoque e na conta a pagar"
               class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
             />
           </div>
@@ -320,8 +355,10 @@
               type="number"
               min="0"
               step="0.01"
-              [(ngModel)]="form.shippingCost"
+              [ngModel]="form.shippingCost || null"
+              (ngModelChange)="form.shippingCost = $event ?? 0"
               name="shippingCost"
+              placeholder="Ex: 150,00 (vazio se não houve frete)"
               class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
             />
           </div>
@@ -351,6 +388,182 @@
           </div>
         </div>
 
+        <!-- Itens da Compra (somam automaticamente ao estoque do produto selecionado) -->
+        <div class="pt-2 border-t border-[#efeeeb]">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <p class="text-xs font-bold text-[#4f4537]">Itens da Compra *</p>
+              <p class="text-[11px] text-[#827565]">
+                Selecione os produtos recebidos: a quantidade é somada automaticamente ao estoque de cada um.
+              </p>
+            </div>
+            <button
+              type="button"
+              (click)="addItemRow()"
+              class="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#fbf9f6] rounded-lg px-3 py-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[16px]">add</span>
+              Adicionar Item
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            @for (item of formItems(); track $index) {
+              <div class="flex flex-col gap-2 bg-[#fbf9f6] border border-[#e4e2df] rounded-lg p-2">
+                <div class="flex items-center gap-2">
+                  @if (item.isNewProduct) {
+                    <input
+                      type="text"
+                      [ngModel]="item.name"
+                      (ngModelChange)="item.name = $event; touchItems()"
+                      [name]="'itemNewName' + $index"
+                      placeholder="Nome do novo produto — Ex: Picanha Bovina Resfriada"
+                      class="min-w-0 flex-1 px-2.5 py-1.5 rounded-md border border-[#d8a34a]/60 text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                    />
+                    <button
+                      type="button"
+                      (click)="cancelNewProduct(item)"
+                      title="Buscar produto já cadastrado"
+                      class="shrink-0 text-[#827565] hover:bg-white rounded-md p-1.5 cursor-pointer"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">undo</span>
+                    </button>
+                  } @else {
+                    <select
+                      [ngModel]="item.productId"
+                      (ngModelChange)="onProductSelected(item, $event)"
+                      [name]="'itemProduct' + $index"
+                      class="min-w-0 flex-1 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                    >
+                      <option value="" disabled>Selecione o produto...</option>
+                      <option [value]="newProductOption">+ Cadastrar novo produto...</option>
+                      @for (product of products(); track product.id) {
+                        <option [value]="product.id">{{ product.name }} ({{ product.code }})</option>
+                      }
+                    </select>
+                  }
+                  <button
+                    type="button"
+                    (click)="removeItemRow($index)"
+                    class="shrink-0 text-[#ba1a1a] hover:bg-[#ba1a1a]/10 rounded-md p-1.5 cursor-pointer"
+                    title="Remover item"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                </div>
+                @if (item.isNewProduct) {
+                  <div class="grid grid-cols-3 gap-2">
+                    <label class="flex flex-col gap-0.5 min-w-0">
+                      <span class="text-[10px] font-semibold text-[#827565]">Categoria</span>
+                      <input
+                        type="text"
+                        [ngModel]="item.newCategory"
+                        (ngModelChange)="item.newCategory = $event; touchItems()"
+                        [name]="'itemNewCategory' + $index"
+                        list="compras-categorias"
+                        placeholder="Ex: Carnes Bovinas (opcional)"
+                        class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                      />
+                    </label>
+                    <label class="flex flex-col gap-0.5 min-w-0">
+                      <span class="text-[10px] font-semibold text-[#827565]">Unidade de venda</span>
+                      <select
+                        [ngModel]="item.unit"
+                        (ngModelChange)="item.unit = $event; touchItems()"
+                        [name]="'itemNewUnit' + $index"
+                        title="Unidade em que o produto é vendido e controlado no estoque"
+                        class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                      >
+                        <option value="kg">kg — quilo</option>
+                        <option value="un">un — unidade</option>
+                        <option value="pct">pct — pacote</option>
+                        <option value="cx">cx — caixa</option>
+                      </select>
+                    </label>
+                    <label class="flex flex-col gap-0.5 min-w-0">
+                      <span class="text-[10px] font-semibold text-[#827565]">Preço de venda (R$)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        [ngModel]="item.newSellingPrice || null"
+                        (ngModelChange)="item.newSellingPrice = $event ?? 0; touchItems()"
+                        [name]="'itemNewSellingPrice' + $index"
+                        placeholder="Ex: 69,90 por kg/un"
+                        title="Preço cobrado do cliente no PDV"
+                        class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                      />
+                    </label>
+                  </div>
+                }
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <label class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-[10px] font-semibold text-[#827565]">Quantidade recebida</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      [ngModel]="item.quantity || null"
+                      (ngModelChange)="item.quantity = $event ?? 0; touchItems()"
+                      [name]="'itemQuantity' + $index"
+                      [placeholder]="'Ex: 25 (' + item.unit + ')'"
+                      title="Quantidade que chegou na nota — é somada ao estoque"
+                      class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                    />
+                  </label>
+                  <label class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-[10px] font-semibold text-[#827565]">Custo unitário (R$)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      [ngModel]="item.unitCost || null"
+                      (ngModelChange)="item.unitCost = $event ?? 0; touchItems()"
+                      [name]="'itemUnitCost' + $index"
+                      [placeholder]="'Ex: 42,50 por ' + item.unit"
+                      title="Valor pago ao fornecedor por kg/unidade, conforme a nota"
+                      class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                    />
+                  </label>
+                  <label class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-[10px] font-semibold text-[#827565]">Nº do lote</span>
+                    <input
+                      type="text"
+                      [(ngModel)]="item.lotNumber"
+                      [name]="'itemLot' + $index"
+                      placeholder="Ex: LT-2026-091 (na etiqueta)"
+                      title="Número do lote impresso na etiqueta/caixa do fornecedor"
+                      class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                    />
+                  </label>
+                  <label class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-[10px] font-semibold text-[#827565]">Data de validade</span>
+                    <input
+                      type="date"
+                      [(ngModel)]="item.expiryDate"
+                      [name]="'itemExpiry' + $index"
+                      title="Validade do lote — usada nos alertas de vencimento"
+                      class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                    />
+                  </label>
+                </div>
+              </div>
+            } @empty {
+              <p class="text-xs text-[#827565] italic">Nenhum item adicionado ainda.</p>
+            }
+          </div>
+
+          <datalist id="compras-categorias">
+            @for (name of categoryNames(); track name) {
+              <option [value]="name"></option>
+            }
+          </datalist>
+
+          <p class="text-xs text-[#4f4537] font-semibold mt-2 text-right">
+            {{ formItems().length }} item(ns) • {{ totalWeightKg() }} kg • Total dos itens: {{ formatCurrency(totalItemsAmount()) }}
+          </p>
+        </div>
+
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-[#efeeeb] mt-1">
           <button
             type="button"
@@ -364,7 +577,7 @@
             class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-xs"
           >
             <span class="material-symbols-outlined text-[16px]">save</span>
-            <span>Salvar Entrada</span>
+            <span>{{ isEditing() ? 'Salvar Alterações' : 'Salvar Entrada' }}</span>
           </button>
         </div>
       </form>

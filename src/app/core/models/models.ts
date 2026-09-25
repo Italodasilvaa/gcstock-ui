@@ -37,6 +37,13 @@ export interface ProductItem {
   isPromo?: boolean;
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  icon: string;
+  sortOrder: number;
+}
+
 export interface KitComponent {
   productId: string;
   name: string;
@@ -97,13 +104,16 @@ export interface StockMovement {
 
 export interface PurchaseItem {
   id: string;
+  /** Produto do catálogo ao qual esta entrada soma estoque automaticamente. Sem isso, o item não baixa/soma estoque. */
+  productId?: string;
   name: string;
   code: string;
   quantity: number;
   unit: string;
   unitCost: number;
   subtotal: number;
-  expiryDate: string;
+  /** Nulo quando o item não tem validade informada (ex.: produto não perecível). */
+  expiryDate: string | null;
   lotNumber: string;
   isPerishable: boolean;
 }
@@ -143,6 +153,8 @@ export interface AccountsPayableTitle {
   status: 'vencido' | 'a_vencer' | 'pago';
   paidDate?: string;
   receiptAttached?: boolean;
+  /** "compras" (automática, do Módulo Compras) | "equipamento" | "investimento" | "outros". */
+  category: 'compras' | 'equipamento' | 'investimento' | 'outros';
 }
 
 export interface AccountsReceivableTitle {
@@ -158,6 +170,7 @@ export interface AccountsReceivableTitle {
   status: 'vencido' | 'a_vencer' | 'recebido';
   type: 'b2b' | 'adquirente' | 'evento';
   paymentModeDesc: string;
+  receivedDate?: string;
 }
 
 export interface PaymentFeeSetting {
@@ -170,6 +183,8 @@ export interface PaymentFeeSetting {
   settlementTerm: string;
   active: boolean;
   icon: string;
+  /** Posição na lista de Configurações e nos cards do PDV (definida pelo backend). */
+  sortOrder?: number;
 }
 
 export interface GlobalAlertSetting {
@@ -183,6 +198,7 @@ export interface GlobalAlertSetting {
 
 export interface CartItem {
   id: string;
+  kind: 'produto' | 'kit';
   name: string;
   price: number;
   unit: string;
@@ -243,9 +259,8 @@ export interface CompanyTenant {
   corporateName: string; // Razão Social
   tradeName: string; // Nome Fantasia
   document: string; // CNPJ / CPF
-  ownerName: string; // Responsável / Administrador
-  email: string;
-  password?: string;
+  ownerId: string; // vincula ao Administrator dono desta empresa
+  ownerName: string; // Responsável / Administrador (denormalizado para exibição)
   phone: string;
   segment: string;
   city: string;
@@ -256,14 +271,65 @@ export interface CompanyTenant {
   plan: 'free_trial' | 'pro' | 'enterprise';
 }
 
+/**
+ * Dono/administrador do grupo. Um Administrator pode ter N empresas
+ * (CompanyTenant.ownerId); toda empresa precisa de exatamente um dono.
+ */
+export interface Administrator {
+  id: string;
+  name: string;
+  email: string;
+  password?: string;
+  createdAt: string;
+}
+
 export interface AuthSession {
   user: {
     id: string;
     name: string;
     email: string;
     role: 'admin' | 'gerente' | 'operador';
+    employeeId?: string;
   };
   company: CompanyTenant;
   token: string;
   loggedInAt: string;
+}
+
+export interface Employee {
+  id: string;
+  companyId: string;
+  name: string;
+  email: string;
+  password?: string;
+  role: 'admin' | 'gerente' | 'operador';
+  active: boolean;
+  createdAt: string;
+  /** Salário mensal — somado automaticamente ao fechamento mensal (Financeiro &amp; DRE &gt; Visão Mensal). */
+  salary: number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+  userRole: 'admin' | 'gerente' | 'operador';
+  companyId: string;
+  action: 'criou' | 'editou' | 'excluiu' | 'vendeu' | 'baixou' | 'recebeu' | 'antecipou' | 'liquidou';
+  entityType: string;
+  entityLabel: string;
+  details?: string;
+}
+
+export interface SaleRecord {
+  id: string;
+  saleId: string;
+  timestamp: string;
+  total: number;
+  netAmount: number;
+  feeAmount: number;
+  paymentMode: string;
+  clientName?: string;
+  soldBy: string;
 }

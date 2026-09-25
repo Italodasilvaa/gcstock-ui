@@ -4,7 +4,7 @@
     <div>
       <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
         <span class="material-symbols-outlined text-[#d8a34a] text-2xl">analytics</span>
-        Relatórios &amp; Desossa
+        Relatórios
       </h1>
       <p class="text-sm text-[#827565] mt-1">
         Indicadores consolidados de estoque, compras, movimentações, kits e clientes.
@@ -27,6 +27,14 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Filtro de período -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
+    <app-date-range-filter label="Período de compras e movimentações" [(range)]="dateRange" />
+    <p class="text-xs text-[#827565]">
+      Estoque, kits e clientes mostram a posição atual; compras por fornecedor e movimentações seguem o período.
+    </p>
   </div>
 
   <!-- Valor total em estoque -->

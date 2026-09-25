@@ -1,27 +1,37 @@
 <div class="min-h-screen bg-[#f5f3f0] text-[#1b1c1a] font-sans antialiased flex flex-col">
-  <!-- Toast Notification -->
+  <!-- Toast Notification: z-index acima de qualquer modal/overlay (modais usam até z-[200]). -->
   @if (appState.toastMessage()) {
     <div
-      class="fixed bottom-6 right-6 z-50 bg-[#0F1F3D] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-[#d8a34a]/40 animate-in fade-in slide-in-from-bottom duration-200"
+      role="status"
+      aria-live="polite"
+      class="fixed bottom-6 right-6 z-[9999] bg-[#0F1F3D] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-[#d8a34a]/40 animate-in fade-in slide-in-from-bottom duration-200"
     >
       <span class="material-symbols-outlined text-[#4caf50] text-[22px]">check_circle</span>
       <span class="text-[13px] font-medium">{{ appState.toastMessage() }}</span>
     </div>
   }
 
-  <!-- Fixed Left Navigation Sidebar -->
+  <!-- Fixed Left Navigation Sidebar (off-canvas no mobile, sempre visível em `lg:` para cima) -->
   <app-sidebar
+    [isOpen]="isMobileMenuOpen()"
+    (close)="isMobileMenuOpen.set(false)"
     (openApiConsole)="showApiConsole.set(true)"
-    (openCompanySwitch)="isCompanyModalOpen.set(true)"
+    (openCompanySwitch)="openCompanySwitch()"
     (logout)="logout()"
   ></app-sidebar>
 
   <!-- Top Fixed Application Bar -->
-  <app-navbar (openCompanySwitch)="isCompanyModalOpen.set(true)" (logout)="logout()"></app-navbar>
+  <app-navbar
+    (toggleSidebar)="isMobileMenuOpen.set(!isMobileMenuOpen())"
+    (openCompanySwitch)="openCompanySwitch()"
+    (logout)="logout()"
+  ></app-navbar>
 
-  <!-- Main Content View with left offset for sidebar and top offset for navbar -->
-  <main class="ml-64 mt-16 flex-1 p-6 md:p-8 max-w-[1600px] w-[calc(100%-16rem)]">
-    <router-outlet></router-outlet>
+  <!-- Main Content View: sem offset da sidebar no mobile (off-canvas), com offset em `lg:` para cima -->
+  <main class="ml-0 lg:ml-64 mt-16 flex-1 p-4 sm:p-6 md:p-8 w-full lg:w-[calc(100%-16rem)]">
+    <div class="max-w-[1600px] mx-auto">
+      <router-outlet></router-outlet>
+    </div>
   </main>
 
   <!-- Multi-Tenant Company Switcher Modal -->
@@ -118,5 +128,30 @@
   <!-- JSON Mock API Console Modal -->
   @if (showApiConsole()) {
     <app-api-console (close)="showApiConsole.set(false)"></app-api-console>
+  }
+
+  <!-- Aviso de inatividade: "você está online?" -->
+  @if (idleSession.showWarning()) {
+    <div class="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[#e4e2df] text-center">
+        <div
+          class="w-14 h-14 rounded-full bg-[#ffdead]/40 flex items-center justify-center mx-auto mb-4"
+        >
+          <span class="material-symbols-outlined text-[28px] text-[#7f5700]">schedule</span>
+        </div>
+        <h3 class="text-[17px] font-bold text-[#1b1c1a]">Você ainda está online?</h3>
+        <p class="text-xs text-[#827565] mt-2">
+          Notamos alguns minutos sem atividade. Por segurança, sua sessão será encerrada em
+          <span class="font-bold text-[#ba1a1a]">{{ formatCountdown() }}</span> caso não haja resposta.
+        </p>
+        <button
+          type="button"
+          (click)="idleSession.confirmActive()"
+          class="mt-5 w-full py-2.5 rounded-lg bg-[#0F1F3D] hover:bg-[#16294F] text-white text-sm font-bold cursor-pointer transition-colors shadow-xs"
+        >
+          Sim, continuar conectado
+        </button>
+      </div>
+    </div>
   }
 </div>

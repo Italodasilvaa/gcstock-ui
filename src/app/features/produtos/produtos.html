@@ -72,8 +72,19 @@
           @for (product of filteredProducts(); track product.id) {
             <tr class="border-b border-[#efeeeb] last:border-b-0 hover:bg-[#faf9f7] transition-colors align-top">
               <td class="px-4 py-3">
-                <p class="font-bold text-[#1b1c1a] leading-tight">{{ product.name }}</p>
-                <p class="text-xs text-[#827565] mt-0.5">{{ product.sku }} • {{ product.code }}</p>
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-[#f5f3f0] border border-[#e4e2df] overflow-hidden shrink-0 flex items-center justify-center">
+                    @if (product.imageUrl) {
+                      <img [src]="product.imageUrl" [alt]="product.name" class="w-full h-full object-cover" />
+                    } @else {
+                      <span class="material-symbols-outlined text-[18px] text-[#a19b8f]">image</span>
+                    }
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-bold text-[#1b1c1a] leading-tight">{{ product.name }}</p>
+                    <p class="text-xs text-[#827565] mt-0.5">{{ product.sku }} • {{ product.code }}</p>
+                  </div>
+                </div>
               </td>
               <td class="px-4 py-3 text-[#4f4537]">{{ product.category }}</td>
               <td class="px-4 py-3 text-[#4f4537] uppercase">{{ product.unit }}</td>
@@ -95,11 +106,18 @@
               <td class="px-4 py-3 font-semibold text-[#1b1c1a]">{{ formatCurrency(product.sellingPrice) }}</td>
               <td class="px-4 py-3 text-[#4f4537]">{{ product.supplier }}</td>
               <td class="px-4 py-3">
-                <span [class]="'inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ' + expiryBadgeClass(product.expiryStatus)">
-                  {{ expiryStatusLabel(product.expiryStatus) }}
-                </span>
-                <p class="text-xs text-[#827565] mt-1">{{ product.nearestExpiry }}</p>
-                <p class="text-xs text-[#827565]">Lote {{ product.lotNumber }}</p>
+                @if (product.lotNumber) {
+                  <span [class]="'inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ' + expiryBadgeClass(product.expiryStatus)">
+                    {{ expiryStatusLabel(product.expiryStatus) }}
+                  </span>
+                  <p class="text-xs text-[#827565] mt-1">{{ product.nearestExpiry | date:'dd/MM/yyyy' }}</p>
+                  <p class="text-xs text-[#827565]">Lote {{ product.lotNumber }}</p>
+                } @else {
+                  <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f5f3f0] text-[#827565]">
+                    Sem lote
+                  </span>
+                  <p class="text-xs text-[#827565] mt-1">Aguardando entrada em Compras</p>
+                }
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-1">
@@ -175,6 +193,65 @@
             />
           </div>
 
+          <!-- Imagem do produto (aparece nos cards do PDV) -->
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold text-[#4f4537] mb-1">Imagem do Produto</label>
+            <div class="flex items-start gap-3">
+              <button
+                type="button"
+                (click)="productImageFileInput.click()"
+                class="shrink-0 w-24 h-24 rounded-xl border-2 border-dashed border-[#e4e2df] hover:border-[#d8a34a] bg-[#f5f3f0] overflow-hidden flex items-center justify-center cursor-pointer transition-colors"
+                title="Enviar foto do computador"
+              >
+                @if (form.imageUrl) {
+                  <img [src]="form.imageUrl" alt="Pré-visualização" class="w-full h-full object-cover" />
+                } @else {
+                  <span class="flex flex-col items-center gap-0.5 text-[#827565]">
+                    <span class="material-symbols-outlined text-[26px]">add_photo_alternate</span>
+                    <span class="text-[10px] font-semibold">Adicionar</span>
+                  </span>
+                }
+              </button>
+              <input
+                #productImageFileInput
+                type="file"
+                accept="image/*"
+                class="hidden"
+                (change)="onImageFileSelected($event)"
+              />
+              <div class="flex-1 min-w-0 flex flex-col gap-2">
+                <p class="text-[11px] text-[#827565]">Envie uma foto do computador ou cole o link de uma imagem.</p>
+                <input
+                  type="text"
+                  [ngModel]="form.imageUrl.startsWith('data:') ? '' : form.imageUrl"
+                  (ngModelChange)="form.imageUrl = $event"
+                  name="imageUrl"
+                  placeholder="https://..."
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+                <div class="flex items-center gap-3">
+                  <button
+                    type="button"
+                    (click)="productImageFileInput.click()"
+                    class="inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">upload</span>
+                    {{ form.imageUrl ? 'Trocar foto' : 'Enviar do computador' }}
+                  </button>
+                  @if (form.imageUrl) {
+                    <button
+                      type="button"
+                      (click)="form.imageUrl = ''"
+                      class="text-[11px] font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
+                    >
+                      Remover imagem
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label class="block text-xs font-semibold text-[#4f4537] mb-1">SKU *</label>
             <input
@@ -193,7 +270,7 @@
               [(ngModel)]="form.category"
               name="category"
               list="produto-categorias"
-              placeholder="Ex: Carnes Bovinas"
+              placeholder="Escolha ou digite uma nova categoria"
               class="w-full px-3 py-2 text-sm rounded-lg border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
             />
             <datalist id="produto-categorias">
@@ -201,6 +278,11 @@
                 <option [value]="cat"></option>
               }
             </datalist>
+            @if (form.category.trim() && !categories().includes(form.category.trim())) {
+              <span class="block text-[11px] text-[#d8a34a] mt-1">
+                Nova categoria — será criada ao salvar e aparecerá no PDV.
+              </span>
+            }
           </div>
 
           <div>
@@ -284,13 +366,18 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-[#4f4537] mb-1">Validade Mais Próxima</label>
+            <label class="block text-xs font-semibold text-[#4f4537] mb-1">
+              Validade Mais Próxima <span class="font-normal text-[#827565]">(opcional)</span>
+            </label>
             <input
               type="date"
               [(ngModel)]="form.nearestExpiry"
               name="nearestExpiry"
               class="w-full px-3 py-2 text-sm rounded-lg border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
             />
+            <span class="block text-[11px] text-[#827565] mt-1">
+              Preenchida automaticamente pelos lotes lançados em Compras.
+            </span>
           </div>
 
           <div>

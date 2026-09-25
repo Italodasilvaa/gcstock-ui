@@ -125,6 +125,13 @@
                 <span class="material-symbols-outlined text-[16px]">point_of_sale</span>
                 Vender este Kit
               </button>
+              <button
+                (click)="removeKit(kit)"
+                title="Excluir kit"
+                class="shrink-0 flex items-center justify-center text-[#ba1a1a] hover:bg-[#ba1a1a]/10 border border-[#e4e2df] hover:border-[#ba1a1a]/30 rounded-lg p-2 cursor-pointer transition-colors"
+              >
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+              </button>
             </div>
           </div>
         </div>
@@ -135,11 +142,8 @@
 
 <!-- Modal de Criar/Editar Kit -->
 @if (isModalOpen()) {
-  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeModal()">
-    <div
-      class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
-      (click)="$event.stopPropagation()"
-    >
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
       <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
         <h2 class="text-lg font-bold text-[#1b1c1a]">
           {{ isEditing() ? 'Editar Kit de Churrasco' : 'Novo Kit de Churrasco' }}
@@ -199,7 +203,7 @@
           ></textarea>
         </div>
 
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1.5">
             <label class="text-[12px] font-semibold text-[#4f4537]">Preço sugerido (R$)</label>
             <input
@@ -208,17 +212,6 @@
               min="0"
               [(ngModel)]="form.suggestedPrice"
               name="suggestedPrice"
-              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
-            />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[12px] font-semibold text-[#4f4537]">Preço de custo (R$)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              [(ngModel)]="form.costPrice"
-              name="costPrice"
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
             />
           </div>
@@ -236,25 +229,120 @@
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <label class="text-[12px] font-semibold text-[#4f4537]">URL da imagem</label>
-          <input
-            type="text"
-            [(ngModel)]="form.imageUrl"
-            name="imageUrl"
-            placeholder="https://..."
-            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
-          />
+          <label class="text-[12px] font-semibold text-[#4f4537]">Imagem do kit</label>
+          <p class="text-[11px] text-[#827565] -mt-1">Cole o link de uma imagem ou envie uma foto do computador.</p>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              [(ngModel)]="form.imageUrl"
+              name="imageUrl"
+              placeholder="https://..."
+              class="flex-1 min-w-0 border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+            <input
+              #kitImageFileInput
+              type="file"
+              accept="image/*"
+              class="hidden"
+              (change)="onImageFileSelected($event)"
+            />
+            <button
+              type="button"
+              (click)="kitImageFileInput.click()"
+              class="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-2 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[16px]">upload</span>
+              Computador
+            </button>
+          </div>
+          @if (form.imageUrl) {
+            <div class="flex items-center gap-2 mt-1">
+              <img [src]="form.imageUrl" alt="Pré-visualização" class="w-14 h-14 rounded-lg object-cover border border-[#e4e2df]" />
+              <button
+                type="button"
+                (click)="form.imageUrl = ''"
+                class="text-[11px] font-semibold text-[#ba1a1a] hover:underline cursor-pointer"
+              >
+                Remover imagem
+              </button>
+            </div>
+          }
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[12px] font-semibold text-[#4f4537]">Resumo dos componentes</label>
-          <textarea
-            [(ngModel)]="form.componentsSummary"
-            name="componentsSummary"
-            rows="3"
-            placeholder="Ex.: Picanha Angus (1.5kg), Bife Ancho (1.2kg), Pão de Alho (1un)..."
-            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 resize-none"
-          ></textarea>
+        <!-- Componentes do Kit (itens do estoque que compõem o combo) -->
+        <div class="pt-2 border-t border-[#e4e2df]">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <p class="text-xs font-bold text-[#4f4537]">Componentes do Kit *</p>
+              <p class="text-[11px] text-[#827565]">
+                Escolha os produtos do estoque que fazem parte do kit: a venda baixa automaticamente essa quantidade de cada um.
+              </p>
+            </div>
+            <button
+              type="button"
+              (click)="addComponentRow()"
+              class="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[16px]">add</span>
+              Adicionar Item
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            @for (comp of formComponents(); track $index) {
+              <div class="flex flex-col gap-2 bg-[#f5f3f0] border border-[#e4e2df] rounded-lg p-2">
+                <div class="flex items-center gap-2">
+                  <select
+                    [ngModel]="comp.productId"
+                    (ngModelChange)="onComponentProductSelected(comp, $event)"
+                    [name]="'compProduct' + $index"
+                    class="min-w-0 flex-1 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                  >
+                    <option value="" disabled>Selecione o produto...</option>
+                    @for (product of products(); track product.id) {
+                      <option [value]="product.id">{{ product.name }} ({{ product.code }}) • {{ product.stock }} {{ product.unit }} disp.</option>
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    (click)="removeComponentRow($index)"
+                    class="shrink-0 text-[#ba1a1a] hover:bg-[#ba1a1a]/10 rounded-md p-1.5 cursor-pointer"
+                    title="Remover componente"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="comp.quantity"
+                    (ngModelChange)="comp.quantity = $event; touchComponents()"
+                    [name]="'compQuantity' + $index"
+                    placeholder="Qtd. por kit"
+                    class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="comp.unitCost"
+                    (ngModelChange)="comp.unitCost = $event; touchComponents()"
+                    [name]="'compUnitCost' + $index"
+                    placeholder="Custo Unit."
+                    class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                  />
+                </div>
+              </div>
+            } @empty {
+              <p class="text-xs text-[#827565] italic">Nenhum componente adicionado ainda.</p>
+            }
+          </div>
+
+          <p class="text-xs text-[#4f4537] font-semibold mt-2 text-right">
+            Custo total do kit: {{ formatCurrency(totalComponentsCost()) }}
+          </p>
         </div>
 
         <div class="flex items-center justify-end gap-3 pt-2 border-t border-[#e4e2df] mt-1">

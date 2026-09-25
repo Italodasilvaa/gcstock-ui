@@ -4,7 +4,7 @@
     <div>
       <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
         <span class="material-symbols-outlined text-[#d8a34a] text-2xl">inventory_2</span>
-        Estoque &amp; Validades
+        Estoque
       </h1>
       <p class="text-sm text-[#827565] mt-1">
         Controle de lotes por FEFO (primeiro que vence, primeiro que sai) e histórico de movimentações.
@@ -57,6 +57,23 @@
     </button>
   </div>
 
+  <!-- Filtro de período -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
+    <app-date-range-filter
+      [label]="activeTab() === 'lotes' ? 'Data de entrada' : 'Data da movimentação'"
+      [(range)]="dateRange"
+    />
+    @if (isDateFilterActive()) {
+      <p class="text-xs text-[#827565]">
+        @if (activeTab() === 'lotes') {
+          Exibindo {{ sortedBatches().length }} de {{ totalBatches() }} lotes no período.
+        } @else {
+          Exibindo {{ sortedMovements().length }} de {{ totalMovements() }} movimentações no período.
+        }
+      </p>
+    }
+  </div>
+
   <!-- Lotes em Estoque -->
   @if (activeTab() === 'lotes') {
     <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
@@ -93,8 +110,8 @@
                 </td>
                 <td class="px-3 py-3 text-[#4f4537] font-medium">{{ batch.lotNumber }}</td>
                 <td class="px-3 py-3 text-[#1b1c1a] font-semibold">{{ batch.availableKg.toFixed(1) }} kg</td>
-                <td class="px-3 py-3 text-[#4f4537]">{{ batch.entryDate }}</td>
-                <td class="px-3 py-3 text-[#4f4537]">{{ batch.expiryDate }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ batch.entryDate | date:'dd/MM/yyyy' }}</td>
+                <td class="px-3 py-3 text-[#4f4537]">{{ batch.expiryDate | date:'dd/MM/yyyy' }}</td>
                 <td class="px-3 py-3">
                   <span
                     class="inline-flex items-center gap-1 text-xs font-semibold"
@@ -152,7 +169,7 @@
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex flex-col">
                   <span class="font-semibold text-[#1b1c1a] text-sm">{{ movement.title }}</span>
-                  <span class="text-[11px] text-[#827565]">{{ movement.docInfo }} • {{ movement.timestamp }}</span>
+                  <span class="text-[11px] text-[#827565]">{{ movement.docInfo }} • {{ timestampLabel(movement.timestamp) }}</span>
                 </div>
                 <span class="text-sm font-bold" [class]="amountClasses(movement.amountKg)">
                   {{ amountLabel(movement.amountKg) }}

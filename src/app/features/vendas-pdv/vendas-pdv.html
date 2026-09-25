@@ -40,7 +40,7 @@
 
         <!-- Filtro de categoria -->
         <div class="flex items-center gap-2 flex-wrap">
-          @for (cat of categories; track cat.value) {
+          @for (cat of categories(); track cat.value) {
             <button
               type="button"
               (click)="categoryFilter.set(cat.value)"
@@ -54,6 +54,15 @@
               {{ cat.label }}
             </button>
           }
+          <button
+            type="button"
+            (click)="openCategoryEditor()"
+            title="Editar categorias: ordem, nome e ícone"
+            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border border-dashed border-[#d8a34a] text-[#a07a2f] hover:bg-[#d8a34a]/10 cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[15px]">edit</span>
+            Editar
+          </button>
         </div>
       </div>
 
@@ -202,12 +211,13 @@
         <div class="flex flex-col gap-1.5">
           <span class="text-xs font-semibold text-[#827565] uppercase tracking-wide">Forma de pagamento</span>
           <div class="grid grid-cols-2 gap-2">
-            @for (option of paymentOptions; track option.mode) {
+            @for (option of paymentOptions(); track option.id) {
               <button
                 type="button"
-                (click)="selectPaymentMode(option.mode)"
+                (click)="selectPaymentOption(option)"
+                [title]="option.subtitle"
                 [class]="
-                  paymentMode() === option.mode
+                  activePaymentOption()?.id === option.id
                     ? 'flex flex-col items-start gap-0.5 p-2.5 rounded-lg border-2 border-[#d8a34a] bg-[#d8a34a]/10 cursor-pointer'
                     : 'flex flex-col items-start gap-0.5 p-2.5 rounded-lg border border-[#e4e2df] hover:border-[#d8a34a]/50 cursor-pointer'
                 "
@@ -217,15 +227,23 @@
                   {{ option.label }}
                 </span>
                 <span class="text-[10px] text-[#827565]">
-                  {{ option.feePercent > 0 ? 'Taxa ' + option.feePercent + '%' : 'Sem taxa' }}
+                  @if (option.feePercent > 0 || option.fixedFee > 0) {
+                    Taxa {{ option.feePercent }}%{{ option.fixedFee > 0 ? ' + ' + formatCurrency(option.fixedFee) : '' }}
+                  } @else {
+                    Sem taxa
+                  }
                 </span>
               </button>
+            } @empty {
+              <span class="col-span-2 text-[11px] text-[#827565]">
+                Nenhuma forma de pagamento ativa. Cadastre em Configurações &gt; Taxas de Pagamento.
+              </span>
             }
           </div>
         </div>
 
         <!-- Repasse da taxa da maquininha -->
-        @if (activePaymentOption().feePercent > 0) {
+        @if (feeAmount() > 0) {
           <label
             class="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-[#e4e2df] bg-[#f5f3f0] cursor-pointer"
           >
@@ -291,7 +309,7 @@
           @if (feeAmount() > 0) {
             <div class="flex items-center justify-between text-sm">
               <span class="text-[#827565]">
-                Taxa ({{ activePaymentOption().feePercent }}%){{ passFeeToCustomer() ? ' — repassada ao cliente' : ' — retida por você' }}
+                Taxa ({{ activePaymentOption()?.feePercent }}%{{ activePaymentOption()?.fixedFee ? ' + fixa' : '' }}){{ passFeeToCustomer() ? ' — repassada ao cliente' : ' — retida por você' }}
               </span>
               <span [class]="passFeeToCustomer() ? 'font-semibold text-[#0F1F3D]' : 'font-semibold text-[#ba1a1a]'">
                 {{ passFeeToCustomer() ? '+ ' : '- ' }}{{ formatCurrency(feeAmount()) }}
@@ -384,6 +402,120 @@
           class="mt-2 w-full py-3 rounded-xl bg-[#d8a34a] text-[#0F1F3D] font-bold text-sm hover:bg-[#c99339] transition-colors cursor-pointer"
         >
           Nova Venda
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal de edição de categorias -->
+@if (isCategoryEditorOpen()) {
+  <div class="fixed inset-0 bg-[#0F1F3D]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[#efeeeb]">
+        <div>
+          <h3 class="text-base font-bold text-[#1b1c1a] flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">category</span>
+            Editar categorias
+          </h3>
+          <p class="text-[11px] text-[#827565] mt-0.5">
+            Use as setas para mudar a ordem. Renomear atualiza os produtos da categoria.
+          </p>
+        </div>
+        <button
+          type="button"
+          (click)="closeCategoryEditor()"
+          class="p-1 rounded-lg text-[#827565] hover:bg-[#efeeeb] cursor-pointer"
+          aria-label="Fechar"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2">
+        <div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[#f5f3f0] text-[11px] text-[#827565]">
+          <span class="material-symbols-outlined text-[15px]">lock</span>
+          "Todos" e "Kits" ficam sempre no início.
+        </div>
+
+        @for (draft of categoryDrafts(); track $index; let i = $index; let first = $first; let last = $last) {
+          <div class="flex items-center gap-2 p-2 rounded-lg border border-[#e4e2df]">
+            <div class="flex flex-col">
+              <button
+                type="button"
+                (click)="moveCategory(i, -1)"
+                [disabled]="first"
+                class="p-0.5 rounded text-[#827565] hover:bg-[#efeeeb] disabled:opacity-30 disabled:cursor-default cursor-pointer"
+                aria-label="Mover para cima"
+              >
+                <span class="material-symbols-outlined text-[18px] leading-none">keyboard_arrow_up</span>
+              </button>
+              <button
+                type="button"
+                (click)="moveCategory(i, 1)"
+                [disabled]="last"
+                class="p-0.5 rounded text-[#827565] hover:bg-[#efeeeb] disabled:opacity-30 disabled:cursor-default cursor-pointer"
+                aria-label="Mover para baixo"
+              >
+                <span class="material-symbols-outlined text-[18px] leading-none">keyboard_arrow_down</span>
+              </button>
+            </div>
+
+            <app-icon-picker
+              [compact]="true"
+              [value]="draft.icon"
+              (valueChange)="updateCategoryDraft(i, { icon: $event })"
+            />
+
+            <input
+              type="text"
+              [ngModel]="draft.name"
+              (ngModelChange)="updateCategoryDraft(i, { name: $event })"
+              [name]="'catName-' + i"
+              placeholder="Nome da categoria"
+              maxlength="100"
+              class="flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-lg border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+            />
+
+            <button
+              type="button"
+              (click)="removeCategoryDraft(i)"
+              class="p-1.5 rounded-lg text-[#ba1a1a] hover:bg-[#ba1a1a]/10 cursor-pointer"
+              title="Excluir categoria"
+            >
+              <span class="material-symbols-outlined text-[18px]">delete</span>
+            </button>
+          </div>
+        } @empty {
+          <span class="text-xs text-[#827565] text-center py-4">Nenhuma categoria cadastrada.</span>
+        }
+
+        <button
+          type="button"
+          (click)="addCategoryDraft()"
+          class="mt-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-[#d8a34a] text-xs font-semibold text-[#a07a2f] hover:bg-[#d8a34a]/10 cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[16px]">add</span>
+          Nova categoria
+        </button>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 px-5 py-3 border-t border-[#efeeeb]">
+        <button
+          type="button"
+          (click)="closeCategoryEditor()"
+          [disabled]="isSavingCategories()"
+          class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          (click)="saveCategories()"
+          [disabled]="isSavingCategories()"
+          class="px-4 py-2 bg-[#d8a34a] hover:bg-[#c99339] text-[#0F1F3D] text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
+        >
+          {{ isSavingCategories() ? 'Salvando...' : 'Salvar' }}
         </button>
       </div>
     </div>

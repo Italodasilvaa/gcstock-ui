@@ -1,27 +1,102 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MockDataService } from '../../core/services/mock-data';
+import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
-import { PaymentFeeSetting, GlobalAlertSetting } from '../../core/models/models';
+import { IconPicker } from '../../shared/icon-picker/icon-picker';
+import { PaymentFeeSetting, GlobalAlertSetting, Employee, CompanyTenant } from '../../core/models/models';
+
+interface EmployeeFormModel {
+  id?: string;
+  name: string;
+  email: string;
+  password: string;
+  role: Employee['role'];
+  active: boolean;
+  salary: number;
+}
+
+function emptyEmployeeForm(): EmployeeFormModel {
+  return { name: '', email: '', password: '', role: 'operador', active: true, salary: 0 };
+}
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [FormsModule],
+  imports: [FormsModule, IconPicker],
   templateUrl: './configuracoes.html',
 })
 export class Configuracoes {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
 
-  protected readonly fees = signal<PaymentFeeSetting[]>(this.mockData.getFees());
+  protected readonly fees = signal<PaymentFeeSetting[]>([]);
   protected readonly editingFee = signal<PaymentFeeSetting | null>(null);
+  protected readonly isNewFee = signal(false);
+  protected readonly isReorderingFees = signal(false);
 
-  protected alertForm: GlobalAlertSetting = this.mockData.getAlertConfig();
+  protected alertForm: GlobalAlertSetting = {
+    alertLeadDays: 3,
+    morningSummaryTime: '07:30',
+    notifyTopbar: true,
+    notifyEmail: true,
+    notifyWhatsapp: true,
+    recipients: [],
+  };
   protected readonly newRecipient = signal('');
 
+  protected readonly employees = signal<Employee[]>([]);
+  protected readonly isEmployeeModalOpen = signal(false);
+  protected employeeForm: EmployeeFormModel = emptyEmployeeForm();
+
+  /** Outras empresas do mesmo Administrator (dono) — só existe transferência se houver mais de uma. */
+  protected readonly siblingCompanies = signal<CompanyTenant[]>([]);
+  protected readonly isOwnerSession = !this.appState.session()?.user.employeeId;
+  protected readonly transferringEmployee = signal<Employee | null>(null);
+  protected transferTargetCompanyId = '';
+
+  constructor() {
+    this.api.getFees().subscribe((list) => this.fees.set(list));
+    this.api.getAlertConfig().subscribe((config) => (this.alertForm = config));
+    this.refreshEmployees();
+
+    const currentCompanyId = this.appState.session()?.company.id;
+    this.api
+      .getMyCompanies()
+      .subscribe((companies) => this.siblingCompanies.set(companies.filter((c) => c.id !== currentCompanyId)));
+  }
+
+  private refreshEmployees(): void {
+    this.api.getEmployees().subscribe((list) => this.employees.set(list));
+  }
+
   protected onFeeUpdated(fee: PaymentFeeSetting): void {
-    this.mockData.updateFee(fee.id, fee.feePercent, fee.active);
-    this.appState.triggerToast(`Taxa de "${fee.method}" atualizada com sucesso.`);
+    this.api.updateFee(fee.id, fee.feePercent, fee.active).subscribe({
+      next: () => this.appState.triggerToast(`Taxa de "${fee.method}" atualizada com sucesso.`),
+      error: () => this.appState.triggerToast('Não foi possível atualizar a taxa. Tente novamente.'),
+    });
+  }
+
+  /** Troca a taxa de posição com a vizinha e salva a nova ordem (é a mesma ordem dos cards no PDV). */
+  protected moveFee(index: number, delta: -1 | 1): void {
+    const previous = this.fees();
+    const target = index + delta;
+    if (target < 0 || target >= previous.length) return;
+
+    const reordered = [...previous];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    this.fees.set(reordered);
+    this.isReorderingFees.set(true);
+
+    this.api.reorderFees(reordered.map((f) => f.id)).subscribe({
+      next: (saved) => {
+        this.fees.set(saved);
+        this.isReorderingFees.set(false);
+      },
+      error: () => {
+        this.fees.set(previous);
+        this.isReorderingFees.set(false);
+        this.appState.triggerToast('Não foi possível salvar a nova ordem. Tente novamente.');
+      },
+    });
   }
 
   protected toggleFeeActive(fee: PaymentFeeSetting): void {
@@ -29,7 +104,23 @@ export class Configuracoes {
     this.onFeeUpdated(fee);
   }
 
+  protected openNewFeeModal(): void {
+    this.isNewFee.set(true);
+    this.editingFee.set({
+      id: '',
+      method: '',
+      subtitle: '',
+      channel: '',
+      feePercent: 0,
+      fixedFee: 0,
+      settlementTerm: '',
+      active: true,
+      icon: 'credit_card',
+    });
+  }
+
   protected openEditFeeModal(fee: PaymentFeeSetting): void {
+    this.isNewFee.set(false);
     this.editingFee.set({ ...fee });
   }
 
@@ -46,10 +137,27 @@ export class Configuracoes {
       return;
     }
 
-    const saved = this.mockData.saveFee(fee);
-    this.fees.set(this.fees().map((f) => (f.id === saved.id ? saved : f)));
-    this.appState.triggerToast(`Taxa de "${saved.method}" atualizada com sucesso.`);
-    this.closeEditFeeModal();
+    if (this.isNewFee()) {
+      const { id: _id, ...newFee } = fee;
+      this.api.addFee(newFee).subscribe({
+        next: (saved) => {
+          this.fees.set([...this.fees(), saved]);
+          this.appState.triggerToast(`Taxa de "${saved.method}" cadastrada com sucesso.`);
+          this.closeEditFeeModal();
+        },
+        error: () => this.appState.triggerToast('Não foi possível cadastrar a taxa. Tente novamente.'),
+      });
+      return;
+    }
+
+    this.api.saveFee(fee).subscribe({
+      next: (saved) => {
+        this.fees.set(this.fees().map((f) => (f.id === saved.id ? saved : f)));
+        this.appState.triggerToast(`Taxa de "${saved.method}" atualizada com sucesso.`);
+        this.closeEditFeeModal();
+      },
+      error: () => this.appState.triggerToast('Não foi possível salvar a taxa. Tente novamente.'),
+    });
   }
 
   protected addRecipient(): void {
@@ -66,7 +174,126 @@ export class Configuracoes {
   }
 
   protected saveAlertConfig(): void {
-    this.mockData.updateAlertConfig(this.alertForm);
-    this.appState.triggerToast('Configurações de alertas sanitários salvas com sucesso.');
+    this.api.updateAlertConfig(this.alertForm).subscribe({
+      next: () => this.appState.triggerToast('Configurações de alertas sanitários salvas com sucesso.'),
+      error: () => this.appState.triggerToast('Não foi possível salvar as configurações. Tente novamente.'),
+    });
+  }
+
+  // Funcionários
+  protected roleLabel(role: Employee['role']): string {
+    switch (role) {
+      case 'admin':
+        return 'Administrador';
+      case 'gerente':
+        return 'Gerente';
+      case 'operador':
+        return 'Operador';
+    }
+  }
+
+  protected openNewEmployeeModal(): void {
+    this.employeeForm = emptyEmployeeForm();
+    this.isEmployeeModalOpen.set(true);
+  }
+
+  protected openEditEmployeeModal(employee: Employee): void {
+    this.employeeForm = {
+      id: employee.id,
+      name: employee.name,
+      email: employee.email,
+      password: '',
+      role: employee.role,
+      active: employee.active,
+      salary: employee.salary,
+    };
+    this.isEmployeeModalOpen.set(true);
+  }
+
+  protected closeEmployeeModal(): void {
+    this.isEmployeeModalOpen.set(false);
+  }
+
+  protected saveEmployee(): void {
+    if (!this.employeeForm.name.trim() || !this.employeeForm.email.trim()) {
+      this.appState.triggerToast('Informe nome e e-mail do funcionário.');
+      return;
+    }
+
+    this.api
+      .saveEmployee({
+        id: this.employeeForm.id,
+        name: this.employeeForm.name,
+        email: this.employeeForm.email,
+        password: this.employeeForm.password || undefined,
+        role: this.employeeForm.role,
+        active: this.employeeForm.active,
+        salary: this.employeeForm.salary,
+      })
+      .subscribe({
+        next: (saved) => {
+          this.refreshEmployees();
+          this.appState.triggerToast(`Funcionário "${saved.name}" salvo com sucesso. Ele já pode entrar com o e-mail e a senha cadastrados.`);
+          this.closeEmployeeModal();
+        },
+        error: () => this.appState.triggerToast('Não foi possível salvar o funcionário. Tente novamente.'),
+      });
+  }
+
+  protected toggleEmployeeActive(employee: Employee): void {
+    const nextActive = !employee.active;
+    this.api
+      .saveEmployee({ id: employee.id, name: employee.name, email: employee.email, active: nextActive })
+      .subscribe({
+        next: () => {
+          this.refreshEmployees();
+          this.appState.triggerToast(
+            nextActive ? `Acesso de "${employee.name}" reativado.` : `Acesso de "${employee.name}" desativado.`,
+          );
+        },
+        error: () => this.appState.triggerToast('Não foi possível atualizar o acesso. Tente novamente.'),
+      });
+  }
+
+  protected removeEmployee(employee: Employee): void {
+    if (!confirm(`Remover o acesso de "${employee.name}"? Essa ação não pode ser desfeita.`)) {
+      return;
+    }
+    this.api.deleteEmployee(employee.id).subscribe({
+      next: () => {
+        this.refreshEmployees();
+        this.appState.triggerToast(`Funcionário "${employee.name}" removido.`);
+      },
+      error: () => this.appState.triggerToast('Não foi possível remover o funcionário. Tente novamente.'),
+    });
+  }
+
+  // Transferência de funcionário entre empresas do mesmo Administrator (mesmo grupo)
+  protected openTransferModal(employee: Employee): void {
+    this.transferTargetCompanyId = this.siblingCompanies()[0]?.id ?? '';
+    this.transferringEmployee.set(employee);
+  }
+
+  protected closeTransferModal(): void {
+    this.transferringEmployee.set(null);
+  }
+
+  protected confirmTransfer(): void {
+    const employee = this.transferringEmployee();
+    if (!employee || !this.transferTargetCompanyId) return;
+
+    const targetCompany = this.siblingCompanies().find((c) => c.id === this.transferTargetCompanyId);
+    this.api.transferEmployee(employee.id, this.transferTargetCompanyId).subscribe((updated) => {
+      if (!updated) {
+        this.appState.triggerToast('Não foi possível transferir: a empresa de destino precisa ser do mesmo administrador.');
+        return;
+      }
+
+      this.refreshEmployees();
+      this.appState.triggerToast(
+        `"${employee.name}" foi transferido para ${targetCompany?.tradeName ?? 'a empresa selecionada'}.`,
+      );
+      this.closeTransferModal();
+    });
   }
 }

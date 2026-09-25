@@ -1,7 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MockDataService } from '../../core/services/mock-data';
+import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
+import { formatRelativeTimestamp } from '../../core/utils/format-timestamp';
 import {
   AccountsPayableTitle,
   AccountsReceivableTitle,
@@ -18,51 +20,73 @@ interface QuickLink {
   path: string;
 }
 
+const DEFAULT_ALERT_CONFIG: GlobalAlertSetting = {
+  alertLeadDays: 3,
+  morningSummaryTime: '07:30',
+  notifyTopbar: true,
+  notifyEmail: true,
+  notifyWhatsapp: true,
+  recipients: [],
+};
+
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink],
+  imports: [RouterLink, DatePipe],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
   protected readonly appState = inject(AppStateService);
 
-  // Dados brutos vindos do MockDataService (100% client-side / localStorage)
-  private readonly products: ProductItem[] = this.mockData.getProducts();
-  private readonly batches: StockBatch[] = this.mockData.getBatches();
-  private readonly alertConfig: GlobalAlertSetting = this.mockData.getAlertConfig();
-  private readonly movements: StockMovement[] = this.mockData.getMovements();
+  // Dados brutos vindos da Girus API
+  private readonly products = signal<ProductItem[]>([]);
+  private readonly batches = signal<StockBatch[]>([]);
+  private readonly alertConfig = signal<GlobalAlertSetting>(DEFAULT_ALERT_CONFIG);
+  private readonly movements = signal<StockMovement[]>([]);
 
-  protected readonly payables: AccountsPayableTitle[] = this.mockData.getPayables();
-  protected readonly receivables: AccountsReceivableTitle[] = this.mockData.getReceivables();
+  protected readonly payables = signal<AccountsPayableTitle[]>([]);
+  protected readonly receivables = signal<AccountsReceivableTitle[]>([]);
+
+  constructor() {
+    this.api.getProducts().subscribe((list) => this.products.set(list));
+    this.api.getBatches().subscribe((list) => this.batches.set(list));
+    this.api.getAlertConfig().subscribe((config) => this.alertConfig.set(config));
+    this.api.getMovements().subscribe((list) => this.movements.set(list));
+    this.api.getPayables().subscribe((list) => this.payables.set(list));
+    this.api.getReceivables().subscribe((list) => this.receivables.set(list));
+  }
 
   // KPIs executivos
-  protected readonly lowStockProducts: ProductItem[] = this.products.filter((p) => p.stock < p.minStock);
+  protected readonly lowStockProducts = computed(() => this.products().filter((p) => p.stock < p.minStock));
 
-  protected readonly expiringBatches: StockBatch[] = this.batches.filter(
-    (b) => b.daysRemaining <= this.alertConfig.alertLeadDays,
+  protected readonly expiringBatches = computed(() =>
+    this.batches().filter((b) => b.daysRemaining <= this.alertConfig().alertLeadDays),
   );
 
-  protected readonly openPayables: AccountsPayableTitle[] = this.payables.filter((p) => p.status !== 'pago');
-  protected readonly openReceivables: AccountsReceivableTitle[] = this.receivables.filter(
-    (r) => r.status !== 'recebido',
-  );
+  protected readonly openPayables = computed(() => this.payables().filter((p) => p.status !== 'pago'));
+  protected readonly openReceivables = computed(() => this.receivables().filter((r) => r.status !== 'recebido'));
 
-  protected readonly totalPayableOpen: number = this.openPayables.reduce((sum, p) => sum + p.amount, 0);
-  protected readonly totalReceivableOpen: number = this.openReceivables.reduce((sum, r) => sum + r.netAmount, 0);
+  protected readonly totalPayableOpen = computed(() =>
+    this.openPayables().reduce((sum, p) => sum + p.amount, 0),
+  );
+  protected readonly totalReceivableOpen = computed(() =>
+    this.openReceivables().reduce((sum, r) => sum + r.netAmount, 0),
+  );
 
   // Produtos com validade crítica ou vencida, ordenados pelo mais urgente primeiro
-  protected readonly criticalProducts: ProductItem[] = this.products
-    .filter((p) => p.expiryStatus === 'critico' || p.expiryStatus === 'vencido')
-    .sort((a, b) => a.expiryDaysRemaining - b.expiryDaysRemaining);
+  protected readonly criticalProducts = computed(() =>
+    this.products()
+      .filter((p) => p.expiryStatus === 'critico' || p.expiryStatus === 'vencido')
+      .sort((a, b) => a.expiryDaysRemaining - b.expiryDaysRemaining),
+  );
 
   // Últimas movimentações de estoque, mais recentes primeiro
-  protected readonly recentMovements: StockMovement[] = this.sortMovements(this.movements).slice(0, 6);
+  protected readonly recentMovements = computed(() => this.sortMovements(this.movements()).slice(0, 6));
 
   // Lembretes de recebimento: títulos em aberto ordenados pelo vencimento mais próximo primeiro
-  protected readonly upcomingReceivables: AccountsReceivableTitle[] = [...this.openReceivables]
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-    .slice(0, 6);
+  protected readonly upcomingReceivables = computed(() =>
+    [...this.openReceivables()].sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 6),
+  );
 
   protected readonly quickLinks: QuickLink[] = [
     {
@@ -125,6 +149,10 @@ export class Dashboard {
     return amountKg >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]';
   }
 
+  protected movementTimestampLabel(iso: string): string {
+    return formatRelativeTimestamp(iso);
+  }
+
   protected expiryBadgeClass(status: ProductItem['expiryStatus']): string {
     switch (status) {
       case 'vencido':
@@ -173,16 +201,8 @@ export class Dashboard {
     }
   }
 
-  /**
-   * Ordenação simples "mais recente primeiro" baseada no rótulo textual do
-   * mock (ex: "Hoje 11:34", "Ontem 18:20"), já que não há timestamp real
-   * de backend.
-   */
+  /** Mais recente primeiro, a partir do timestamp ISO real retornado pela API. */
   private sortMovements(list: StockMovement[]): StockMovement[] {
-    const rank = (ts: string): number => (ts.startsWith('Hoje') ? 2 : ts.startsWith('Ontem') ? 1 : 0);
-    return [...list].sort((a, b) => {
-      const diff = rank(b.timestamp) - rank(a.timestamp);
-      return diff !== 0 ? diff : b.timestamp.localeCompare(a.timestamp);
-    });
+    return [...list].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 }

@@ -1,0 +1,165 @@
+<div class="flex flex-col gap-5 md:gap-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#d8a34a] text-2xl">groups</span>
+        Atividades da Equipe
+      </h1>
+      <p class="text-sm text-[#827565] mt-1">
+        Histórico de quem fez o quê no sistema: vendas, edições, exclusões e lançamentos realizados pela sua equipe.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="bg-white rounded-xl border border-[#e4e2df] shadow-xs px-4 py-2 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#0F1F3D] text-[20px]">fact_check</span>
+        <div class="flex flex-col leading-tight">
+          <span class="text-[11px] text-[#827565]">Total de ações</span>
+          <span class="text-sm font-bold text-[#1b1c1a]">{{ totalCount() }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumo por tipo de ação -->
+  @if (actionSummary().length > 0) {
+    <div class="flex flex-wrap items-center gap-2">
+      @for (item of actionSummary(); track item.action) {
+        <span
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+          [class]="actionIconClasses(item.action) + ' border-transparent'"
+        >
+          <span class="material-symbols-outlined text-[15px]">{{ actionIcon(item.action) }}</span>
+          {{ actionSummaryLabel(item.action, item.count) }}
+        </span>
+      }
+    </div>
+  }
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+    <div class="flex flex-col md:flex-row gap-3">
+      <div class="flex-1 relative">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#827565] text-[20px]">search</span>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          placeholder="Buscar por registro, funcionário ou tipo..."
+          class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-[#e4e2df] text-sm text-[#1b1c1a] placeholder:text-[#827565] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+        />
+      </div>
+
+      <select
+        [(ngModel)]="userFilter"
+        class="px-3 py-2.5 rounded-lg border border-[#e4e2df] text-sm text-[#1b1c1a] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a] md:w-56"
+      >
+        <option value="">Todos os funcionários</option>
+        @for (name of userOptions(); track name) {
+          <option [value]="name">{{ name }}</option>
+        }
+      </select>
+
+      <select
+        [(ngModel)]="actionFilter"
+        class="px-3 py-2.5 rounded-lg border border-[#e4e2df] text-sm text-[#1b1c1a] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a] md:w-48"
+      >
+        <option value="">Todas as ações</option>
+        @for (action of actionOptions; track action) {
+          <option [value]="action">{{ actionLabel(action) }}</option>
+        }
+      </select>
+
+      @if (searchTerm() || userFilter() || actionFilter() || isDateFilterActive()) {
+        <button
+          type="button"
+          (click)="clearFilters()"
+          class="px-3 py-2.5 rounded-lg border border-[#e4e2df] text-sm font-semibold text-[#4f4537] hover:bg-[#f5f3f0] flex items-center gap-1.5 cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px]">filter_alt_off</span>
+          Limpar
+        </button>
+      }
+    </div>
+
+    <div class="mt-3 pt-3 border-t border-[#efeeeb]">
+      <app-date-range-filter label="Data da atividade" [(range)]="dateRange" />
+    </div>
+  </div>
+
+  <!-- Timeline de atividades -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
+    <h2 class="text-base font-bold text-[#1b1c1a]">Histórico de Atividades</h2>
+    <p class="text-xs text-[#827565] mt-0.5 mb-4">
+      Registros mais recentes primeiro.
+      @if (filteredLog().length !== totalCount()) {
+        Exibindo {{ filteredLog().length }} de {{ totalCount() }} registros.
+      }
+    </p>
+
+    @if (totalCount() === 0) {
+      <div class="flex flex-col items-center justify-center text-center py-12 gap-3">
+        <span class="material-symbols-outlined text-[#827565] text-4xl">history_toggle_off</span>
+        <p class="text-sm font-semibold text-[#1b1c1a]">Nenhuma atividade registrada ainda</p>
+        <p class="text-sm text-[#827565] max-w-sm">
+          Assim que sua equipe começar a criar, editar, vender ou lançar registros no sistema, as ações
+          aparecerão aqui automaticamente.
+        </p>
+      </div>
+    } @else {
+      <div class="flex flex-col">
+        @for (entry of filteredLog(); track entry.id; let last = $last) {
+          <div
+            class="flex gap-4"
+            [class.pb-5]="!last"
+            [class.mb-5]="!last"
+            [class.border-b]="!last"
+            [class.border-[#e4e2df]]="!last"
+          >
+            <div class="flex flex-col items-center shrink-0">
+              <div
+                class="w-10 h-10 rounded-full flex items-center justify-center"
+                [class]="actionIconClasses(entry.action)"
+              >
+                <span class="material-symbols-outlined text-[20px]">{{ actionIcon(entry.action) }}</span>
+              </div>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-semibold text-[#1b1c1a] text-sm">{{ entry.userName }}</span>
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                    [class]="roleBadgeClasses(entry.userRole)"
+                  >
+                    {{ roleLabel(entry.userRole) }}
+                  </span>
+                </div>
+                <span class="text-[11px] text-[#827565]">{{ entry.timestamp }}</span>
+              </div>
+
+              <p class="text-sm text-[#4f4537] mt-1.5">
+                <span class="font-semibold text-[#1b1c1a]">{{ actionLabel(entry.action) }}</span>
+                {{ entry.entityType }} &middot;
+                <span class="text-[#1b1c1a]">{{ entry.entityLabel }}</span>
+              </p>
+
+              @if (entry.details) {
+                <p class="text-xs text-[#827565] mt-1">{{ entry.details }}</p>
+              }
+            </div>
+          </div>
+        } @empty {
+          <div class="flex flex-col items-center justify-center text-center py-12 gap-3">
+            <span class="material-symbols-outlined text-[#827565] text-4xl">search_off</span>
+            <p class="text-sm font-semibold text-[#1b1c1a]">Nenhum registro encontrado</p>
+            <p class="text-sm text-[#827565] max-w-sm">
+              Ajuste os filtros ou o termo de busca para encontrar a atividade que procura.
+            </p>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

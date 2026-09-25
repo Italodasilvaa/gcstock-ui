@@ -1,25 +1,42 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { MockDataService } from '../../core/services/mock-data';
+import { ApiDataService } from '../../core/services/api-data';
 import { StockBatch, StockMovement } from '../../core/models/models';
+import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from '../../core/utils/date-range';
+import { formatRelativeTimestamp } from '../../core/utils/format-timestamp';
+import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 
 @Component({
   selector: 'app-estoque',
-  imports: [],
+  imports: [DatePipe, DateRangeFilter],
   templateUrl: './estoque.html',
 })
 export class Estoque {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
 
   protected readonly activeTab = signal<'lotes' | 'movimentacoes'>('lotes');
 
-  private readonly batches = signal<StockBatch[]>(this.mockData.getBatches());
-  private readonly movements = signal<StockMovement[]>(this.mockData.getMovements());
+  private readonly batches = signal<StockBatch[]>([]);
+  private readonly movements = signal<StockMovement[]>([]);
+  protected readonly dateRange = signal<DateRange>(emptyDateRange());
+  protected readonly isDateFilterActive = computed(() => isDateRangeActive(this.dateRange()));
+  protected readonly totalBatches = computed(() => this.batches().length);
+  protected readonly totalMovements = computed(() => this.movements().length);
+
+  constructor() {
+    this.api.getBatches().subscribe((list) => this.batches.set(list));
+    this.api.getMovements().subscribe((list) => this.movements.set(list));
+  }
 
   protected readonly sortedBatches = computed(() =>
-    [...this.batches()].sort((a, b) => a.daysRemaining - b.daysRemaining),
+    this.batches()
+      .filter((b) => isWithinDateRange(b.entryDate, this.dateRange()))
+      .sort((a, b) => a.daysRemaining - b.daysRemaining),
   );
 
-  protected readonly sortedMovements = computed(() => this.movements());
+  protected readonly sortedMovements = computed(() =>
+    this.movements().filter((m) => isWithinDateRange(m.timestamp, this.dateRange())),
+  );
 
   protected readonly urgentCount = computed(
     () => this.batches().filter((b) => b.status === 'urgente' || b.status === 'vencido').length,
@@ -98,5 +115,9 @@ export class Estoque {
 
   protected amountClasses(amountKg: number): string {
     return amountKg >= 0 ? 'text-[#4caf50]' : 'text-[#ba1a1a]';
+  }
+
+  protected timestampLabel(iso: string): string {
+    return formatRelativeTimestamp(iso);
   }
 }

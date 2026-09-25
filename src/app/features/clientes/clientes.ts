@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MockDataService } from '../../core/services/mock-data';
+import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
 import { Client } from '../../core/models/models';
 
@@ -35,10 +35,10 @@ function emptyForm(): ClientFormModel {
   templateUrl: './clientes.html',
 })
 export class Clientes {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
 
-  protected readonly clients = signal<Client[]>(this.mockData.getClients());
+  protected readonly clients = signal<Client[]>([]);
   protected readonly searchTerm = signal('');
   protected readonly isModalOpen = signal(false);
   protected readonly isEditing = signal(false);
@@ -52,8 +52,12 @@ export class Clientes {
     );
   });
 
+  constructor() {
+    this.refresh();
+  }
+
   private refresh(): void {
-    this.clients.set(this.mockData.getClients());
+    this.api.getClients().subscribe((list) => this.clients.set(list));
   }
 
   protected formatCurrency(value: number): string {
@@ -106,22 +110,27 @@ export class Clientes {
       return;
     }
 
-    this.mockData.saveClient({
-      id: this.form.id,
-      name: this.form.name,
-      document: this.form.document,
-      phone: this.form.phone,
-      email: this.form.email,
-      type: this.form.type,
-      creditLimit: this.form.creditLimit,
-      favoriteCuts: this.form.favoriteCuts,
-      notes: this.form.notes,
-    });
-
-    this.refresh();
-    this.isModalOpen.set(false);
-    this.appState.triggerToast(
-      this.isEditing() ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.',
-    );
+    this.api
+      .saveClient({
+        id: this.form.id,
+        name: this.form.name,
+        document: this.form.document,
+        phone: this.form.phone,
+        email: this.form.email,
+        type: this.form.type,
+        creditLimit: this.form.creditLimit,
+        favoriteCuts: this.form.favoriteCuts,
+        notes: this.form.notes,
+      })
+      .subscribe({
+        next: () => {
+          this.refresh();
+          this.isModalOpen.set(false);
+          this.appState.triggerToast(
+            this.isEditing() ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.',
+          );
+        },
+        error: () => this.appState.triggerToast('Não foi possível salvar o cliente. Tente novamente.'),
+      });
   }
 }

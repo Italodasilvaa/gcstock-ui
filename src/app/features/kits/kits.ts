@@ -1,10 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MockDataService } from '../../core/services/mock-data';
+import { ApiDataService } from '../../core/services/api-data';
 import { CartBridgeService } from '../../core/services/cart-bridge';
 import { AppStateService } from '../../core/services/app-state';
-import { BarbecueKit } from '../../core/models/models';
+import { BarbecueKit, ProductItem } from '../../core/models/models';
 
 interface KitFormModel {
   id?: string;
@@ -13,10 +13,18 @@ interface KitFormModel {
   serveLabel: string;
   description: string;
   suggestedPrice: number;
-  costPrice: number;
   totalWeightKg: number;
   imageUrl: string;
-  componentsSummary: string;
+}
+
+interface KitFormComponentRow {
+  productId: string;
+  name: string;
+  code: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  availableStock: number;
 }
 
 function emptyForm(): KitFormModel {
@@ -26,11 +34,13 @@ function emptyForm(): KitFormModel {
     serveLabel: 'Serve 6 a 8 pessoas',
     description: '',
     suggestedPrice: 0,
-    costPrice: 0,
     totalWeightKg: 0,
     imageUrl: '',
-    componentsSummary: '',
   };
+}
+
+function emptyComponentRow(): KitFormComponentRow {
+  return { productId: '', name: '', code: '', unit: 'kg', quantity: 0, unitCost: 0, availableStock: 0 };
 }
 
 @Component({
@@ -39,19 +49,30 @@ function emptyForm(): KitFormModel {
   templateUrl: './kits.html',
 })
 export class Kits {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
   private readonly cartBridge = inject(CartBridgeService);
   private readonly appState = inject(AppStateService);
   private readonly router = inject(Router);
 
-  protected readonly kits = signal<BarbecueKit[]>(this.mockData.getKits());
+  protected readonly kits = signal<BarbecueKit[]>([]);
+  protected readonly products = signal<ProductItem[]>([]);
   protected readonly isModalOpen = signal(false);
   protected readonly isEditing = signal(false);
   protected readonly expandedKitId = signal<string | null>(null);
   protected form: KitFormModel = emptyForm();
+  protected readonly formComponents = signal<KitFormComponentRow[]>([]);
+
+  protected readonly totalComponentsCost = computed(() =>
+    this.formComponents().reduce((sum, c) => sum + c.quantity * c.unitCost, 0),
+  );
+
+  constructor() {
+    this.refresh();
+    this.api.getProducts().subscribe((list) => this.products.set(list));
+  }
 
   private refresh(): void {
-    this.kits.set(this.mockData.getKits());
+    this.api.getKits().subscribe((list) => this.kits.set(list));
   }
 
   protected stockBadgeClass(status: BarbecueKit['stockStatus']): string {
@@ -87,6 +108,7 @@ export class Kits {
   protected openNewKitModal(): void {
     this.isEditing.set(false);
     this.form = emptyForm();
+    this.formComponents.set([emptyComponentRow()]);
     this.isModalOpen.set(true);
   }
 
@@ -99,12 +121,77 @@ export class Kits {
       serveLabel: kit.serveLabel,
       description: kit.description,
       suggestedPrice: kit.suggestedPrice,
-      costPrice: kit.costPrice,
       totalWeightKg: kit.totalWeightKg,
       imageUrl: kit.imageUrl,
-      componentsSummary: kit.componentsSummary,
     };
+    this.formComponents.set(
+      kit.components.length > 0
+        ? kit.components.map((c) => ({
+            productId: c.productId,
+            name: c.name,
+            code: c.code,
+            unit: c.unit,
+            quantity: c.quantity,
+            unitCost: c.unitCost,
+            availableStock: c.availableStock,
+          }))
+        : [emptyComponentRow()],
+    );
     this.isModalOpen.set(true);
+  }
+
+  /** Lê a imagem escolhida no computador e converte para data URL, guardado direto no mesmo campo do link. */
+  protected onImageFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.appState.triggerToast('Selecione um arquivo de imagem (JPG, PNG, etc.).');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.form.imageUrl = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  }
+
+  protected addComponentRow(): void {
+    this.formComponents.set([...this.formComponents(), emptyComponentRow()]);
+  }
+
+  protected removeComponentRow(index: number): void {
+    this.formComponents.set(this.formComponents().filter((_, i) => i !== index));
+  }
+
+  /** Ao escolher um produto do estoque, pré-preenche nome/código/unidade/custo/saldo disponível. */
+  protected onComponentProductSelected(row: KitFormComponentRow, productId: string): void {
+    row.productId = productId;
+    const product = this.products().find((p) => p.id === productId);
+    if (product) {
+      row.name = product.name;
+      row.code = product.code;
+      row.unit = product.unit;
+      row.unitCost = product.costPrice;
+      row.availableStock = product.stock;
+    }
+    this.touchComponents();
+  }
+
+  /**
+   * `formComponents` é editado por mutação direta (via ngModel); como `totalComponentsCost` só
+   * reavalia quando a referência do signal muda, isso força esse "toque" após cada edição.
+   */
+  protected touchComponents(): void {
+    this.formComponents.update((components) => [...components]);
+  }
+
+  protected componentSubtotal(row: KitFormComponentRow): number {
+    return row.quantity * row.unitCost;
   }
 
   protected closeModal(): void {
@@ -117,34 +204,72 @@ export class Kits {
       return;
     }
 
+    const validComponents = this.formComponents().filter((c) => c.productId && c.quantity > 0);
+    if (validComponents.length === 0) {
+      this.appState.triggerToast('Selecione ao menos um produto do estoque para compor o kit.');
+      return;
+    }
+
+    const costPrice = this.totalComponentsCost();
     const marginPercent =
-      this.form.suggestedPrice > 0
-        ? ((this.form.suggestedPrice - this.form.costPrice) / this.form.suggestedPrice) * 100
-        : 0;
+      this.form.suggestedPrice > 0 ? ((this.form.suggestedPrice - costPrice) / this.form.suggestedPrice) * 100 : 0;
+    const componentsSummary = validComponents.map((c) => `${c.name} (${c.quantity}${c.unit})`).join(', ');
 
-    this.mockData.saveKit({
-      id: this.form.id,
-      name: this.form.name,
-      tag: this.form.tag,
-      serveLabel: this.form.serveLabel,
-      description: this.form.description,
-      suggestedPrice: this.form.suggestedPrice,
-      costPrice: this.form.costPrice,
-      marginPercent: Math.round(marginPercent * 10) / 10,
-      totalWeightKg: this.form.totalWeightKg,
-      imageUrl: this.form.imageUrl,
-      componentsSummary: this.form.componentsSummary,
-    });
-
-    this.refresh();
-    this.isModalOpen.set(false);
-    this.appState.triggerToast(
-      this.isEditing() ? 'Kit de churrasco atualizado com sucesso.' : 'Kit de churrasco criado com sucesso.',
-    );
+    this.api
+      .saveKit({
+        id: this.form.id,
+        name: this.form.name,
+        tag: this.form.tag,
+        serveLabel: this.form.serveLabel,
+        description: this.form.description,
+        suggestedPrice: this.form.suggestedPrice,
+        costPrice,
+        marginPercent: Math.round(marginPercent * 10) / 10,
+        totalWeightKg: this.form.totalWeightKg,
+        imageUrl: this.form.imageUrl,
+        componentsSummary,
+        components: validComponents.map((c) => ({
+          productId: c.productId,
+          name: c.name,
+          code: c.code,
+          lotNumber: '',
+          quantity: c.quantity,
+          unit: c.unit,
+          unitCost: c.unitCost,
+          subtotal: this.componentSubtotal(c),
+          availableStock: c.availableStock,
+        })),
+      })
+      .subscribe({
+        next: () => {
+          this.refresh();
+          this.isModalOpen.set(false);
+          this.appState.triggerToast(
+            this.isEditing()
+              ? 'Kit de churrasco atualizado com sucesso.'
+              : 'Kit de churrasco criado com sucesso. A venda dele agora baixa automaticamente o estoque dos componentes.',
+          );
+        },
+        error: () => this.appState.triggerToast('Não foi possível salvar o kit. Tente novamente.'),
+      });
   }
 
   protected sellKit(kit: BarbecueKit): void {
     this.cartBridge.setKitForSale(kit);
     this.router.navigateByUrl('/vendas');
+  }
+
+  /** Vender um kit nunca o exclui — só baixa o estoque dos componentes. Excluir é sempre uma ação explícita. */
+  protected removeKit(kit: BarbecueKit): void {
+    if (!confirm(`Excluir o kit "${kit.name}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    this.api.deleteKit(kit.id).subscribe({
+      next: () => {
+        this.refresh();
+        this.appState.triggerToast(`Kit "${kit.name}" excluído com sucesso.`);
+      },
+      error: () => this.appState.triggerToast('Não foi possível excluir o kit. Tente novamente.'),
+    });
   }
 }

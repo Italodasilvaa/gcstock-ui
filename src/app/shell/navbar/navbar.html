@@ -1,10 +1,20 @@
 <header
-  class="fixed top-0 left-64 right-0 h-16 bg-white shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-6 flex items-center justify-between select-none"
+  class="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-white shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-3 sm:px-6 flex items-center justify-between select-none"
 >
-  <!-- Left side breadcrumbs & active company -->
-  <div class="flex items-center gap-4">
+  <!-- Left side: mobile menu toggle, breadcrumbs & active company -->
+  <div class="flex items-center gap-2 sm:gap-4 min-w-0">
+    <!-- Mobile menu toggle (sidebar é off-canvas abaixo de `lg`) -->
+    <button
+      (click)="toggleSidebar.emit()"
+      class="lg:hidden p-2 -ml-1 rounded-lg text-[#4f4537] hover:bg-[#efeeeb] cursor-pointer shrink-0"
+      aria-label="Abrir menu"
+      type="button"
+    >
+      <span class="material-symbols-outlined text-[24px]">menu</span>
+    </button>
+
     <!-- Brand Icon Mini -->
-    <div class="flex items-center gap-2">
+    <div class="hidden sm:flex items-center gap-2 shrink-0">
       <div
         class="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#0F1F3D] to-[#16294F] flex items-center justify-center text-[#d8a34a] shadow-xs"
       >
@@ -19,22 +29,29 @@
     <!-- Active Company Pill with Switcher -->
     <button
       (click)="openCompanySwitch.emit()"
-      class="flex items-center gap-2 px-3 py-1.5 bg-[#f5f3f0] hover:bg-[#ffdeae]/30 border border-[#e4e2df] hover:border-[#d8a34a] transition-all rounded-xl text-[#1b1c1a] text-[13px] font-semibold cursor-pointer group"
-      title="Clique para alternar ou cadastrar novas empresas"
+      [class]="
+        'flex items-center gap-2 px-2.5 sm:px-3 py-1.5 bg-[#f5f3f0] border border-[#e4e2df] transition-all rounded-xl text-[#1b1c1a] text-[13px] font-semibold group min-w-0 ' +
+        (isOwnerSession ? 'hover:bg-[#ffdeae]/30 hover:border-[#d8a34a] cursor-pointer' : 'cursor-default')
+      "
+      [title]="isOwnerSession ? 'Clique para alternar ou cadastrar novas empresas' : 'Empresa vinculada ao seu acesso'"
     >
-      <span class="material-symbols-outlined text-[17px] text-[#7f5700]">apartment</span>
-      <span class="max-w-[200px] truncate">{{ companyName }}</span>
-      <span class="text-[10px] uppercase font-bold bg-[#7f5700]/10 text-[#7f5700] px-1.5 py-0.5 rounded">
+      <span class="material-symbols-outlined text-[17px] text-[#7f5700] shrink-0">apartment</span>
+      <span class="max-w-[120px] sm:max-w-[200px] truncate">{{ companyName }}</span>
+      <span
+        class="hidden md:inline text-[10px] uppercase font-bold bg-[#7f5700]/10 text-[#7f5700] px-1.5 py-0.5 rounded shrink-0"
+      >
         Empresa Ativa
       </span>
-      <span class="material-symbols-outlined text-[16px] text-[#827565] group-hover:text-[#7f5700]">
-        unfold_more
-      </span>
+      @if (isOwnerSession) {
+        <span class="material-symbols-outlined text-[16px] text-[#827565] group-hover:text-[#7f5700] shrink-0">
+          unfold_more
+        </span>
+      }
     </button>
   </div>
 
   <!-- Right side quick actions & operator profile -->
-  <div class="flex items-center gap-3 sm:gap-4">
+  <div class="flex items-center gap-2 sm:gap-4 shrink-0">
     <!-- Quick New Sale button (F2) -->
     <button
       (click)="goToNewSale()"
@@ -48,21 +65,81 @@
     <!-- Notifications Bell -->
     <div class="relative flex items-center">
       <button
-        (click)="goToStockAlerts()"
+        (click)="toggleNotifications()"
+        [attr.aria-expanded]="isNotificationsOpen()"
         aria-label="Notificações e Alertas"
         class="relative p-2 rounded-lg text-[#505e80] hover:bg-[#efeeeb] hover:text-[#1b1c1a] transition-colors cursor-pointer"
         type="button"
-        title="Lotes com alerta sanitário / validade próxima"
+        [title]="
+          notifications.count() > 0
+            ? notifications.count() + ' alerta(s): validade, estoque e contas'
+            : 'Nenhum alerta no momento'
+        "
       >
         <span class="material-symbols-outlined text-[24px]">notifications</span>
-        @if (notificationsCount > 0) {
+        @if (notifications.count() > 0) {
           <span
-            class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#ba1a1a] text-white text-[10px] font-bold ring-2 ring-white animate-pulse"
+            class="absolute top-1 right-1 flex h-4 min-w-4 px-0.5 items-center justify-center rounded-full bg-[#ba1a1a] text-white text-[10px] font-bold ring-2 ring-white animate-pulse"
           >
-            {{ notificationsCount }}
+            {{ notifications.count() > 9 ? '9+' : notifications.count() }}
           </span>
         }
       </button>
+
+      @if (isNotificationsOpen()) {
+        <div
+          class="absolute right-0 top-full mt-2 w-[340px] max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-[#e4e2df] shadow-xl z-[80] overflow-hidden"
+          role="dialog"
+          aria-label="Lista de alertas"
+        >
+          <div class="flex items-center justify-between px-4 py-3 border-b border-[#efeeeb]">
+            <span class="text-sm font-bold text-[#1b1c1a] flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[18px] text-[#d8a34a]">notifications</span>
+              Alertas
+            </span>
+            @if (notifications.isLoading()) {
+              <span class="material-symbols-outlined animate-spin text-[16px] text-[#827565]">progress_activity</span>
+            } @else {
+              <span class="text-[11px] text-[#827565]">{{ notifications.notifications().length }} no total</span>
+            }
+          </div>
+
+          @if (!notifications.isEnabled()) {
+            <div class="px-4 py-6 text-center text-xs text-[#827565]">
+              Notificações na barra superior estão desativadas em Configurações &gt; Alertas.
+            </div>
+          } @else {
+            <div class="max-h-[60vh] overflow-y-auto">
+              @for (item of notifications.notifications(); track item.id) {
+                <button
+                  type="button"
+                  (click)="openNotification(item)"
+                  class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[#f5f3f0] border-b border-[#efeeeb] last:border-b-0 cursor-pointer"
+                >
+                  <span
+                    [class]="
+                      item.severity === 'critico'
+                        ? 'w-8 h-8 shrink-0 rounded-lg bg-[#ba1a1a]/10 text-[#ba1a1a] flex items-center justify-center'
+                        : 'w-8 h-8 shrink-0 rounded-lg bg-[#d8a34a]/15 text-[#7f5700] flex items-center justify-center'
+                    "
+                  >
+                    <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
+                  </span>
+                  <span class="flex flex-col min-w-0">
+                    <span class="text-[13px] font-semibold text-[#1b1c1a] truncate">{{ item.title }}</span>
+                    <span class="text-[11px] text-[#827565]">{{ item.description }}</span>
+                  </span>
+                </button>
+              } @empty {
+                <div class="px-4 py-8 flex flex-col items-center gap-2 text-center">
+                  <span class="material-symbols-outlined text-[28px] text-[#4caf50]">check_circle</span>
+                  <span class="text-xs text-[#827565]">Tudo em dia. Nenhum alerta no momento.</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
 
     <div class="h-6 w-px bg-[#e4e2df]"></div>

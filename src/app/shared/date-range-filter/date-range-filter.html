@@ -1,0 +1,286 @@
+<div class="relative inline-flex flex-col gap-1 w-full sm:w-auto">
+  <span class="text-[11px] font-semibold uppercase tracking-wide text-[#827565]">{{ label() }}</span>
+
+  <button
+    type="button"
+    (click)="toggle()"
+    [class]="
+      'w-full sm:min-w-[260px] flex items-center gap-2.5 pl-3 pr-2 py-2.5 rounded-lg border bg-white text-sm text-left transition-colors cursor-pointer ' +
+      (isOpen() ? 'border-[#d8a34a] ring-2 ring-[#d8a34a]/40' : 'border-[#e4e2df] hover:border-[#d8a34a]/60')
+    "
+  >
+    <span class="material-symbols-outlined text-[20px] text-[#d8a34a]">calendar_month</span>
+    <span class="flex-1 truncate" [class]="isActive() ? 'font-semibold text-[#1b1c1a]' : 'text-[#827565]'">
+      {{ buttonText() }}
+    </span>
+    @if (isActive()) {
+      <span
+        role="button"
+        tabindex="0"
+        title="Limpar período"
+        (click)="clear($event)"
+        (keydown.enter)="clear($event)"
+        class="material-symbols-outlined text-[18px] text-[#827565] hover:text-[#ba1a1a] rounded-full p-0.5 hover:bg-[#f5f3f0]"
+        >close</span
+      >
+    } @else {
+      <span class="material-symbols-outlined text-[18px] text-[#827565]">expand_more</span>
+    }
+  </button>
+
+  @if (isOpen()) {
+    <div
+      class="absolute left-0 top-full mt-2 z-50 w-[min(92vw,320px)] md:w-auto bg-white rounded-2xl border border-[#e4e2df] shadow-2xl p-4"
+      (mouseleave)="hoverKey.set(null)"
+    >
+      <!-- ==================== DIAS ==================== -->
+      @if (view() === 'days') {
+        <div class="flex flex-col md:flex-row gap-6">
+          @for (month of months(); track month.key; let first = $first) {
+            <div [class]="first ? 'w-full md:w-[272px]' : 'hidden md:block md:w-[272px]'">
+              <!-- Cabeçalho: « ‹ Mês Ano › » (no desktop as setas de voltar ficam no 1º mês e as de avançar no 2º) -->
+              <div class="flex items-center justify-between mb-3 gap-1">
+                <div [class]="first ? 'flex items-center' : 'flex items-center md:invisible'">
+                  <button
+                    type="button"
+                    (click)="shiftYear(-1)"
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+                    title="Ano anterior"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">keyboard_double_arrow_left</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="shiftMonth(-1)"
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+                    title="Mês anterior"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+                  </button>
+                </div>
+
+                <div class="flex items-center">
+                  <button
+                    type="button"
+                    (click)="openMonths()"
+                    class="text-sm font-bold text-[#1b1c1a] px-1.5 py-1 rounded-lg hover:bg-[#d8a34a]/15 cursor-pointer"
+                    title="Escolher o mês"
+                  >
+                    {{ month.monthName }}
+                  </button>
+                  <button
+                    type="button"
+                    (click)="openYears()"
+                    class="text-sm font-bold text-[#7f5700] px-1.5 py-1 rounded-lg hover:bg-[#d8a34a]/15 cursor-pointer"
+                    title="Escolher o ano"
+                  >
+                    {{ month.year }}
+                  </button>
+                </div>
+
+                <div [class]="first ? 'flex items-center md:invisible' : 'flex items-center'">
+                  <button
+                    type="button"
+                    (click)="shiftMonth(1)"
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+                    title="Próximo mês"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="shiftYear(1)"
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+                    title="Próximo ano"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">keyboard_double_arrow_right</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Dias da semana -->
+              <div class="grid grid-cols-7 mb-1">
+                @for (weekday of weekdays; track $index) {
+                  <span class="h-8 flex items-center justify-center text-[11px] font-bold text-[#a19b8f]">{{ weekday }}</span>
+                }
+              </div>
+
+              <!-- Dias -->
+              <div class="grid grid-cols-7 gap-y-1">
+                @for (day of month.days; track day.key) {
+                  @if (day.inMonth) {
+                    <div class="h-9 flex items-center justify-center" [class]="bandClass(day.key)">
+                      <button
+                        type="button"
+                        (click)="selectDay(day.key)"
+                        (mouseenter)="hoverKey.set(day.key)"
+                        [class]="
+                          'w-9 h-9 rounded-full text-[13px] flex items-center justify-center transition-colors cursor-pointer ' +
+                          (isEdge(day.key)
+                            ? 'bg-[#0F1F3D] text-white font-bold shadow-sm'
+                            : isBetween(day.key)
+                              ? 'text-[#583b00] font-semibold hover:bg-[#d8a34a]/30'
+                              : 'text-[#1b1c1a] hover:bg-[#f5f3f0]') +
+                          (day.key === todayKey && !isEdge(day.key) ? ' ring-1 ring-inset ring-[#d8a34a] font-bold' : '')
+                        "
+                      >
+                        {{ day.day }}
+                      </button>
+                    </div>
+                  } @else {
+                    <span class="h-9"></span>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ==================== MESES ==================== -->
+      @if (view() === 'months') {
+        <div class="w-full md:w-[272px]">
+          <div class="flex items-center justify-between mb-3">
+            <button
+              type="button"
+              (click)="shiftYear(-1)"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+              title="Ano anterior"
+            >
+              <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+            </button>
+            <button
+              type="button"
+              (click)="openYears()"
+              class="text-sm font-bold text-[#1b1c1a] px-2 py-1 rounded-lg hover:bg-[#d8a34a]/15 cursor-pointer flex items-center gap-0.5"
+              title="Escolher o ano"
+            >
+              {{ viewYear() }}
+              <span class="material-symbols-outlined text-[18px] text-[#827565]">expand_more</span>
+            </button>
+            <button
+              type="button"
+              (click)="shiftYear(1)"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+              title="Próximo ano"
+            >
+              <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            @for (name of monthShort; track $index; let i = $index) {
+              <button
+                type="button"
+                (click)="pickMonth(i)"
+                [class]="
+                  'h-11 rounded-xl text-sm transition-colors cursor-pointer ' +
+                  (isMonthInRange(i)
+                    ? 'bg-[#d8a34a]/20 text-[#583b00] font-bold hover:bg-[#d8a34a]/30'
+                    : 'text-[#1b1c1a] hover:bg-[#f5f3f0]') +
+                  (viewYear() + '-' + (i < 9 ? '0' : '') + (i + 1) === currentMonthKey
+                    ? ' ring-1 ring-inset ring-[#d8a34a] font-bold'
+                    : '')
+                "
+              >
+                {{ name }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ==================== ANOS ==================== -->
+      @if (view() === 'years') {
+        <div class="w-full md:w-[272px]">
+          <div class="flex items-center justify-between mb-3">
+            <button
+              type="button"
+              (click)="shiftYearPage(-1)"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+              title="Anos anteriores"
+            >
+              <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+            </button>
+            <span class="text-sm font-bold text-[#1b1c1a]">{{ yearPage()[0] }} – {{ yearPage()[yearPage().length - 1] }}</span>
+            <button
+              type="button"
+              (click)="shiftYearPage(1)"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-[#4f4537] hover:bg-[#f5f3f0] cursor-pointer"
+              title="Próximos anos"
+            >
+              <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            @for (year of yearPage(); track year) {
+              <button
+                type="button"
+                (click)="pickYear(year)"
+                [class]="
+                  'h-11 rounded-xl text-sm transition-colors cursor-pointer ' +
+                  (year === viewYear()
+                    ? 'bg-[#0F1F3D] text-white font-bold'
+                    : isYearInRange(year)
+                      ? 'bg-[#d8a34a]/20 text-[#583b00] font-bold hover:bg-[#d8a34a]/30'
+                      : 'text-[#1b1c1a] hover:bg-[#f5f3f0]') +
+                  (year === currentYear && year !== viewYear() ? ' ring-1 ring-inset ring-[#d8a34a] font-bold' : '')
+                "
+              >
+                {{ year }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Rodapé: atalhos + limpar -->
+      <div class="mt-4 pt-3 border-t border-[#efeeeb] flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-1.5">
+          @if (view() === 'days') {
+            <button
+              type="button"
+              (click)="selectWholeMonth(months()[0].key)"
+              class="text-xs font-semibold text-[#583b00] bg-[#d8a34a]/15 hover:bg-[#d8a34a]/30 px-3 py-1.5 rounded-full cursor-pointer"
+            >
+              {{ months()[0].monthName }} inteiro
+            </button>
+          }
+          <button
+            type="button"
+            (click)="selectWholeYear(viewYear())"
+            class="text-xs font-semibold text-[#583b00] bg-[#d8a34a]/15 hover:bg-[#d8a34a]/30 px-3 py-1.5 rounded-full cursor-pointer"
+          >
+            Ano de {{ viewYear() }} inteiro
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          @if (view() === 'days') {
+            <p class="text-xs text-[#827565] hidden sm:block">
+              {{ pendingStart() ? 'Agora clique no dia final' : 'Clique no dia inicial' }}
+            </p>
+          } @else {
+            <button
+              type="button"
+              (click)="view.set('days')"
+              class="text-xs font-semibold text-[#4f4537] px-3 py-1.5 rounded-lg hover:bg-[#f5f3f0] cursor-pointer"
+            >
+              Voltar
+            </button>
+          }
+          @if (isActive() || pendingStart()) {
+            <button
+              type="button"
+              (click)="clear()"
+              class="text-xs font-semibold text-[#4f4537] px-3 py-1.5 rounded-lg hover:bg-[#f5f3f0] cursor-pointer"
+            >
+              Limpar
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
@@ -21,9 +21,13 @@ export class Sidebar {
   private readonly router = inject(Router);
   protected readonly appState = inject(AppStateService);
 
+  /** Controla a visibilidade do menu off-canvas no mobile (sempre visível em telas `lg:` para cima). */
+  @Input() isOpen = false;
+
   @Output() openApiConsole = new EventEmitter<void>();
   @Output() openCompanySwitch = new EventEmitter<void>();
   @Output() logout = new EventEmitter<void>();
+  @Output() close = new EventEmitter<void>();
 
   protected readonly currentUrl = toSignal(
     this.router.events.pipe(
@@ -38,18 +42,20 @@ export class Sidebar {
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/produtos', label: 'Produtos', icon: 'restaurant' },
     { path: '/kits', label: 'Kits de Churrasco', icon: 'outdoor_grill' },
-    { path: '/estoque', label: 'Estoque & Validades', icon: 'inventory_2' },
+    { path: '/estoque', label: 'Estoque', icon: 'inventory_2' },
     { path: '/compras', label: 'Compras / Entradas', icon: 'local_shipping' },
     { path: '/vendas', label: 'Nova Venda / PDV', icon: 'point_of_sale' },
     {
       path: '/financeiro',
       label: 'Financeiro & DRE',
       icon: 'payments',
-      matchPaths: ['/contas-pagar', '/clientes-receber'],
+      matchPaths: ['/contas-pagar', '/clientes-receber', '/fechamento-mensal'],
     },
-    { path: '/clientes', label: 'Clientes & Fidelidade', icon: 'group' },
-    { path: '/relatorios', label: 'Relatórios & Desossa', icon: 'analytics' },
-    { path: '/configuracoes', label: 'Configurações', icon: 'settings' },
+    { path: '/clientes', label: 'Clientes', icon: 'group' },
+    { path: '/relatorios', label: 'Relatórios', icon: 'analytics' },
+    { path: '/atividades', label: 'Atividades da Equipe', icon: 'fact_check' },   
+    { path: '/gestao-empresa', label: 'Gestão da Empresa', icon: 'domain' },
+     { path: '/configuracoes', label: 'Configurações', icon: 'settings' },
   ];
 
   protected isActive(item: MenuItem): boolean {
@@ -58,11 +64,16 @@ export class Sidebar {
   }
 
   protected get companyDisplayName(): string {
-    return this.appState.session()?.company.tradeName || 'M&C Frig Carnes Nobres';
+    return this.appState.session()?.company.tradeName || 'Girus Carnes Nobres';
   }
 
   protected get companyLocation(): string {
     const company = this.appState.session()?.company;
     return company ? `${company.city} / ${company.state}` : 'São Paulo / SP';
+  }
+
+  /** Só o dono/administrador troca de empresa — funcionário fica vinculado à empresa dele. */
+  protected get isOwnerSession(): boolean {
+    return !this.appState.session()?.user.employeeId;
   }
 }

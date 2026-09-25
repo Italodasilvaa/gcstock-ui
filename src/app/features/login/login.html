@@ -72,13 +72,25 @@
             </div>
             <div>
               <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Senha</label>
-              <input
-                type="password"
-                [(ngModel)]="loginPassword"
-                name="loginPassword"
-                placeholder="••••••"
-                class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
-              />
+              <div class="relative">
+                <input
+                  [type]="showLoginPassword() ? 'text' : 'password'"
+                  [(ngModel)]="loginPassword"
+                  name="loginPassword"
+                  placeholder="••••••"
+                  class="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+                />
+                <button
+                  type="button"
+                  (click)="toggleLoginPasswordVisibility()"
+                  [attr.aria-label]="showLoginPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+                  class="absolute inset-y-0 right-0 flex items-center px-3 text-[#827565] hover:text-[#4f4537] cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[18px]">
+                    {{ showLoginPassword() ? 'visibility_off' : 'visibility' }}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <label class="flex items-center gap-2 text-xs text-[#827565] cursor-pointer">
@@ -100,28 +112,6 @@
               Entrar no Girus
             </button>
           </form>
-
-          <!-- Demo companies quick login -->
-          <div class="mt-6 pt-5 border-t border-[#efeeeb]">
-            <p class="text-[11px] font-bold uppercase tracking-wider text-[#827565] mb-3">
-              Acesso rápido (empresas de demonstração)
-            </p>
-            <div class="flex flex-col gap-2">
-              @for (comp of companies(); track comp.id) {
-                <button
-                  type="button"
-                  (click)="handleQuickLoginCompany(comp)"
-                  class="flex items-center justify-between p-3 rounded-lg border border-[#e4e2df] hover:border-[#d8a34a] hover:bg-[#fbf9f6] transition-colors text-left cursor-pointer"
-                >
-                  <div class="min-w-0">
-                    <p class="text-[13px] font-bold text-[#1b1c1a] truncate">{{ comp.tradeName }}</p>
-                    <p class="text-[11px] text-[#827565] truncate">{{ comp.segment }} • {{ comp.city }}/{{ comp.state }}</p>
-                  </div>
-                  <span class="material-symbols-outlined text-[18px] text-[#827565] shrink-0">login</span>
-                </button>
-              }
-            </div>
-          </div>
         }
 
         <!-- REGISTER TAB -->
@@ -134,7 +124,7 @@
                   type="text"
                   [(ngModel)]="corporateName"
                   name="corporateName"
-                  placeholder="Ex: M&C Frig Distribuição de Carnes Ltda"
+                  placeholder="Ex: Girus Distribuição de Carnes Ltda"
                   class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
                 />
               </div>
@@ -144,7 +134,7 @@
                   type="text"
                   [(ngModel)]="tradeName"
                   name="tradeName"
-                  placeholder="Ex: M&C Frig Carnes Nobres"
+                  placeholder="Ex: Girus Carnes Nobres"
                   class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
                 />
               </div>
@@ -232,6 +222,73 @@
                   class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm uppercase focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
                 />
               </div>
+            </div>
+
+            <!-- Funcionários (opcional, criados junto com a empresa) -->
+            <div class="pt-2 border-t border-[#efeeeb]">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <p class="text-xs font-bold text-[#4f4537]">Funcionários (opcional)</p>
+                  <p class="text-[11px] text-[#827565]">
+                    Crie já o acesso de quem vai operar o sistema. Cada um poderá entrar com o próprio e-mail e senha.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  (click)="addEmployeeRow()"
+                  class="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#fbf9f6] rounded-lg px-3 py-1.5 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[16px]">person_add</span>
+                  Adicionar
+                </button>
+              </div>
+
+              @if (newEmployees().length > 0) {
+                <div class="flex flex-col gap-2">
+                  @for (emp of newEmployees(); track $index) {
+                    <div class="grid grid-cols-1 sm:grid-cols-[1.2fr_1.4fr_1fr_1fr_auto] gap-2 items-center bg-[#fbf9f6] border border-[#e4e2df] rounded-lg p-2">
+                      <input
+                        type="text"
+                        [(ngModel)]="emp.name"
+                        [name]="'empName' + $index"
+                        placeholder="Nome do funcionário"
+                        class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                      />
+                      <input
+                        type="email"
+                        [(ngModel)]="emp.email"
+                        [name]="'empEmail' + $index"
+                        placeholder="E-mail de acesso"
+                        class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                      />
+                      <input
+                        type="text"
+                        [(ngModel)]="emp.password"
+                        [name]="'empPassword' + $index"
+                        placeholder="Senha"
+                        class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                      />
+                      <select
+                        [(ngModel)]="emp.role"
+                        [name]="'empRole' + $index"
+                        class="min-w-0 px-2.5 py-1.5 rounded-md border border-[#e4e2df] text-xs focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                      >
+                        <option value="gerente">Gerente</option>
+                        <option value="operador">Operador</option>
+                        <option value="admin">Administrador</option>
+                      </select>
+                      <button
+                        type="button"
+                        (click)="removeEmployeeRow($index)"
+                        class="justify-self-end text-[#ba1a1a] hover:bg-[#ba1a1a]/10 rounded-md p-1.5 cursor-pointer"
+                        title="Remover"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
             </div>
 
             <button

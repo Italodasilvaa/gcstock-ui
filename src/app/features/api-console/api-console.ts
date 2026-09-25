@@ -1,51 +1,27 @@
-import { Component, EventEmitter, OnDestroy, OnInit, Output, inject, signal } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { MockDataService } from '../../core/services/mock-data';
+import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
+import { ApiLogService } from '../../core/services/api-log';
 import { ApiLog } from '../../core/models/models';
 
 /**
- * Console de depuração que exibe, em tempo real, os logs de "chamadas de API"
- * simulados internamente pelo MockDataService a cada operação de CRUD.
- * Não existe nenhuma chamada de rede real — tudo é lido do próprio serviço.
+ * Console de depuração que exibe, em tempo real, os logs das chamadas HTTP
+ * reais feitas à Girus API (capturadas pelo `apiLogInterceptor`).
  */
 @Component({
   selector: 'app-api-console',
   imports: [],
   templateUrl: './api-console.html',
 })
-export class ApiConsole implements OnInit, OnDestroy {
+export class ApiConsole {
   @Output() close = new EventEmitter<void>();
 
-  private readonly mockData = inject(MockDataService);
-  private changeSubscription?: Subscription;
+  private readonly apiLog = inject(ApiLogService);
 
-  protected readonly logs = signal<ApiLog[]>(this.mockData.getApiLogs());
+  protected readonly logs = this.apiLog.logs;
   protected readonly selectedLog = signal<ApiLog | null>(null);
-  protected readonly latencyMs = signal<number>(this.mockData.getLatency());
-
-  ngOnInit(): void {
-    this.changeSubscription = this.mockData.change$.subscribe(() => this.refresh());
-  }
-
-  ngOnDestroy(): void {
-    this.changeSubscription?.unsubscribe();
-  }
-
-  private refresh(): void {
-    this.logs.set(this.mockData.getApiLogs());
-    this.latencyMs.set(this.mockData.getLatency());
-  }
 
   protected onOverlayClick(event: MouseEvent): void {
     if (event.target === event.currentTarget) {
       this.close.emit();
-    }
-  }
-
-  protected onLatencyInput(value: string): void {
-    const ms = Number(value);
-    if (!Number.isNaN(ms) && ms >= 0) {
-      this.mockData.setLatency(ms);
     }
   }
 
@@ -54,25 +30,13 @@ export class ApiConsole implements OnInit, OnDestroy {
   }
 
   protected clearLogs(): void {
-    this.mockData.clearApiLogs();
+    this.apiLog.clear();
     this.selectedLog.set(null);
-  }
-
-  protected resetDemoData(): void {
-    const confirmed = window.confirm(
-      'Isso vai apagar todos os dados de demonstração desta empresa e recarregar o aplicativo do zero. Deseja continuar?',
-    );
-    if (!confirmed) {
-      return;
-    }
-    this.mockData.resetToDefaults();
-    window.location.reload();
   }
 
   protected exportLogs(): void {
     const exportPayload = {
       exportedAt: new Date().toISOString(),
-      simulatedLatencyMs: this.latencyMs(),
       totalLogs: this.logs().length,
       logs: this.logs(),
     };

@@ -1,0 +1,307 @@
+<div class="flex flex-col gap-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-[#0F1F3D] flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-[#d8a34a] text-[22px]">domain</span>
+      </div>
+      <div>
+        <h1 class="text-[20px] md:text-[22px] font-bold text-[#1b1c1a] leading-tight">Gestão da Empresa</h1>
+        <p class="text-xs md:text-sm text-[#827565]">
+          Investimentos, equipamentos, folha de pagamento e outras despesas gerais — separado das compras de produtos.
+        </p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      (click)="openNewExpenseModal()"
+      class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-sm font-bold rounded-lg cursor-pointer transition-colors shadow-xs shrink-0"
+    >
+      <span class="material-symbols-outlined text-[18px]">add</span>
+      <span>Novo Lançamento</span>
+    </button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+      <div class="flex items-center justify-between">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Investido este mês</p>
+        <span class="material-symbols-outlined text-[18px] text-[#4caf50]">trending_up</span>
+      </div>
+      <p class="text-xl font-black text-[#1b1c1a] mt-1">{{ formatCurrency(investedThisMonth()) }}</p>
+    </div>
+
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+      <div class="flex items-center justify-between">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Equipamentos este mês</p>
+        <span class="material-symbols-outlined text-[18px] text-[#0F1F3D]">construction</span>
+      </div>
+      <p class="text-xl font-black text-[#1b1c1a] mt-1">{{ formatCurrency(equipmentThisMonth()) }}</p>
+    </div>
+
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+      <div class="flex items-center justify-between">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Folha de Pagamento (mês)</p>
+        <span class="material-symbols-outlined text-[18px] text-[#7f5700]">groups</span>
+      </div>
+      <p class="text-xl font-black text-[#1b1c1a] mt-1">{{ formatCurrency(totalMonthlyPayroll()) }}</p>
+      <p class="text-[11px] text-[#827565] mt-0.5">{{ activeEmployees().length }} funcionário(s) ativo(s)</p>
+    </div>
+
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+      <div class="flex items-center justify-between">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Despesas Gerais em Aberto</p>
+        <span class="material-symbols-outlined text-[18px] text-[#ba1a1a]">pending_actions</span>
+      </div>
+      <p class="text-xl font-black text-[#ba1a1a] mt-1">{{ formatCurrency(openExpensesTotal()) }}</p>
+    </div>
+  </div>
+
+  <!-- Atalho para o fechamento mensal -->
+  <div
+    class="bg-[#0F1F3D] rounded-xl md:rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+  >
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-[#d8a34a] text-[26px]">insights</span>
+      <div>
+        <p class="text-white font-bold text-sm">Quer saber se deu lucro ou prejuízo no mês?</p>
+        <p class="text-[#A0B0CB] text-xs mt-0.5">
+          A Visão Mensal em Financeiro &amp; DRE já soma vendas, compras, despesas gerais e folha de pagamento.
+        </p>
+      </div>
+    </div>
+    <button
+      type="button"
+      (click)="goToMonthlyClosing()"
+      class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-xs font-bold rounded-lg cursor-pointer transition-colors"
+    >
+      Ver Fechamento Mensal
+      <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+    </button>
+  </div>
+
+  <!-- Lista de despesas gerais -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs">
+    <div class="p-4 md:p-6 pb-0">
+      <h2 class="text-base font-bold text-[#1b1c1a]">Investimentos e Despesas Gerais</h2>
+      <p class="text-xs text-[#827565] mt-0.5">
+        Equipamentos, investimentos e outros gastos que não são compra de produto — essas entradas também aparecem
+        em Financeiro &amp; DRE &gt; Contas a Pagar.
+      </p>
+      <div class="mt-4">
+        <app-date-range-filter label="Vencimento" [(range)]="dateRange" />
+      </div>
+      @if (filteredExpenses().length !== expenses().length) {
+        <p class="text-xs text-[#827565] mt-2">
+          Exibindo {{ filteredExpenses().length }} de {{ expenses().length }} lançamentos • Total no período:
+          <span class="font-semibold text-[#1b1c1a]">{{ formatCurrency(filteredExpensesTotal()) }}</span>
+        </p>
+      }
+    </div>
+
+    <div class="overflow-x-auto p-4 md:p-6">
+      <table class="w-full text-sm border-separate border-spacing-y-2">
+        <thead>
+          <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+            <th class="px-3 py-2 font-semibold">Descrição</th>
+            <th class="px-3 py-2 font-semibold">Categoria</th>
+            <th class="px-3 py-2 font-semibold">Vencimento</th>
+            <th class="px-3 py-2 font-semibold text-right">Valor</th>
+            <th class="px-3 py-2 font-semibold">Status</th>
+            <th class="px-3 py-2 font-semibold text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of filteredExpenses(); track item.id) {
+            <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
+              <td class="px-3 py-3 rounded-l-xl">
+                <p class="font-semibold text-[#1b1c1a]">{{ item.description }}</p>
+                <p class="text-[11px] text-[#827565]">{{ item.supplier }}</p>
+              </td>
+              <td class="px-3 py-3">
+                <span
+                  class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-bold border"
+                  [class]="categoryBadgeClass(item.category)"
+                >
+                  {{ categoryLabel(item.category) }}
+                </span>
+              </td>
+              <td class="px-3 py-3 text-[#4f4537]">{{ item.dueLabel }}</td>
+              <td class="px-3 py-3 text-right font-semibold text-[#1b1c1a]">{{ formatCurrency(item.amount) }}</td>
+              <td class="px-3 py-3">
+                <span
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                  [class]="statusClasses(item.status)"
+                >
+                  {{ statusLabel(item.status) }}
+                </span>
+              </td>
+              <td class="px-3 py-3 rounded-r-xl text-right">
+                @if (item.status !== 'pago') {
+                  <button
+                    type="button"
+                    (click)="settleExpense(item)"
+                    class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#4caf50] border border-[#4caf50]/40 hover:bg-[#4caf50]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                    Dar Baixa
+                  </button>
+                } @else {
+                  <span class="text-[11px] text-[#827565]">Pago em {{ item.paidDate | date:'dd/MM/yyyy' }}</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="px-3 py-8 text-center text-[#827565]">
+                Nenhum investimento ou despesa geral lançado ainda.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Folha de Pagamento -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+    <div class="p-4 md:p-6 pb-0 flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <h2 class="text-base font-bold text-[#1b1c1a]">Folha de Pagamento</h2>
+        <p class="text-xs text-[#827565] mt-0.5">
+          Somada automaticamente todo mês — edite o salário de cada um em Configurações &gt; Funcionários.
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="goToEmployees()"
+        class="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-2 cursor-pointer transition-colors"
+      >
+        <span class="material-symbols-outlined text-[16px]">manage_accounts</span>
+        Gerenciar Funcionários
+      </button>
+    </div>
+
+    <div class="p-4 md:p-6">
+      @if (activeEmployees().length === 0) {
+        <p class="text-sm text-[#827565]">Nenhum funcionário ativo cadastrado.</p>
+      } @else {
+        <div class="flex flex-col gap-2">
+          @for (employee of activeEmployees(); track employee.id) {
+            <div class="flex items-center justify-between bg-[#f5f3f0] rounded-lg px-3 py-2.5">
+              <div class="min-w-0">
+                <p class="text-[13px] font-semibold text-[#1b1c1a] truncate">{{ employee.name }}</p>
+                <p class="text-[11px] text-[#827565] truncate">{{ employee.email }}</p>
+              </div>
+              <span class="font-bold text-[#1b1c1a] shrink-0">{{ formatCurrency(employee.salary) }}</span>
+            </div>
+          }
+        </div>
+        <div class="flex items-center justify-between mt-3 pt-3 border-t border-[#efeeeb]">
+          <span class="text-sm font-bold text-[#1b1c1a]">Total da Folha</span>
+          <span class="text-lg font-black text-[#1b1c1a]">{{ formatCurrency(totalMonthlyPayroll()) }}</span>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Novo Lançamento -->
+@if (isModalOpen()) {
+  <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-[#e4e2df]">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#efeeeb]">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[22px] text-[#7f5700]">payments</span>
+          <h3 class="text-[17px] font-bold text-[#1b1c1a]">Novo Investimento / Despesa</h3>
+        </div>
+        <button
+          type="button"
+          (click)="closeModal()"
+          class="p-1 rounded-lg text-[#827565] hover:bg-[#efeeeb] cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <form (ngSubmit)="saveExpense()" class="flex flex-col gap-3.5">
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Descrição *</label>
+          <input
+            type="text"
+            [(ngModel)]="form.description"
+            name="description"
+            placeholder="Ex: Freezer horizontal 500L"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Fornecedor / Origem</label>
+          <input
+            type="text"
+            [(ngModel)]="form.supplier"
+            name="supplier"
+            placeholder="Ex: Loja de Equipamentos XYZ"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Categoria</label>
+            <select
+              [(ngModel)]="form.category"
+              name="category"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+            >
+              <option value="equipamento">Equipamento</option>
+              <option value="investimento">Investimento</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Valor (R$) *</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [(ngModel)]="form.amount"
+              name="amount"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Vencimento</label>
+          <input
+            type="date"
+            [(ngModel)]="form.dueDate"
+            name="dueDate"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#efeeeb] mt-1">
+          <button
+            type="button"
+            (click)="closeModal()"
+            class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-xs"
+          >
+            <span class="material-symbols-outlined text-[16px]">save</span>
+            <span>Salvar Lançamento</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

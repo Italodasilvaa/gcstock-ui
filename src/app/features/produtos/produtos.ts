@@ -1,8 +1,9 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MockDataService } from '../../core/services/mock-data';
+import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
-import { ProductItem } from '../../core/models/models';
+import { ProductCategory, ProductItem } from '../../core/models/models';
 
 interface ProductFormModel {
   id?: string;
@@ -20,7 +21,11 @@ interface ProductFormModel {
   nearestExpiry: string;
   lotNumber: string;
   supplier: string;
+  imageUrl: string;
 }
+
+/** Maior lado da foto salva — reduz o tamanho enviado à API sem perder qualidade nos cards. */
+const MAX_IMAGE_SIDE = 800;
 
 function emptyForm(): ProductFormModel {
   return {
@@ -38,29 +43,41 @@ function emptyForm(): ProductFormModel {
     nearestExpiry: '',
     lotNumber: '',
     supplier: '',
+    imageUrl: '',
   };
 }
 
 @Component({
   selector: 'app-produtos',
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   templateUrl: './produtos.html',
 })
 export class Produtos {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
 
-  protected readonly products = signal<ProductItem[]>(this.mockData.getProducts());
+  protected readonly products = signal<ProductItem[]>([]);
   protected readonly searchTerm = signal('');
   protected readonly categoryFilter = signal('todas');
+
+  constructor() {
+    this.refresh();
+  }
 
   protected readonly isModalOpen = signal(false);
   protected readonly isEditing = signal(false);
   protected form: ProductFormModel = emptyForm();
 
-  protected readonly categories = computed(() =>
-    Array.from(new Set(this.products().map((p) => p.category))).sort((a, b) => a.localeCompare(b)),
-  );
+  private readonly registeredCategories = signal<ProductCategory[]>([]);
+
+  /** Categorias cadastradas (na ordem definida no PDV) + qualquer categoria de produto ainda não cadastrada. */
+  protected readonly categories = computed(() => {
+    const names = this.registeredCategories().map((c) => c.name);
+    const extras = this.products()
+      .map((p) => p.category)
+      .filter((name) => name && !names.includes(name));
+    return Array.from(new Set([...names, ...extras.sort((a, b) => a.localeCompare(b))]));
+  });
 
   protected readonly filteredProducts = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
@@ -75,7 +92,8 @@ export class Produtos {
   });
 
   private refresh(): void {
-    this.products.set(this.mockData.getProducts());
+    this.api.getProducts().subscribe((list) => this.products.set(list));
+    this.api.getCategories().subscribe((list) => this.registeredCategories.set(list));
   }
 
   protected formatCurrency(value: number): string {
@@ -134,8 +152,37 @@ export class Produtos {
       nearestExpiry: product.nearestExpiry,
       lotNumber: product.lotNumber,
       supplier: product.supplier,
+      imageUrl: product.imageUrl ?? '',
     };
     this.isModalOpen.set(true);
+  }
+
+  protected onImageFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.appState.triggerToast('Selecione um arquivo de imagem (JPG, PNG, etc.).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        this.form.imageUrl = canvas.toDataURL('image/jpeg', 0.85);
+      };
+      img.onerror = () => this.appState.triggerToast('Não foi possível ler essa imagem.');
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   }
 
   protected closeModal(): void {
@@ -175,41 +222,52 @@ export class Produtos {
       return;
     }
 
-    const { expiryDaysRemaining, expiryStatus } = this.computeExpiryMeta(this.form.nearestExpiry);
+    // Validade é opcional: normalmente vem dos lotes lançados em Compras. Vazia = não envia (a API mantém/define).
+    const expiryFields = this.form.nearestExpiry
+      ? { nearestExpiry: this.form.nearestExpiry, ...this.computeExpiryMeta(this.form.nearestExpiry) }
+      : {};
 
-    this.mockData.saveProduct({
-      id: this.form.id,
-      name: this.form.name.trim(),
-      sku: this.form.sku.trim().toUpperCase(),
-      category: this.form.category.trim() || 'Carnes Bovinas',
-      unit: this.form.unit,
-      stock: Number(this.form.stock) || 0,
-      minStock: Number(this.form.minStock) || 0,
-      costPrice: Number(this.form.costPrice) || 0,
-      sellingPrice: Number(this.form.sellingPrice) || 0,
-      isPerishable: this.form.isPerishable,
-      alertDays: Number(this.form.alertDays) || 0,
-      storageTemp: this.form.storageTemp.trim(),
-      nearestExpiry: this.form.nearestExpiry,
-      expiryDaysRemaining,
-      expiryStatus,
-      lotNumber: this.form.lotNumber.trim(),
-      supplier: this.form.supplier.trim(),
-    });
-
-    this.refresh();
-    this.isModalOpen.set(false);
-    this.appState.triggerToast(
-      this.isEditing() ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.',
-    );
+    this.api
+      .saveProduct({
+        id: this.form.id,
+        name: this.form.name.trim(),
+        sku: this.form.sku.trim().toUpperCase(),
+        category: this.form.category.trim() || 'Carnes Bovinas',
+        unit: this.form.unit,
+        stock: Number(this.form.stock) || 0,
+        minStock: Number(this.form.minStock) || 0,
+        costPrice: Number(this.form.costPrice) || 0,
+        sellingPrice: Number(this.form.sellingPrice) || 0,
+        isPerishable: this.form.isPerishable,
+        alertDays: Number(this.form.alertDays) || 0,
+        storageTemp: this.form.storageTemp.trim(),
+        ...expiryFields,
+        lotNumber: this.form.lotNumber.trim(),
+        supplier: this.form.supplier.trim(),
+        imageUrl: this.form.imageUrl.trim(),
+      })
+      .subscribe({
+        next: () => {
+          this.refresh();
+          this.isModalOpen.set(false);
+          this.appState.triggerToast(
+            this.isEditing() ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.',
+          );
+        },
+        error: () => this.appState.triggerToast('Não foi possível salvar o produto. Tente novamente.'),
+      });
   }
 
   protected removeProduct(product: ProductItem): void {
     const confirmed = confirm(`Excluir o produto "${product.name}"? Esta ação não pode ser desfeita.`);
     if (!confirmed) return;
 
-    this.mockData.deleteProduct(product.id);
-    this.refresh();
-    this.appState.triggerToast('Produto excluído com sucesso.');
+    this.api.deleteProduct(product.id).subscribe({
+      next: () => {
+        this.refresh();
+        this.appState.triggerToast('Produto excluído com sucesso.');
+      },
+      error: () => this.appState.triggerToast('Não foi possível excluir o produto. Tente novamente.'),
+    });
   }
 }

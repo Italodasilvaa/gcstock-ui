@@ -1,11 +1,22 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MockDataService } from '../../core/services/mock-data';
+import { firstValueFrom } from 'rxjs';
+import { ApiDataService } from '../../core/services/api-data';
 import { CartBridgeService } from '../../core/services/cart-bridge';
 import { AppStateService } from '../../core/services/app-state';
-import { BarbecueKit, CartItem, Client, ProductItem } from '../../core/models/models';
+import { IconPicker } from '../../shared/icon-picker/icon-picker';
+import {
+  BarbecueKit,
+  CartItem,
+  Client,
+  PaymentFeeSetting,
+  ProductCategory,
+  ProductItem,
+} from '../../core/models/models';
 
-type CategoryFilter = 'todos' | 'kits' | 'bovinos' | 'suinos' | 'outros';
+/** 'todos', 'kits' ou o id de uma categoria de produto cadastrada. */
+type CategoryFilter = string;
 type PaymentMode = 'pix' | 'dinheiro' | 'debito' | 'credito_vista' | 'parcelado' | 'a_prazo';
 
 interface CatalogEntry {
@@ -21,11 +32,14 @@ interface CatalogEntry {
 }
 
 interface PaymentOption {
+  /** Id da taxa cadastrada em Configurações. */
+  id: string;
   mode: PaymentMode;
   label: string;
   subtitle: string;
   icon: string;
   feePercent: number;
+  fixedFee: number;
 }
 
 interface SaleSummary {
@@ -40,62 +54,82 @@ interface SaleSummary {
   dueDateLabel?: string;
 }
 
-const PAYMENT_OPTIONS: PaymentOption[] = [
-  { mode: 'pix', label: 'Pix', subtitle: 'QR Code / Chave dinâmica', icon: 'qr_code_2', feePercent: 0 },
-  { mode: 'dinheiro', label: 'Dinheiro', subtitle: 'Espécie no caixa', icon: 'payments', feePercent: 0 },
-  { mode: 'debito', label: 'Débito', subtitle: 'Cartão à vista', icon: 'credit_card', feePercent: 1.2 },
-  {
-    mode: 'credito_vista',
-    label: 'Crédito à Vista',
-    subtitle: 'Cartão sem parcelamento',
-    icon: 'credit_card',
-    feePercent: 2.85,
-  },
-  {
-    mode: 'parcelado',
-    label: 'Parcelado',
-    subtitle: 'Cartão em até 6x',
-    icon: 'receipt_long',
-    feePercent: 3.9,
-  },
-  { mode: 'a_prazo', label: 'A Prazo', subtitle: 'Faturado / Boleto', icon: 'event_available', feePercent: 0 },
-];
+/** Deduz a modalidade que o backend espera a partir do nome do método cadastrado em Configurações. */
+function inferPaymentMode(method: string): PaymentMode {
+  const name = method
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+  if (name.includes('pix')) return 'pix';
+  if (name.includes('dinheiro') || name.includes('especie')) return 'dinheiro';
+  if (name.includes('debito')) return 'debito';
+  if (name.includes('parcel')) return 'parcelado';
+  if (name.includes('credito')) return 'credito_vista';
+  if (name.includes('prazo') || name.includes('fiado') || name.includes('boleto')) return 'a_prazo';
+  return 'dinheiro';
+}
+
+/** Linha editável do modal de categorias; id vazio = categoria nova ainda não salva. */
+interface CategoryDraft {
+  id: string;
+  name: string;
+  icon: string;
+  originalName: string;
+  originalIcon: string;
+}
+
+function toPaymentOption(fee: PaymentFeeSetting): PaymentOption {
+  return {
+    id: fee.id,
+    mode: inferPaymentMode(fee.method),
+    label: fee.method,
+    subtitle: fee.subtitle,
+    icon: fee.icon || 'payments',
+    feePercent: fee.feePercent,
+    fixedFee: fee.fixedFee ?? 0,
+  };
+}
 
 @Component({
   selector: 'app-vendas-pdv',
-  imports: [FormsModule],
+  imports: [FormsModule, IconPicker],
   templateUrl: './vendas-pdv.html',
 })
 export class VendasPdv implements OnInit {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
   private readonly cartBridge = inject(CartBridgeService);
   private readonly appState = inject(AppStateService);
 
-  protected readonly paymentOptions = PAYMENT_OPTIONS;
+  protected readonly paymentOptions = signal<PaymentOption[]>([]);
 
-  private readonly products = signal<ProductItem[]>(this.mockData.getProducts());
-  private readonly kits = signal<BarbecueKit[]>(this.mockData.getKits());
+  private readonly products = signal<ProductItem[]>([]);
+  private readonly kits = signal<BarbecueKit[]>([]);
 
   protected readonly cart = signal<CartItem[]>([]);
   protected readonly searchTerm = signal('');
   protected readonly categoryFilter = signal<CategoryFilter>('todos');
   protected readonly discount = signal<number>(0);
-  protected readonly paymentMode = signal<PaymentMode>('pix');
+  protected readonly selectedPaymentId = signal<string | null>(null);
   protected readonly saleSummary = signal<SaleSummary | null>(null);
 
-  protected readonly clients = signal<Client[]>(this.mockData.getClients());
+  protected readonly clients = signal<Client[]>([]);
   protected readonly selectedClientId = signal<string | null>(null);
   protected readonly dueDate = signal<string>(this.defaultDueDate());
-  protected readonly passFeeToCustomer = signal(false);
+  protected readonly passFeeToCustomer = signal(true);
   protected readonly minDueDate = this.todayIso();
 
-  protected readonly categories: { value: CategoryFilter; label: string; icon: string }[] = [
+  private readonly productCategories = signal<ProductCategory[]>([]);
+
+  /** "Todos" e "Kits" são fixos; o resto vem das categorias cadastradas, na ordem definida. */
+  protected readonly categories = computed<{ value: CategoryFilter; label: string; icon: string }[]>(() => [
     { value: 'todos', label: 'Todos', icon: 'apps' },
     { value: 'kits', label: 'Kits', icon: 'outdoor_grill' },
-    { value: 'bovinos', label: 'Bovinos', icon: 'restaurant' },
-    { value: 'suinos', label: 'Suínos', icon: 'kebab_dining' },
-    { value: 'outros', label: 'Outros', icon: 'category' },
-  ];
+    ...this.productCategories().map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'category' })),
+  ]);
+
+  protected readonly isCategoryEditorOpen = signal(false);
+  protected readonly isSavingCategories = signal(false);
+  protected readonly categoryDrafts = signal<CategoryDraft[]>([]);  private deletedCategoryIds: string[] = [];
 
   private readonly catalog = computed<CatalogEntry[]>(() => {
     const kitEntries: CatalogEntry[] = this.kits().map((kit) => ({
@@ -144,13 +178,21 @@ export class VendasPdv implements OnInit {
 
   protected readonly totalAfterDiscount = computed(() => Math.max(this.subtotal() - this.discount(), 0));
 
-  protected readonly activePaymentOption = computed(
-    () => this.paymentOptions.find((option) => option.mode === this.paymentMode()) ?? this.paymentOptions[0],
+  protected readonly activePaymentOption = computed<PaymentOption | null>(
+    () =>
+      this.paymentOptions().find((option) => option.id === this.selectedPaymentId()) ??
+      this.paymentOptions()[0] ??
+      null,
   );
 
-  protected readonly feeAmount = computed(
-    () => (this.totalAfterDiscount() * this.activePaymentOption().feePercent) / 100,
-  );
+  protected readonly paymentMode = computed<PaymentMode | null>(() => this.activePaymentOption()?.mode ?? null);
+
+  protected readonly feeAmount = computed(() => {
+    const option = this.activePaymentOption();
+    const base = this.totalAfterDiscount();
+    if (!option || base <= 0) return 0;
+    return (base * option.feePercent) / 100 + option.fixedFee;
+  });
 
   /** Quando a taxa é repassada, o cliente paga o valor base + a taxa, e o lojista recebe o valor base integral. */
   protected readonly chargedTotal = computed(() =>
@@ -166,11 +208,21 @@ export class VendasPdv implements OnInit {
   );
 
   ngOnInit(): void {
+    this.api.getProducts().subscribe((list) => this.products.set(list));
+    this.api.getKits().subscribe((list) => this.kits.set(list));
+    this.api.getClients().subscribe((list) => this.clients.set(list));
+    this.loadCategories();
+    this.api.getFees().subscribe({
+      next: (fees) => this.paymentOptions.set(fees.filter((fee) => fee.active).map(toPaymentOption)),
+      error: () => this.appState.triggerToast('Não foi possível carregar as formas de pagamento.'),
+    });
+
     const pendingKit = this.cartBridge.consumeKitForSale();
     if (pendingKit) {
       this.cart.set([
         {
           id: pendingKit.id,
+          kind: 'kit',
           name: pendingKit.name,
           price: pendingKit.suggestedPrice,
           unit: 'combo',
@@ -187,10 +239,122 @@ export class VendasPdv implements OnInit {
     if (category === 'kits') return entry.kind === 'kit';
     if (entry.kind === 'kit') return false;
 
-    const normalized = entry.category.toLowerCase();
-    if (category === 'bovinos') return normalized.includes('bovin');
-    if (category === 'suinos') return normalized.includes('suín') || normalized.includes('suin');
-    return !normalized.includes('bovin') && !normalized.includes('suín') && !normalized.includes('suin');
+    const selected = this.productCategories().find((c) => c.id === category);
+    return !!selected && entry.category.trim().toLowerCase() === selected.name.trim().toLowerCase();
+  }
+
+  private loadCategories(): void {
+    this.api.getCategories().subscribe({
+      next: (list) => {
+        this.productCategories.set(list);
+        const current = this.categoryFilter();
+        if (current !== 'todos' && current !== 'kits' && !list.some((c) => c.id === current)) {
+          this.categoryFilter.set('todos');
+        }
+      },
+      error: () => this.appState.triggerToast('Não foi possível carregar as categorias.'),
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Editor de categorias (ordem, nome e ícone)
+  // ---------------------------------------------------------------------
+
+  protected openCategoryEditor(): void {
+    this.deletedCategoryIds = [];
+    this.categoryDrafts.set(
+      this.productCategories().map((c) => ({
+        id: c.id,
+        name: c.name,
+        icon: c.icon,
+        originalName: c.name,
+        originalIcon: c.icon,
+      })),
+    );
+    this.isCategoryEditorOpen.set(true);
+  }
+
+  protected closeCategoryEditor(): void {
+    if (this.isSavingCategories()) return;
+    this.isCategoryEditorOpen.set(false);
+  }
+
+  protected moveCategory(index: number, delta: -1 | 1): void {
+    const list = [...this.categoryDrafts()];
+    const target = index + delta;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    this.categoryDrafts.set(list);  }
+
+  protected updateCategoryDraft(index: number, patch: Partial<Pick<CategoryDraft, 'name' | 'icon'>>): void {
+    this.categoryDrafts.set(this.categoryDrafts().map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  }
+
+  protected addCategoryDraft(): void {
+    this.categoryDrafts.set([
+      ...this.categoryDrafts(),
+      { id: '', name: '', icon: 'category', originalName: '', originalIcon: '' },
+    ]);  }
+
+  protected removeCategoryDraft(index: number): void {
+    const draft = this.categoryDrafts()[index];
+    if (draft.id) {
+      const inUse = this.products().filter((p) => p.category === draft.originalName).length;
+      if (inUse > 0) {
+        this.appState.triggerToast(
+          `"${draft.originalName}" está em ${inUse} produto(s). Troque a categoria deles antes de excluir.`,
+        );
+        return;
+      }
+      this.deletedCategoryIds.push(draft.id);
+    }
+    this.categoryDrafts.set(this.categoryDrafts().filter((_, i) => i !== index));  }
+
+  protected async saveCategories(): Promise<void> {
+    const drafts = this.categoryDrafts().map((d) => ({ ...d, name: d.name.trim(), icon: d.icon.trim() || 'category' }));
+
+    if (drafts.some((d) => !d.name)) {
+      this.appState.triggerToast('Toda categoria precisa de um nome.');
+      return;
+    }
+    const lowerNames = drafts.map((d) => d.name.toLowerCase());
+    if (new Set(lowerNames).size !== lowerNames.length) {
+      this.appState.triggerToast('Existem categorias com o mesmo nome.');
+      return;
+    }
+
+    this.isSavingCategories.set(true);
+    try {
+      for (const id of this.deletedCategoryIds) {
+        await firstValueFrom(this.api.deleteCategory(id));
+      }
+
+      const orderedIds: string[] = [];
+      for (const draft of drafts) {
+        if (!draft.id) {
+          const created = await firstValueFrom(this.api.createCategory({ name: draft.name, icon: draft.icon }));
+          orderedIds.push(created.id);
+          continue;
+        }
+        if (draft.name !== draft.originalName || draft.icon !== draft.originalIcon) {
+          await firstValueFrom(this.api.updateCategory(draft.id, { name: draft.name, icon: draft.icon }));
+        }
+        orderedIds.push(draft.id);
+      }
+
+      const saved = await firstValueFrom(this.api.reorderCategories(orderedIds));
+      this.productCategories.set(saved);
+      // Renomear altera a categoria dos produtos no backend; recarrega para o filtro continuar batendo.
+      this.api.getProducts().subscribe((list) => this.products.set(list));
+      this.isCategoryEditorOpen.set(false);
+      this.appState.triggerToast('Categorias atualizadas com sucesso.');
+    } catch (err) {
+      const message = err instanceof HttpErrorResponse ? err.error?.message : undefined;
+      this.appState.triggerToast(message ?? 'Não foi possível salvar as categorias. Tente novamente.');
+      this.loadCategories();
+    } finally {
+      this.isSavingCategories.set(false);
+    }
   }
 
   protected quantityStep(unit: string): number {
@@ -212,6 +376,7 @@ export class VendasPdv implements OnInit {
       ...this.cart(),
       {
         id: entry.id,
+        kind: entry.kind,
         name: entry.name,
         price: entry.price,
         unit: entry.unit,
@@ -247,13 +412,13 @@ export class VendasPdv implements OnInit {
     this.discount.set(0);
     this.selectedClientId.set(null);
     this.dueDate.set(this.defaultDueDate());
-    this.passFeeToCustomer.set(false);
+    this.passFeeToCustomer.set(true);
   }
 
-  protected selectPaymentMode(mode: PaymentMode): void {
-    this.paymentMode.set(mode);
-    this.passFeeToCustomer.set(false);
-    if (mode !== 'a_prazo') {
+  protected selectPaymentOption(option: PaymentOption): void {
+    this.selectedPaymentId.set(option.id);
+    this.passFeeToCustomer.set(true);
+    if (option.mode !== 'a_prazo') {
       this.selectedClientId.set(null);
       this.dueDate.set(this.defaultDueDate());
     }
@@ -286,6 +451,11 @@ export class VendasPdv implements OnInit {
 
     const option = this.activePaymentOption();
 
+    if (!option) {
+      this.appState.triggerToast('Cadastre uma forma de pagamento ativa em Configurações antes de vender.');
+      return;
+    }
+
     if (option.mode === 'a_prazo' && !this.selectedClientId()) {
       this.appState.triggerToast('Selecione o cliente para registrar a venda a prazo.');
       return;
@@ -301,40 +471,51 @@ export class VendasPdv implements OnInit {
       qty: item.quantity,
       unit: item.unit,
       price: item.price,
+      productId: item.kind === 'produto' ? item.id : undefined,
+      kitId: item.kind === 'kit' ? item.id : undefined,
     }));
 
     const client = this.selectedClient();
+    const chargedTotal = this.chargedTotal();
+    const netAmount = this.netAmount();
+    const feeAmount = this.feeAmount();
+    const itemsCount = this.totalItems();
+    const dueDate = this.dueDate();
 
-    const result = this.mockData.processPosSale({
-      total: this.chargedTotal(),
-      paymentMode: option.mode,
-      cardFlag: option.mode === 'debito' || option.mode === 'credito_vista' || option.mode === 'parcelado'
-        ? 'Visa/Mastercard'
-        : undefined,
-      clientId: client?.id,
-      clientName: client?.name,
-      dueDate: option.mode === 'a_prazo' ? this.dueDate() : undefined,
-      feeAmount: this.feeAmount(),
-      netAmount: this.netAmount(),
-      items,
-    });
-
-    this.saleSummary.set({
-      saleId: result.saleId,
-      receiptNumber: result.receiptNumber,
-      total: this.chargedTotal(),
-      netAmount: this.netAmount(),
-      feeAmount: this.feeAmount(),
-      paymentLabel: option.label,
-      itemsCount: this.totalItems(),
-      clientName: client?.name,
-      dueDateLabel:
-        option.mode === 'a_prazo'
-          ? new Date(this.dueDate() + 'T00:00:00').toLocaleDateString('pt-BR')
+    this.api
+      .processPosSale({
+        total: chargedTotal,
+        paymentMode: option.mode,
+        cardFlag: option.mode === 'debito' || option.mode === 'credito_vista' || option.mode === 'parcelado'
+          ? 'Visa/Mastercard'
           : undefined,
-    });
+        clientId: client?.id,
+        clientName: client?.name,
+        dueDate: option.mode === 'a_prazo' ? dueDate : undefined,
+        feeAmount,
+        netAmount,
+        items,
+      })
+      .subscribe({
+        next: (result) => {
+          this.saleSummary.set({
+            saleId: result.saleId,
+            receiptNumber: result.receiptNumber,
+            total: chargedTotal,
+            netAmount,
+            feeAmount,
+            paymentLabel: option.label,
+            itemsCount,
+            clientName: client?.name,
+            dueDateLabel:
+              option.mode === 'a_prazo' ? new Date(dueDate + 'T00:00:00').toLocaleDateString('pt-BR') : undefined,
+          });
 
-    this.clearCart();
+          this.clearCart();
+          this.appState.triggerToast(`Venda ${result.saleId} finalizada com sucesso!`);
+        },
+        error: () => this.appState.triggerToast('Não foi possível finalizar a venda. Tente novamente.'),
+      });
   }
 
   protected closeSuccessModal(): void {

@@ -52,6 +52,16 @@ export const routes: Routes = [
         data: { initialTab: 'receber' },
       },
       {
+        path: 'fechamento-mensal',
+        loadComponent: () => import('./features/financeiro/financeiro').then((m) => m.Financeiro),
+        data: { initialTab: 'mensal' },
+      },
+      {
+        path: 'gestao-empresa',
+        loadComponent: () =>
+          import('./features/gestao-empresa/gestao-empresa').then((m) => m.GestaoEmpresa),
+      },
+      {
         path: 'clientes',
         loadComponent: () => import('./features/clientes/clientes').then((m) => m.Clientes),
       },
@@ -63,6 +73,11 @@ export const routes: Routes = [
         path: 'configuracoes',
         loadComponent: () =>
           import('./features/configuracoes/configuracoes').then((m) => m.Configuracoes),
+      },
+      {
+        path: 'atividades',
+        loadComponent: () =>
+          import('./features/atividades/atividades').then((m) => m.Atividades),
       },
     ],
   },

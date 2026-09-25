@@ -10,9 +10,9 @@
       <div class="flex items-center gap-2">
         <span class="material-symbols-outlined text-[22px] text-[#0F1F3D]">terminal</span>
         <div>
-          <h3 class="text-[17px] font-bold text-[#1b1c1a]">Console API Mock</h3>
+          <h3 class="text-[17px] font-bold text-[#1b1c1a]">Console API</h3>
           <p class="text-xs text-[#827565]">
-            Log de chamadas simuladas geradas pelo MockDataService — nenhuma requisição de rede real é feita
+            Log das chamadas HTTP reais feitas à Girus API nesta sessão
           </p>
         </div>
       </div>
@@ -29,28 +29,6 @@
     <div
       class="flex flex-wrap items-center gap-4 px-6 py-3 border-b border-[#efeeeb] bg-[#f5f3f0]/60 shrink-0"
     >
-      <div class="flex items-center gap-2 min-w-[260px]">
-        <span class="material-symbols-outlined text-[18px] text-[#827565]">schedule</span>
-        <label class="text-xs font-semibold text-[#4f4537] whitespace-nowrap">Latência simulada</label>
-        <input
-          type="range"
-          min="0"
-          max="2000"
-          step="10"
-          [value]="latencyMs()"
-          (input)="onLatencyInput($any($event.target).value)"
-          class="w-32 accent-[#d8a34a] cursor-pointer"
-        />
-        <input
-          type="number"
-          min="0"
-          [value]="latencyMs()"
-          (change)="onLatencyInput($any($event.target).value)"
-          class="w-16 text-xs border border-[#e4e2df] rounded-md px-2 py-1 text-[#1b1c1a]"
-        />
-        <span class="text-xs text-[#827565]">ms</span>
-      </div>
-
       <div class="flex-1"></div>
 
       <button
@@ -69,15 +47,6 @@
       >
         <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
         Limpar Logs
-      </button>
-
-      <button
-        type="button"
-        (click)="resetDemoData()"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#ba1a1a]/10 hover:bg-[#ba1a1a]/20 text-[#ba1a1a] text-xs font-bold rounded-lg cursor-pointer transition-colors"
-      >
-        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
-        Resetar Dados
       </button>
     </div>
 
@@ -169,7 +138,7 @@
     <!-- Footer -->
     <div class="px-6 py-2.5 border-t border-[#efeeeb] shrink-0 flex items-center justify-between">
       <p class="text-[11px] text-[#827565]">{{ logs().length }} log(s) registrado(s) nesta sessão</p>
-      <p class="text-[11px] text-[#827565]">Backend 100% simulado (localStorage) — sem chamadas de rede reais</p>
+      <p class="text-[11px] text-[#827565]">Girus API — chamadas de rede reais</p>
     </div>
   </div>
 </div>

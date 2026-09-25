@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { MockDataService } from '../../core/services/mock-data';
+import { ApiDataService } from '../../core/services/api-data';
 import {
   BarbecueKit,
   Client,
@@ -7,6 +7,8 @@ import {
   PurchaseEntry,
   StockMovement,
 } from '../../core/models/models';
+import { DateRange, emptyDateRange, isWithinDateRange } from '../../core/utils/date-range';
+import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 
 interface CategorySummary {
   category: string;
@@ -34,18 +36,37 @@ interface MovementSummary {
 
 @Component({
   selector: 'app-relatorios',
-  imports: [],
+  imports: [DateRangeFilter],
   templateUrl: './relatorios.html',
 })
 export class Relatorios {
-  private readonly mockData = inject(MockDataService);
+  private readonly api = inject(ApiDataService);
 
-  // Dados brutos vindos do MockDataService (100% client-side / localStorage)
-  private readonly products = signal<ProductItem[]>(this.mockData.getProducts());
-  private readonly kits = signal<BarbecueKit[]>(this.mockData.getKits());
-  private readonly movements = signal<StockMovement[]>(this.mockData.getMovements());
-  private readonly purchases = signal<PurchaseEntry[]>(this.mockData.getPurchases());
-  private readonly clients = signal<Client[]>(this.mockData.getClients());
+  // Dados brutos vindos da Girus API
+  private readonly products = signal<ProductItem[]>([]);
+  private readonly kits = signal<BarbecueKit[]>([]);
+  private readonly movements = signal<StockMovement[]>([]);
+  private readonly purchases = signal<PurchaseEntry[]>([]);
+  private readonly clients = signal<Client[]>([]);
+
+  /** Período aplicado às compras (data de entrada) e às movimentações de estoque. */
+  protected readonly dateRange = signal<DateRange>(emptyDateRange());
+
+  private readonly periodPurchases = computed(() =>
+    this.purchases().filter((p) => isWithinDateRange(p.entryDate, this.dateRange())),
+  );
+
+  private readonly periodMovements = computed(() =>
+    this.movements().filter((m) => isWithinDateRange(m.timestamp, this.dateRange())),
+  );
+
+  constructor() {
+    this.api.getProducts().subscribe((list) => this.products.set(list));
+    this.api.getKits().subscribe((list) => this.kits.set(list));
+    this.api.getMovements().subscribe((list) => this.movements.set(list));
+    this.api.getPurchases().subscribe((list) => this.purchases.set(list));
+    this.api.getClients().subscribe((list) => this.clients.set(list));
+  }
 
   // Valor total em estoque (custo)
   protected readonly totalStockValue = computed(() =>
@@ -81,7 +102,7 @@ export class Relatorios {
   // Resumo de compras por fornecedor
   protected readonly supplierSummaries = computed<SupplierSummary[]>(() => {
     const map = new Map<string, { ordersCount: number; totalAmount: number; totalWeightKg: number }>();
-    for (const purchase of this.purchases()) {
+    for (const purchase of this.periodPurchases()) {
       const entry = map.get(purchase.supplierName) ?? {
         ordersCount: 0,
         totalAmount: 0,
@@ -105,14 +126,14 @@ export class Relatorios {
   });
 
   protected readonly totalPurchasesAmount = computed(() =>
-    this.purchases().reduce((sum, p) => sum + p.totalAmount, 0),
+    this.periodPurchases().reduce((sum, p) => sum + p.totalAmount, 0),
   );
 
   // Movimentações do período, agrupadas por tipo
   protected readonly movementSummaries = computed<MovementSummary[]>(() => {
     const types: StockMovement['type'][] = ['entrada', 'baixa_pdv', 'perda_quebra'];
     const raw = types.map((type) => {
-      const items = this.movements().filter((m) => m.type === type);
+      const items = this.periodMovements().filter((m) => m.type === type);
       const totalKg = items.reduce((sum, m) => sum + Math.abs(m.amountKg), 0);
       return {
         type,

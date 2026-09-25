@@ -2,8 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AppStateService } from '../../core/services/app-state';
-import { MockDataService } from '../../core/services/mock-data';
-import { CompanyTenant } from '../../core/models/models';
+import { Employee } from '../../core/models/models';
+
+interface NewEmployeeRow {
+  name: string;
+  email: string;
+  password: string;
+  role: Employee['role'];
+}
 
 @Component({
   selector: 'app-login',
@@ -11,18 +17,17 @@ import { CompanyTenant } from '../../core/models/models';
   templateUrl: './login.html',
 })
 export class Login {
-  private readonly mockData = inject(MockDataService);
   private readonly appState = inject(AppStateService);
   private readonly router = inject(Router);
 
   protected readonly activeTab = signal<'login' | 'register'>('login');
-  protected readonly companies = signal<CompanyTenant[]>(this.mockData.getCompanies());
 
   // Login state
   protected loginEmail = '';
   protected loginPassword = '';
   protected rememberMe = true;
   protected readonly loginError = signal<string | null>(null);
+  protected readonly showLoginPassword = signal(false);
 
   // Register state
   protected corporateName = '';
@@ -37,6 +42,21 @@ export class Login {
   protected stateUf = 'SP';
   protected readonly isRegistering = signal(false);
 
+  // Funcionários adicionados já durante o cadastro da empresa (opcional)
+  protected readonly newEmployees = signal<NewEmployeeRow[]>([]);
+
+  protected addEmployeeRow(): void {
+    this.newEmployees.set([...this.newEmployees(), { name: '', email: '', password: '', role: 'operador' }]);
+  }
+
+  protected removeEmployeeRow(index: number): void {
+    this.newEmployees.set(this.newEmployees().filter((_, i) => i !== index));
+  }
+
+  protected toggleLoginPasswordVisibility(): void {
+    this.showLoginPassword.set(!this.showLoginPassword());
+  }
+
   protected handleLogin(): void {
     this.loginError.set(null);
 
@@ -45,21 +65,19 @@ export class Login {
       return;
     }
 
-    const session = this.mockData.login(this.loginEmail, this.loginPassword);
-    if (session) {
-      this.appState.triggerToast(`Bem-vindo ao Girus, ${session.company.tradeName}!`);
-      this.router.navigateByUrl('/dashboard');
-    } else {
-      this.loginError.set('E-mail não localizado. Crie o cadastro da sua empresa na aba ao lado.');
-    }
-  }
-
-  protected handleQuickLoginCompany(comp: CompanyTenant): void {
-    const session = this.mockData.login(comp.email, comp.password);
-    if (session) {
-      this.appState.triggerToast(`Bem-vindo ao Girus, ${session.company.tradeName}!`);
-      this.router.navigateByUrl('/dashboard');
-    }
+    this.appState.login(this.loginEmail, this.loginPassword).subscribe({
+      next: (session) => {
+        if (session) {
+          this.appState.triggerToast(`Bem-vindo ao Girus, ${session.company.tradeName}!`);
+          this.router.navigateByUrl('/dashboard');
+        } else {
+          this.loginError.set('E-mail ou senha inválidos. Crie o cadastro da sua empresa na aba ao lado.');
+        }
+      },
+      error: () => {
+        this.loginError.set('Não foi possível conectar ao servidor da Girus API. Tente novamente em instantes.');
+      },
+    });
   }
 
   protected handleRegisterCompany(): void {
@@ -70,8 +88,8 @@ export class Login {
 
     this.isRegistering.set(true);
 
-    setTimeout(() => {
-      const session = this.mockData.registerCompany({
+    this.appState
+      .registerCompany({
         corporateName: this.corporateName,
         tradeName: this.tradeName || this.corporateName,
         document: this.document,
@@ -82,11 +100,20 @@ export class Login {
         segment: this.segment,
         city: this.city || 'São Paulo',
         state: this.stateUf,
+        employees: this.newEmployees()
+          .filter((e) => e.name.trim() && e.email.trim())
+          .map((e) => ({ name: e.name, email: e.email, password: e.password || undefined, role: e.role })),
+      })
+      .subscribe({
+        next: (session) => {
+          this.isRegistering.set(false);
+          this.appState.triggerToast(`Bem-vindo ao Girus, ${session.company.tradeName}!`);
+          this.router.navigateByUrl('/dashboard');
+        },
+        error: () => {
+          this.isRegistering.set(false);
+          alert('Não foi possível cadastrar sua empresa. Tente novamente.');
+        },
       });
-
-      this.isRegistering.set(false);
-      this.appState.triggerToast(`Bem-vindo ao Girus, ${session.company.tradeName}!`);
-      this.router.navigateByUrl('/dashboard');
-    }, 400);
   }
 }
