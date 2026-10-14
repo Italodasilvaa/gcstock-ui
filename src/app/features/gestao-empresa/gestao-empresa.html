@@ -214,8 +214,12 @@
     <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-[#e4e2df]">
       <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#efeeeb]">
         <div class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-[22px] text-[#7f5700]">payments</span>
-          <h3 class="text-[17px] font-bold text-[#1b1c1a]">Novo Investimento / Despesa</h3>
+          <span class="material-symbols-outlined text-[22px] text-[#7f5700]">
+            {{ form.kind === 'investimento' ? 'trending_up' : 'receipt_long' }}
+          </span>
+          <h3 class="text-[17px] font-bold text-[#1b1c1a]">
+            {{ form.kind === 'investimento' ? 'Novo Investimento' : 'Nova Despesa' }}
+          </h3>
         </div>
         <button
           type="button"
@@ -228,12 +232,52 @@
 
       <form (ngSubmit)="saveExpense()" class="flex flex-col gap-3.5">
         <div>
+          <span class="block text-xs font-bold text-[#4f4537] mb-1.5">Tipo de lançamento *</span>
+          <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de lançamento">
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="form.kind === 'investimento'"
+              (click)="setKind('investimento')"
+              [class]="
+                form.kind === 'investimento'
+                  ? 'flex items-start gap-2 p-3 rounded-lg border-2 border-[#4caf50] bg-[#4caf50]/5 text-left cursor-pointer'
+                  : 'flex items-start gap-2 p-3 rounded-lg border border-[#e4e2df] hover:border-[#4caf50]/50 text-left cursor-pointer'
+              "
+            >
+              <span class="material-symbols-outlined text-[20px] text-[#4caf50]">trending_up</span>
+              <span class="flex flex-col">
+                <span class="text-sm font-bold text-[#1b1c1a]">Investimento</span>
+                <span class="text-[11px] text-[#827565]">Equipamentos, reformas, melhorias</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="form.kind === 'despesa'"
+              (click)="setKind('despesa')"
+              [class]="
+                form.kind === 'despesa'
+                  ? 'flex items-start gap-2 p-3 rounded-lg border-2 border-[#ba1a1a] bg-[#ba1a1a]/5 text-left cursor-pointer'
+                  : 'flex items-start gap-2 p-3 rounded-lg border border-[#e4e2df] hover:border-[#ba1a1a]/50 text-left cursor-pointer'
+              "
+            >
+              <span class="material-symbols-outlined text-[20px] text-[#ba1a1a]">receipt_long</span>
+              <span class="flex flex-col">
+                <span class="text-sm font-bold text-[#1b1c1a]">Despesa</span>
+                <span class="text-[11px] text-[#827565]">Aluguel, energia, manutenção, serviços</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div>
           <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Descrição *</label>
           <input
             type="text"
             [(ngModel)]="form.description"
             name="description"
-            placeholder="Ex: Freezer horizontal 500L"
+            [placeholder]="form.kind === 'investimento' ? 'Ex: Freezer horizontal 500L' : 'Ex: Conta de energia de setembro'"
             class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
           />
         </div>
@@ -244,24 +288,26 @@
             type="text"
             [(ngModel)]="form.supplier"
             name="supplier"
-            placeholder="Ex: Loja de Equipamentos XYZ"
+            [placeholder]="form.kind === 'investimento' ? 'Ex: Loja de Equipamentos XYZ' : 'Ex: Companhia de Energia'"
             class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
           />
         </div>
 
-        <div class="grid grid-cols-2 gap-3.5">
-          <div>
-            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Categoria</label>
-            <select
-              [(ngModel)]="form.category"
-              name="category"
-              class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
-            >
-              <option value="equipamento">Equipamento</option>
-              <option value="investimento">Investimento</option>
-              <option value="outros">Outros</option>
-            </select>
-          </div>
+        <div [class]="form.kind === 'investimento' ? 'grid grid-cols-2 gap-3.5' : 'grid grid-cols-1 gap-3.5'">
+          @if (form.kind === 'investimento') {
+            <div>
+              <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Categoria</label>
+              <select
+                [(ngModel)]="form.category"
+                name="category"
+                class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+              >
+                @for (option of categoriesByKind.investimento; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+          }
           <div>
             <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Valor (R$) *</label>
             <input

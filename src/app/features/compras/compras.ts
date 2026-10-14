@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -381,11 +382,12 @@ export class Compras {
             : 'Entrada de compra registrada e somada ao estoque com sucesso.',
         );
       },
-      error: () =>
+      error: (err: HttpErrorResponse) =>
         this.appState.triggerToast(
-          this.isEditing()
-            ? 'Não foi possível atualizar a entrada. Tente novamente.'
-            : 'Não foi possível registrar a entrada. Tente novamente.',
+          err.error?.message ??
+            (this.isEditing()
+              ? 'Não foi possível atualizar a entrada. Tente novamente.'
+              : 'Não foi possível registrar a entrada. Tente novamente.'),
         ),
     });
   }

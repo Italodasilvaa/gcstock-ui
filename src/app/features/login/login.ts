@@ -68,14 +68,14 @@ export class Login {
     this.appState.login(this.loginEmail, this.loginPassword).subscribe({
       next: (session) => {
         if (session) {
-          this.appState.triggerToast(`Bem-vindo ao Girus, ${session.company.tradeName}!`);
+          this.appState.triggerToast(`Bem-vindo ao GC Stock, ${session.company.tradeName}!`);
           this.router.navigateByUrl('/dashboard');
         } else {
           this.loginError.set('E-mail ou senha inválidos. Crie o cadastro da sua empresa na aba ao lado.');
         }
       },
       error: () => {
-        this.loginError.set('Não foi possível conectar ao servidor da Girus API. Tente novamente em instantes.');
+        this.loginError.set('Não foi possível conectar ao servidor da GC Stock API. Tente novamente em instantes.');
       },
     });
   }
@@ -107,7 +107,7 @@ export class Login {
       .subscribe({
         next: (session) => {
           this.isRegistering.set(false);
-          this.appState.triggerToast(`Bem-vindo ao Girus, ${session.company.tradeName}!`);
+          this.appState.triggerToast(`Bem-vindo ao GC Stock, ${session.company.tradeName}!`);
           this.router.navigateByUrl('/dashboard');
         },
         error: () => {

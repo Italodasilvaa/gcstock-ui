@@ -9,8 +9,19 @@ import { DateRange, emptyDateRange, isWithinDateRange } from '../../core/utils/d
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 
 type ExpenseCategory = Exclude<AccountsPayableTitle['category'], 'compras'>;
+/** Investimento = bem/melhoria duradoura (investimento, equipamento); Despesa = gasto do dia a dia ("outros"). */
+type EntryKind = 'investimento' | 'despesa';
+
+const CATEGORIES_BY_KIND: Record<EntryKind, { value: ExpenseCategory; label: string }[]> = {
+  investimento: [
+    { value: 'investimento', label: 'Investimento (reforma, melhoria, marketing...)' },
+    { value: 'equipamento', label: 'Equipamento (freezer, balança, serra...)' },
+  ],
+  despesa: [{ value: 'outros', label: 'Despesa geral' }],
+};
 
 interface ExpenseFormModel {
+  kind: EntryKind;
   description: string;
   supplier: string;
   category: ExpenseCategory;
@@ -20,9 +31,10 @@ interface ExpenseFormModel {
 
 function emptyExpenseForm(): ExpenseFormModel {
   return {
+    kind: 'investimento',
     description: '',
     supplier: '',
-    category: 'outros',
+    category: 'investimento',
     amount: 0,
     dueDate: new Date().toISOString().split('T')[0],
   };
@@ -114,7 +126,7 @@ export class GestaoEmpresa {
       case 'compras':
         return 'Compras';
       case 'outros':
-        return 'Outros';
+        return 'Despesa';
     }
   }
 
@@ -151,9 +163,19 @@ export class GestaoEmpresa {
     }
   }
 
+  protected readonly categoriesByKind = CATEGORIES_BY_KIND;
+
   protected openNewExpenseModal(): void {
     this.form = emptyExpenseForm();
     this.isModalOpen.set(true);
+  }
+
+  /** Troca entre Investimento e Despesa e ajusta a categoria para uma válida do novo tipo. */
+  protected setKind(kind: EntryKind): void {
+    this.form.kind = kind;
+    if (!CATEGORIES_BY_KIND[kind].some((c) => c.value === this.form.category)) {
+      this.form.category = CATEGORIES_BY_KIND[kind][0].value;
+    }
   }
 
   protected closeModal(): void {
@@ -162,7 +184,9 @@ export class GestaoEmpresa {
 
   protected saveExpense(): void {
     if (!this.form.description.trim()) {
-      this.appState.triggerToast('Informe uma descrição para o gasto/investimento.');
+      this.appState.triggerToast(
+        this.form.kind === 'investimento' ? 'Informe uma descrição para o investimento.' : 'Informe uma descrição para a despesa.',
+      );
       return;
     }
     if (!this.form.amount || this.form.amount <= 0) {
@@ -186,7 +210,9 @@ export class GestaoEmpresa {
         next: () => {
           this.refresh();
           this.isModalOpen.set(false);
-          this.appState.triggerToast('Lançamento registrado com sucesso.');
+          this.appState.triggerToast(
+            this.form.kind === 'investimento' ? 'Investimento registrado com sucesso.' : 'Despesa registrada com sucesso.',
+          );
         },
         error: () => this.appState.triggerToast('Não foi possível salvar o lançamento. Tente novamente.'),
       });

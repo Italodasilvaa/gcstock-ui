@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import { ApiLog } from '../models/models';
 import { ApiLogService } from '../services/api-log';
 
-/** Registra cada chamada HTTP real à Girus API no ApiLogService, para exibição no Console API. */
+/** Registra cada chamada HTTP real à GC Stock API no ApiLogService, para exibição no Console API. */
 export const apiLogInterceptor: HttpInterceptorFn = (req, next) => {
   const apiLog = inject(ApiLogService);
   const startedAt = Date.now();

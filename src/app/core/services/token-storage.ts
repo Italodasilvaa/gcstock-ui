@@ -1,8 +1,8 @@
 import { Service } from '@angular/core';
 
-const TOKEN_KEY = 'girus_token';
+const TOKEN_KEY = 'gcstock_token';
 
-/** Acesso ao JWT emitido pela Girus API, persistido no localStorage do navegador. */
+/** Acesso ao JWT emitido pela GC Stock API, persistido no localStorage do navegador. */
 @Service()
 export class TokenStorageService {
   getToken(): string | null {

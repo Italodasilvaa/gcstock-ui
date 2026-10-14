@@ -38,7 +38,7 @@ export class Dashboard {
   private readonly api = inject(ApiDataService);
   protected readonly appState = inject(AppStateService);
 
-  // Dados brutos vindos da Girus API
+  // Dados brutos vindos da GC Stock API
   private readonly products = signal<ProductItem[]>([]);
   private readonly batches = signal<StockBatch[]>([]);
   private readonly alertConfig = signal<GlobalAlertSetting>(DEFAULT_ALERT_CONFIG);

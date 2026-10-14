@@ -4,7 +4,7 @@ import { ApiLog } from '../../core/models/models';
 
 /**
  * Console de depuração que exibe, em tempo real, os logs das chamadas HTTP
- * reais feitas à Girus API (capturadas pelo `apiLogInterceptor`).
+ * reais feitas à GC Stock API (capturadas pelo `apiLogInterceptor`).
  */
 @Component({
   selector: 'app-api-console',
@@ -44,7 +44,7 @@ export class ApiConsole {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `girus-api-console-${Date.now()}.json`;
+    link.download = `gcstock-api-console-${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }

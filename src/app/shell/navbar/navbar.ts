@@ -41,7 +41,7 @@ export class Navbar {
   }
 
   protected get companyName(): string {
-    return this.appState.session()?.company.tradeName || 'Girus Carnes Nobres';
+    return this.appState.session()?.company.tradeName || 'GC Stock';
   }
 
   protected get userName(): string {

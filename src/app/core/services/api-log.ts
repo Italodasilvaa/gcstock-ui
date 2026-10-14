@@ -4,7 +4,7 @@ import { ApiLog } from '../models/models';
 const MAX_LOGS = 100;
 
 /**
- * Histórico das chamadas HTTP reais feitas à Girus API, alimentado pelo `apiLogInterceptor`.
+ * Histórico das chamadas HTTP reais feitas à GC Stock API, alimentado pelo `apiLogInterceptor`.
  * Substitui o antigo log simulado do MockDataService — os dados aqui são requisições de verdade.
  */
 @Service()

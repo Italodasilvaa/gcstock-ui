@@ -27,7 +27,7 @@ import { TokenStorageService } from './token-storage';
 const BASE = environment.apiUrl;
 
 /**
- * Cliente HTTP da Girus API. Substitui o antigo MockDataService (localStorage) mantendo,
+ * Cliente HTTP da GC Stock API. Substitui o antigo MockDataService (localStorage) mantendo,
  * onde possível, os mesmos nomes/formas de método — a diferença é que cada chamada agora
  * retorna um Observable (requisição de rede real) em vez de um valor síncrono.
  */

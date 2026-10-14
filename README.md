@@ -1,4 +1,4 @@
-# Girus - ERP Multi-Empresas
+# GC Stock - ERP Multi-Empresas
 
 Plataforma multi-empresa para gestão de açougues, boutiques de carnes, frigoríficos, desossa, kits de churrasco e controle financeiro.
 

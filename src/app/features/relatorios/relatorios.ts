@@ -42,7 +42,7 @@ interface MovementSummary {
 export class Relatorios {
   private readonly api = inject(ApiDataService);
 
-  // Dados brutos vindos da Girus API
+  // Dados brutos vindos da GC Stock API
   private readonly products = signal<ProductItem[]>([]);
   private readonly kits = signal<BarbecueKit[]>([]);
   private readonly movements = signal<StockMovement[]>([]);
