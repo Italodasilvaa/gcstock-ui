@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
 import { formatRelativeTimestamp } from '../../core/utils/format-timestamp';
+import { formatQuantity } from '../../core/utils/format-quantity';
 import {
   AccountsPayableTitle,
   AccountsReceivableTitle,
@@ -143,6 +144,10 @@ export class Dashboard {
       case 'perda_quebra':
         return 'bg-[#ba1a1a]/10 text-[#ba1a1a]';
     }
+  }
+
+  protected movementAmountLabel(movement: StockMovement): string {
+    return formatQuantity(movement.amountKg, movement.unit, true);
   }
 
   protected movementAmountClass(amountKg: number): string {

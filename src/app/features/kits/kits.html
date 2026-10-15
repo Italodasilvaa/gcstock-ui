@@ -8,6 +8,7 @@
       </p>
     </div>
     <button
+      [hidden]="!can(PERMISSION.KitsCreate)"
       (click)="openNewKitModal()"
       class="flex items-center gap-2 bg-[#d8a34a] hover:bg-[#c8933d] text-[#1b1c1a] font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer"
     >
@@ -112,6 +113,7 @@
 
             <div class="flex items-center gap-2 mt-auto pt-3 border-t border-[#e4e2df]">
               <button
+                [hidden]="!can(PERMISSION.KitsEdit)"
                 (click)="openEditKitModal(kit)"
                 class="flex-1 flex items-center justify-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg py-2 cursor-pointer transition-colors"
               >
@@ -126,6 +128,7 @@
                 Vender este Kit
               </button>
               <button
+                [hidden]="!can(PERMISSION.KitsDelete)"
                 (click)="removeKit(kit)"
                 title="Excluir kit"
                 class="shrink-0 flex items-center justify-center text-[#ba1a1a] hover:bg-[#ba1a1a]/10 border border-[#e4e2df] hover:border-[#ba1a1a]/30 rounded-lg p-2 cursor-pointer transition-colors"
@@ -249,10 +252,11 @@
             <button
               type="button"
               (click)="kitImageFileInput.click()"
-              class="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-2 cursor-pointer"
+              [disabled]="isUploadingImage()"
+              class="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span class="material-symbols-outlined text-[16px]">upload</span>
-              Computador
+              <span class="material-symbols-outlined text-[16px]" [class.animate-spin]="isUploadingImage()">{{ isUploadingImage() ? 'progress_activity' : 'upload' }}</span>
+              {{ isUploadingImage() ? 'Enviando...' : 'Computador' }}
             </button>
           </div>
           @if (form.imageUrl) {

@@ -61,7 +61,7 @@ export class IdleSessionService {
       if (next <= 0) {
         this.clearTimers();
         this.showWarning.set(false);
-        this.appState.logout();
+        this.appState.logout('local');
         this.router.navigateByUrl('/login');
         return;
       }

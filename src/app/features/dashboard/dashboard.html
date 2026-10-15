@@ -169,7 +169,7 @@
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-[13px] font-semibold text-[#1b1c1a] truncate">{{ movement.title }}</span>
                   <span [class]="'text-[12px] font-bold shrink-0 ' + movementAmountClass(movement.amountKg)">
-                    {{ movement.amountKg > 0 ? '+' : '' }}{{ movement.amountKg }} kg
+                    {{ movementAmountLabel(movement) }}
                   </span>
                 </div>
                 <span class="text-[11px] text-[#827565] truncate">{{ movement.docInfo }}</span>

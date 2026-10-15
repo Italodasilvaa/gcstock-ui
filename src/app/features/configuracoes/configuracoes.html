@@ -25,6 +25,7 @@
       </div>
       <button
         type="button"
+        [hidden]="!can(PERMISSION.EmployeesCreate)"
         (click)="openNewEmployeeModal()"
         class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#d8a34a] hover:bg-[#c8933d] text-[#0F1F3D] text-xs font-bold rounded-lg cursor-pointer transition-colors"
       >
@@ -57,6 +58,7 @@
               <td class="px-3 py-3 text-center">
                 <button
                   type="button"
+                  [disabled]="!can(PERMISSION.EmployeesEdit)"
                   (click)="toggleEmployeeActive(employee)"
                   [attr.aria-pressed]="employee.active"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer"
@@ -72,6 +74,7 @@
                 <div class="flex items-center justify-center gap-1">
                   <button
                     type="button"
+                    [hidden]="!can(PERMISSION.EmployeesEdit)"
                     (click)="openEditEmployeeModal(employee)"
                     class="p-1.5 rounded-lg text-[#827565] hover:text-[#0F1F3D] hover:bg-white cursor-pointer"
                     title="Editar funcionário"
@@ -90,6 +93,7 @@
                   }
                   <button
                     type="button"
+                    [hidden]="!can(PERMISSION.EmployeesDelete)"
                     (click)="removeEmployee(employee)"
                     class="p-1.5 rounded-lg text-[#827565] hover:text-[#ba1a1a] hover:bg-white cursor-pointer"
                     title="Remover funcionário"
@@ -126,6 +130,7 @@
       </div>
       <button
         type="button"
+        [hidden]="!can(PERMISSION.FeesCreate)"
         (click)="openNewFeeModal()"
         class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-[#0F1F3D] hover:bg-[#16294F] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors"
       >
@@ -156,6 +161,7 @@
                 <div class="flex flex-col items-center">
                   <button
                     type="button"
+                    [disabled]="!can(PERMISSION.FeesEdit)"
                     (click)="moveFee(i, -1)"
                     [disabled]="first || isReorderingFees()"
                     class="p-0.5 rounded text-[#827565] hover:text-[#0F1F3D] hover:bg-white disabled:opacity-30 disabled:cursor-default cursor-pointer"
@@ -165,6 +171,7 @@
                   </button>
                   <button
                     type="button"
+                    [disabled]="!can(PERMISSION.FeesEdit)"
                     (click)="moveFee(i, 1)"
                     [disabled]="last || isReorderingFees()"
                     class="p-0.5 rounded text-[#827565] hover:text-[#0F1F3D] hover:bg-white disabled:opacity-30 disabled:cursor-default cursor-pointer"
@@ -209,6 +216,7 @@
               <td class="px-3 py-3 rounded-r-xl text-center">
                 <button
                   type="button"
+                  [disabled]="!can(PERMISSION.FeesEdit)"
                   (click)="toggleFeeActive(fee)"
                   [attr.aria-pressed]="fee.active"
                   [title]="fee.active ? 'Clique para desativar' : 'Clique para ativar'"
@@ -224,6 +232,7 @@
               <td class="px-3 py-3 text-center">
                 <button
                   type="button"
+                  [hidden]="!can(PERMISSION.FeesEdit)"
                   (click)="openEditFeeModal(fee)"
                   class="p-1.5 rounded-lg text-[#827565] hover:text-[#0F1F3D] hover:bg-white cursor-pointer"
                   title="Editar todos os dados desta taxa"
@@ -510,7 +519,7 @@
 <!-- Modal de criar/editar funcionário -->
 @if (isEmployeeModalOpen()) {
   <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-[#e4e2df]">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] overflow-y-auto p-6 border border-[#e4e2df]">
       <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#efeeeb]">
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-[22px] text-[#7f5700]">badge</span>
@@ -592,6 +601,50 @@
           </p>
         </div>
 
+        @if (canManagePermissions()) {
+          <div class="flex flex-col gap-2 pt-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-[#4f4537]">Permissões</span>
+              <span class="text-[11px] text-[#827565]">{{ employeeForm.permissions.length }} de {{ permissionCatalog().length }} liberadas</span>
+            </div>
+            <p class="text-[11px] text-[#827565] -mt-1">
+              Marque o que este funcionário pode fazer. Consultar telas é liberado a todos; o dono da empresa sempre tem tudo.
+            </p>
+            <div class="max-h-64 overflow-y-auto rounded-xl border border-[#e4e2df] divide-y divide-[#efeeeb]">
+              @for (group of permissionGroups(); track group.name) {
+                <div class="p-3">
+                  <label class="flex items-center gap-2 text-[13px] font-bold text-[#1b1c1a] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      [checked]="groupSelectedCount(group.items) === group.items.length"
+                      [indeterminate]="groupSelectedCount(group.items) > 0 && groupSelectedCount(group.items) < group.items.length"
+                      (change)="toggleGroup(group.items, $any($event.target).checked)"
+                      [name]="'group-' + group.name"
+                      class="w-4 h-4 rounded border-[#e4e2df] text-[#d8a34a] focus:ring-[#d8a34a]/40 cursor-pointer"
+                    />
+                    {{ group.name }}
+                  </label>
+                  <div class="mt-2 ml-6 flex flex-col gap-1.5">
+                    @for (permission of group.items; track permission.key) {
+                      <label class="flex items-start gap-2 text-sm text-[#1b1c1a] cursor-pointer" [title]="permission.description">
+                        <input
+                          type="checkbox"
+                          [checked]="hasEmployeePermission(permission.key)"
+                          (change)="toggleEmployeePermission(permission.key, $any($event.target).checked)"
+                          [name]="'perm-' + permission.key"
+                          class="mt-0.5 w-4 h-4 rounded border-[#e4e2df] text-[#d8a34a] focus:ring-[#d8a34a]/40 cursor-pointer"
+                        />
+                        <span>{{ permission.label }}</span>
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <p class="text-[11px] text-[#827565]">Somente o dono da empresa define as permissões dos funcionários.</p>
+        }
         <label class="flex items-center gap-2 text-sm text-[#1b1c1a] cursor-pointer">
           <input
             type="checkbox"

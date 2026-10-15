@@ -5,6 +5,7 @@ import { StockBatch, StockMovement } from '../../core/models/models';
 import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from '../../core/utils/date-range';
 import { formatRelativeTimestamp } from '../../core/utils/format-timestamp';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
+import { formatQuantity, formatTotalsByUnit } from '../../core/utils/format-quantity';
 
 @Component({
   selector: 'app-estoque',
@@ -30,7 +31,8 @@ export class Estoque {
 
   protected readonly sortedBatches = computed(() =>
     this.batches()
-      .filter((b) => isWithinDateRange(b.entryDate, this.dateRange()))
+      // Linha "Sem lote" (id = id do produto) não tem data de entrada real: sempre aparece.
+      .filter((b) => b.id === b.productId || isWithinDateRange(b.entryDate, this.dateRange()))
       .sort((a, b) => a.daysRemaining - b.daysRemaining),
   );
 
@@ -42,9 +44,14 @@ export class Estoque {
     () => this.batches().filter((b) => b.status === 'urgente' || b.status === 'vencido').length,
   );
 
-  protected readonly totalKg = computed(() =>
-    this.batches().reduce((sum, b) => sum + b.availableKg, 0),
+  /** Total disponível por unidade (ex.: "42,0 kg • 8 pct"); nunca soma unidades diferentes. */
+  protected readonly totalLabel = computed(() =>
+    formatTotalsByUnit(this.batches().map((b) => ({ value: b.availableKg, unit: b.unit }))),
   );
+
+  protected quantityLabel(value: number, unit: string): string {
+    return formatQuantity(value, unit);
+  }
 
   protected setTab(tab: 'lotes' | 'movimentacoes'): void {
     this.activeTab.set(tab);
@@ -108,9 +115,8 @@ export class Estoque {
     }
   }
 
-  protected amountLabel(amountKg: number): string {
-    const sign = amountKg > 0 ? '+' : '';
-    return `${sign}${amountKg.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg`;
+  protected amountLabel(amount: number, unit: string): string {
+    return formatQuantity(amount, unit, true);
   }
 
   protected amountClasses(amountKg: number): string {

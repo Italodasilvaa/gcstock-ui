@@ -8,6 +8,7 @@ import {
   StockBatch,
 } from '../models/models';
 import { ApiDataService } from './api-data';
+import { formatQuantity } from '../utils/format-quantity';
 
 export type NotificationSeverity = 'critico' | 'atencao';
 
@@ -80,7 +81,7 @@ export class NotificationService {
         severity: days < 0 ? 'critico' : 'atencao',
         icon: days < 0 ? 'dangerous' : 'schedule',
         title: days < 0 ? `Lote vencido: ${batch.productName}` : `Lote vencendo: ${batch.productName}`,
-        description: `Lote ${batch.lotNumber} • ${batch.availableKg} kg • ${dueText(days)}`,
+        description: `Lote ${batch.lotNumber} • ${formatQuantity(batch.availableKg, batch.unit)} • ${dueText(days)}`,
         path: '/estoque',
       });
     }

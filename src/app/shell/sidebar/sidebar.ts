@@ -45,6 +45,7 @@ export class Sidebar {
     { path: '/estoque', label: 'Estoque', icon: 'inventory_2' },
     { path: '/compras', label: 'Compras / Entradas', icon: 'local_shipping' },
     { path: '/vendas', label: 'Nova Venda / PDV', icon: 'point_of_sale' },
+    { path: '/historico-vendas', label: 'Histórico de Vendas', icon: 'receipt_long' },
     {
       path: '/financeiro',
       label: 'Financeiro & DRE',

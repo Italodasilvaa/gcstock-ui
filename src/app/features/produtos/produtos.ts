@@ -3,7 +3,9 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
+import { PERMISSION } from '../../core/models/permissions';
 import { ProductCategory, ProductItem } from '../../core/models/models';
+import { resizeImageToJpeg } from '../../core/utils/image-resize';
 
 interface ProductFormModel {
   id?: string;
@@ -24,7 +26,7 @@ interface ProductFormModel {
   imageUrl: string;
 }
 
-/** Maior lado da foto salva — reduz o tamanho enviado à API sem perder qualidade nos cards. */
+/** Maior lado da foto enviada ao storage — reduz o tamanho sem perder qualidade nos cards. */
 const MAX_IMAGE_SIDE = 800;
 
 function emptyForm(): ProductFormModel {
@@ -55,8 +57,14 @@ function emptyForm(): ProductFormModel {
 export class Produtos {
   private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
+  protected readonly PERMISSION = PERMISSION;
+
+  protected can(permission: string): boolean {
+    return this.appState.can(permission);
+  }
 
   protected readonly products = signal<ProductItem[]>([]);
+  protected readonly isUploadingImage = signal(false);
   protected readonly searchTerm = signal('');
   protected readonly categoryFilter = signal('todas');
 
@@ -129,12 +137,14 @@ export class Produtos {
   }
 
   protected openNewProductModal(): void {
+    if (!this.appState.requirePermission(PERMISSION.ProductsCreate)) return;
     this.isEditing.set(false);
     this.form = emptyForm();
     this.isModalOpen.set(true);
   }
 
   protected openEditProductModal(product: ProductItem): void {
+    if (!this.appState.requirePermission(PERMISSION.ProductsEdit)) return;
     this.isEditing.set(true);
     this.form = {
       id: product.id,
@@ -157,7 +167,8 @@ export class Produtos {
     this.isModalOpen.set(true);
   }
 
-  protected onImageFileSelected(event: Event): void {
+  /** Reduz a foto no navegador e envia ao storage (R2) pela API; o formulário guarda só a URL pública. */
+  protected async onImageFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
@@ -168,21 +179,23 @@ export class Produtos {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        this.form.imageUrl = canvas.toDataURL('image/jpeg', 0.85);
-      };
-      img.onerror = () => this.appState.triggerToast('Não foi possível ler essa imagem.');
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+    this.isUploadingImage.set(true);
+    try {
+      const resized = await resizeImageToJpeg(file, MAX_IMAGE_SIDE);
+      this.api.uploadFile(resized, 'produtos').subscribe({
+        next: (uploaded) => {
+          this.form.imageUrl = uploaded.url;
+          this.isUploadingImage.set(false);
+        },
+        error: () => {
+          this.isUploadingImage.set(false);
+          this.appState.triggerToast('Não foi possível enviar a imagem. Tente novamente.');
+        },
+      });
+    } catch {
+      this.isUploadingImage.set(false);
+      this.appState.triggerToast('Não foi possível ler essa imagem.');
+    }
   }
 
   protected closeModal(): void {
@@ -217,6 +230,10 @@ export class Produtos {
   }
 
   protected saveProduct(): void {
+    if (this.isUploadingImage()) {
+      this.appState.triggerToast('Aguarde o envio da imagem terminar.');
+      return;
+    }
     if (!this.form.name.trim() || !this.form.sku.trim()) {
       this.appState.triggerToast('Informe nome e SKU do produto antes de salvar.');
       return;
@@ -259,6 +276,7 @@ export class Produtos {
   }
 
   protected removeProduct(product: ProductItem): void {
+    if (!this.appState.requirePermission(PERMISSION.ProductsDelete)) return;
     const confirmed = confirm(`Excluir o produto "${product.name}"? Esta ação não pode ser desfeita.`);
     if (!confirmed) return;
 

@@ -56,6 +56,7 @@
           }
           <button
             type="button"
+            [hidden]="!canManageCategories()"
             (click)="openCategoryEditor()"
             title="Editar categorias: ordem, nome e ícone"
             class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border border-dashed border-[#d8a34a] text-[#a07a2f] hover:bg-[#d8a34a]/10 cursor-pointer"
@@ -140,9 +141,34 @@
             <div class="flex-1 min-w-0">
               <p class="text-[13px] font-semibold text-[#1b1c1a] leading-tight truncate">{{ item.name }}</p>
               <p class="text-[11px] text-[#827565] truncate">{{ item.description }}</p>
-              <p class="text-[12px] font-semibold text-[#0F1F3D] mt-1">
-                {{ formatCurrency(item.price) }} <span class="text-[#827565] font-normal">/{{ item.unit }}</span>
-              </p>
+              @if (canEditPrice()) {
+                <div class="flex items-center gap-1 mt-1">
+                  <span class="text-[11px] text-[#827565]">R$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    [ngModel]="item.price"
+                    (ngModelChange)="setItemPrice(item, $event)"
+                    [name]="'price-' + item.id"
+                    title="Preço unitário desta venda (não altera o cadastro do produto)"
+                    class="w-20 px-1.5 py-0.5 text-[12px] font-semibold text-[#0F1F3D] rounded-md border focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                    [class]="isPriceEdited(item) ? 'border-[#d8a34a] bg-[#fff8e8]' : 'border-[#e4e2df]'"
+                  />
+                  <span class="text-[11px] text-[#827565]">/{{ item.unit }}</span>
+                </div>
+                @if (isPriceEdited(item)) {
+                  <p class="text-[10px] text-[#7f5700] mt-0.5">
+                    Preço alterado (cadastro: {{ formatCurrency(item.catalogPrice) }})
+                    <button type="button" (click)="resetItemPrice(item)" class="underline font-semibold cursor-pointer">restaurar</button>
+                  </p>
+                }
+              } @else {
+                <p class="text-[12px] font-semibold text-[#0F1F3D] mt-1">
+                  {{ formatCurrency(item.price) }} <span class="text-[#827565] font-normal">/{{ item.unit }}</span>
+                </p>
+              }
             </div>
 
             <div class="flex flex-col items-end gap-1.5 shrink-0">

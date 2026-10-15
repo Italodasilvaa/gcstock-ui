@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
+import { PERMISSION } from '../../core/models/permissions';
 import { AccountsPayableTitle, Employee } from '../../core/models/models';
 import { DateRange, emptyDateRange, isWithinDateRange } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
@@ -53,6 +54,11 @@ function monthKeyFromIsoDate(isoDate: string): string | null {
 export class GestaoEmpresa {
   private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
+  protected readonly PERMISSION = PERMISSION;
+
+  protected can(permission: string): boolean {
+    return this.appState.can(permission);
+  }
   private readonly router = inject(Router);
 
   protected readonly payables = signal<AccountsPayableTitle[]>([]);
@@ -166,6 +172,7 @@ export class GestaoEmpresa {
   protected readonly categoriesByKind = CATEGORIES_BY_KIND;
 
   protected openNewExpenseModal(): void {
+    if (!this.appState.requirePermission(PERMISSION.PayablesCreate)) return;
     this.form = emptyExpenseForm();
     this.isModalOpen.set(true);
   }
@@ -219,6 +226,7 @@ export class GestaoEmpresa {
   }
 
   protected settleExpense(item: AccountsPayableTitle): void {
+    if (!this.appState.requirePermission(PERMISSION.PayablesSettle)) return;
     this.api.settlePayable(item.id, 'Conta Padrão', 'Manual').subscribe({
       next: (updated) => {
         if (!updated) {

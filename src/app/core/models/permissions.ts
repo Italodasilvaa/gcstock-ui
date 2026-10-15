@@ -1,0 +1,44 @@
+/**
+ * Chaves de permissão (iguais às do catálogo da API, GET /permissoes). O dono da empresa possui todas.
+ * Consultar dados é liberado a qualquer usuário; as permissões cobrem criar, editar e excluir em cada tela.
+ */
+export const PERMISSION = {
+  // Produtos
+  ProductsCreate: 'produtos.criar',
+  ProductsEdit: 'produtos.editar',
+  ProductsDelete: 'produtos.excluir',
+  // Categorias de produto
+  CategoriesCreate: 'categorias.criar',
+  CategoriesEdit: 'categorias.editar',
+  CategoriesDelete: 'categorias.excluir',
+  // Kits de churrasco
+  KitsCreate: 'kits.criar',
+  KitsEdit: 'kits.editar',
+  KitsDelete: 'kits.excluir',
+  // Compras
+  PurchasesCreate: 'compras.criar',
+  PurchasesEdit: 'compras.editar',
+  // Vendas (PDV)
+  SalesCreate: 'vendas.criar',
+  /** Alterar o preço de um item no carrinho do PDV. */
+  SalesEditPrice: 'vendas.alterar-preco',
+  /** Cancelar (estornar) vendas já finalizadas. */
+  SalesCancel: 'vendas.cancelar',
+  // Clientes
+  ClientsCreate: 'clientes.criar',
+  ClientsEdit: 'clientes.editar',
+  // Funcionários (a atribuição de permissões é exclusiva do dono)
+  EmployeesCreate: 'funcionarios.criar',
+  EmployeesEdit: 'funcionarios.editar',
+  EmployeesDelete: 'funcionarios.excluir',
+  // Financeiro
+  PayablesCreate: 'contas-pagar.criar',
+  PayablesSettle: 'contas-pagar.baixar',
+  ReceivablesCreate: 'contas-receber.criar',
+  ReceivablesSettle: 'contas-receber.liquidar',
+  CardsAnticipate: 'cartoes.antecipar',
+  // Configurações
+  FeesCreate: 'taxas.criar',
+  FeesEdit: 'taxas.editar',
+  AlertsEdit: 'alertas.editar',
+} as const;

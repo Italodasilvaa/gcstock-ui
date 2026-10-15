@@ -37,9 +37,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/vendas-pdv/vendas-pdv').then((m) => m.VendasPdv),
       },
       {
+        path: 'historico-vendas',
+        loadComponent: () => import('./features/historico-vendas/historico-vendas').then((m) => m.HistoricoVendas),
+      },
+      {
         path: 'financeiro',
         loadComponent: () => import('./features/financeiro/financeiro').then((m) => m.Financeiro),
-        data: { initialTab: 'dre' },
+        data: { initialTab: 'resultado' },
       },
       {
         path: 'contas-pagar',

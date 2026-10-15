@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { ApiDataService } from '../../core/services/api-data';
 import { CartBridgeService } from '../../core/services/cart-bridge';
 import { AppStateService } from '../../core/services/app-state';
+import { PERMISSION } from '../../core/models/permissions';
 import { IconPicker } from '../../shared/icon-picker/icon-picker';
 import {
   BarbecueKit,
@@ -29,6 +30,8 @@ interface CatalogEntry {
   imageUrl: string;
   category: string;
   stockLabel: string;
+  /** Saldo disponível (produto: estoque; kit: kits disponíveis). A venda não pode passar disso. */
+  stock: number;
 }
 
 interface PaymentOption {
@@ -99,6 +102,11 @@ export class VendasPdv implements OnInit {
   private readonly api = inject(ApiDataService);
   private readonly cartBridge = inject(CartBridgeService);
   private readonly appState = inject(AppStateService);
+  protected readonly PERMISSION = PERMISSION;
+
+  protected can(permission: string): boolean {
+    return this.appState.can(permission);
+  }
 
   protected readonly paymentOptions = signal<PaymentOption[]>([]);
 
@@ -142,6 +150,7 @@ export class VendasPdv implements OnInit {
       imageUrl: kit.imageUrl,
       category: 'Kit de Churrasco',
       stockLabel: `${kit.stockAvailable} kits disponíveis`,
+      stock: kit.stockAvailable,
     }));
 
     const productEntries: CatalogEntry[] = this.products().map((product) => ({
@@ -154,6 +163,7 @@ export class VendasPdv implements OnInit {
       imageUrl: product.imageUrl,
       category: product.category,
       stockLabel: `${product.stock} ${product.unit} em estoque`,
+      stock: product.stock,
     }));
 
     return [...kitEntries, ...productEntries];
@@ -225,6 +235,7 @@ export class VendasPdv implements OnInit {
           kind: 'kit',
           name: pendingKit.name,
           price: pendingKit.suggestedPrice,
+          catalogPrice: pendingKit.suggestedPrice,
           unit: 'combo',
           description: pendingKit.serveLabel,
           quantity: 1,
@@ -260,7 +271,15 @@ export class VendasPdv implements OnInit {
   // Editor de categorias (ordem, nome e ícone)
   // ---------------------------------------------------------------------
 
+  protected canManageCategories(): boolean {
+    return this.appState.canAny(PERMISSION.CategoriesCreate, PERMISSION.CategoriesEdit, PERMISSION.CategoriesDelete);
+  }
+
   protected openCategoryEditor(): void {
+    if (!this.canManageCategories()) {
+      this.appState.triggerToast('Você não tem permissão para gerenciar categorias.');
+      return;
+    }
     this.deletedCategoryIds = [];
     this.categoryDrafts.set(
       this.productCategories().map((c) => ({
@@ -361,9 +380,48 @@ export class VendasPdv implements OnInit {
     return unit === 'kg' ? 0.5 : 1;
   }
 
+  /** O saldo cobre essa quantidade? Se não, avisa e bloqueia (a API também recusa vendas acima do estoque). */
+  private hasStockFor(id: string, name: string, unit: string, quantity: number): boolean {
+    const entry = this.catalog().find((e) => e.id === id);
+    if (!entry) return true;
+    if (quantity - entry.stock > 0.0001) {
+      const available = Math.max(0, entry.stock);
+      this.appState.triggerToast(
+        available === 0
+          ? `"${name}" está sem estoque.`
+          : `Estoque insuficiente: "${name}" tem apenas ${available} ${entry.kind === 'kit' ? 'kit(s)' : unit} disponível(is).`,
+      );
+      return false;
+    }
+    return true;
+  }
+
+  /** Alterar o preço de um item na venda exige a permissão "vendas.alterar-preco" (o dono sempre tem). */
+  protected canEditPrice(): boolean {
+    return this.appState.can(PERMISSION.SalesEditPrice);
+  }
+
+  protected isPriceEdited(item: CartItem): boolean {
+    return Math.abs(item.price - item.catalogPrice) > 0.004;
+  }
+
+  /** Muda o preço unitário de um item no carrinho (só nesta venda; o cadastro do produto não é alterado). */
+  protected setItemPrice(item: CartItem, value: number | string | null): void {
+    if (!this.appState.requirePermission(PERMISSION.SalesEditPrice)) return;
+    const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? '').replace(',', '.'));
+    const price = Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) / 100 : 0;
+    this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, price } : i)));
+  }
+
+  protected resetItemPrice(item: CartItem): void {
+    this.setItemPrice(item, item.catalogPrice);
+  }
+
   protected addToCart(entry: CatalogEntry): void {
     const step = this.quantityStep(entry.unit);
     const existing = this.cart().find((item) => item.id === entry.id);
+
+    if (!this.hasStockFor(entry.id, entry.name, entry.unit, (existing?.quantity ?? 0) + step)) return;
 
     if (existing) {
       this.cart.set(
@@ -379,6 +437,7 @@ export class VendasPdv implements OnInit {
         kind: entry.kind,
         name: entry.name,
         price: entry.price,
+        catalogPrice: entry.price,
         unit: entry.unit,
         description: entry.description,
         quantity: step,
@@ -388,6 +447,7 @@ export class VendasPdv implements OnInit {
 
   protected incrementQuantity(item: CartItem): void {
     const step = this.quantityStep(item.unit);
+    if (!this.hasStockFor(item.id, item.name, item.unit, item.quantity + step)) return;
     this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + step } : i)));
   }
 
@@ -444,6 +504,7 @@ export class VendasPdv implements OnInit {
   }
 
   protected finalizeSale(): void {
+    if (!this.appState.requirePermission(PERMISSION.SalesCreate)) return;
     if (this.cart().length === 0) {
       this.appState.triggerToast('Adicione ao menos um item ao carrinho antes de finalizar.');
       return;
@@ -514,7 +575,10 @@ export class VendasPdv implements OnInit {
           this.clearCart();
           this.appState.triggerToast(`Venda ${result.saleId} finalizada com sucesso!`);
         },
-        error: () => this.appState.triggerToast('Não foi possível finalizar a venda. Tente novamente.'),
+        error: (err: HttpErrorResponse) => {
+          if (err.status === 403) return; // o interceptor já avisa que falta permissão
+          this.appState.triggerToast(err.error?.message ?? 'Não foi possível finalizar a venda. Tente novamente.');
+        },
       });
   }
 

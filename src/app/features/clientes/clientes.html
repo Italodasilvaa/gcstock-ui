@@ -8,6 +8,7 @@
       </p>
     </div>
     <button
+      [hidden]="!can(PERMISSION.ClientsCreate)"
       (click)="openNewClientModal()"
       class="flex items-center gap-2 bg-[#d8a34a] hover:bg-[#c8933d] text-[#1b1c1a] font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-colors cursor-pointer shrink-0"
     >
@@ -92,6 +93,7 @@
                 </td>
                 <td class="px-4 py-3 text-right">
                   <button
+                    [hidden]="!can(PERMISSION.ClientsEdit)"
                     (click)="openEditClientModal(client)"
                     class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
                   >

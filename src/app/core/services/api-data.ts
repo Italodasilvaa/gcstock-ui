@@ -8,19 +8,25 @@ import {
   AuditLogEntry,
   AuthSession,
   BarbecueKit,
+  CancelSaleResult,
+  FinancialSummary,
   CardSettlementTitle,
   Client,
   CompanyTenant,
   Employee,
   GlobalAlertSetting,
   PaymentFeeSetting,
+  PermissionInfo,
   ProductCategory,
   ProductItem,
   PurchaseEntry,
+  SavePurchasePayload,
+  SaleHistory,
   SaleRecord,
   StockBatch,
   StockMovement,
   TenantBranch,
+  UploadedFile,
 } from '../models/models';
 import { TokenStorageService } from './token-storage';
 
@@ -122,6 +128,22 @@ export class ApiDataService {
       .pipe(catchError(() => of(null)));
   }
 
+  /** Catálogo de permissões que podem ser atribuídas a funcionários. */
+  getPermissions(): Observable<PermissionInfo[]> {
+    return this.http.get<PermissionInfo[]>(`${BASE}/permissoes`);
+  }
+
+  // ---------------------------------------------------------------------
+  // Arquivos (Cloudflare R2)
+  // ---------------------------------------------------------------------
+
+  /** Envia um arquivo ao storage pela API e devolve a URL pública. `folder` agrupa por tipo (ex.: "produtos", "kits"). */
+  uploadFile(file: File, folder: string): Observable<UploadedFile> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return this.http.post<UploadedFile>(`${BASE}/arquivos`, body, { params: { pasta: folder } });
+  }
+
   // ---------------------------------------------------------------------
   // Produtos & Kits
   // ---------------------------------------------------------------------
@@ -195,11 +217,11 @@ export class ApiDataService {
     return this.http.get<PurchaseEntry[]>(`${BASE}/compras`);
   }
 
-  savePurchase(purchase: Partial<PurchaseEntry>): Observable<PurchaseEntry> {
+  savePurchase(purchase: SavePurchasePayload): Observable<PurchaseEntry> {
     return this.http.post<PurchaseEntry>(`${BASE}/compras/entrada`, purchase);
   }
 
-  updatePurchase(id: string, purchase: Partial<PurchaseEntry>): Observable<PurchaseEntry> {
+  updatePurchase(id: string, purchase: SavePurchasePayload): Observable<PurchaseEntry> {
     return this.http.put<PurchaseEntry>(`${BASE}/compras/${id}`, purchase);
   }
 
@@ -241,6 +263,24 @@ export class ApiDataService {
 
   anticipateCardTitle(id: string): Observable<void> {
     return this.http.post<void>(`${BASE}/financeiro/liquidacoes-cartao/${id}/antecipar`, {});
+  }
+
+  /** Situação financeira do período (entradas, vendas, custo, lucro, despesas). Sem datas: mês atual. */
+  getFinancialSummary(from?: string, to?: string): Observable<FinancialSummary> {
+    const params: Record<string, string> = {};
+    if (from) params['de'] = from;
+    if (to) params['ate'] = to;
+    return this.http.get<FinancialSummary>(`${BASE}/financeiro/resultado`, { params });
+  }
+
+  /** Histórico de vendas do PDV com itens e preços (inclui canceladas). */
+  getSalesHistory(): Observable<SaleHistory[]> {
+    return this.http.get<SaleHistory[]>(`${BASE}/vendas`);
+  }
+
+  /** Cancela (estorna) uma venda: devolve o estoque e remove o título a receber. */
+  cancelSale(saleId: string, reason: string): Observable<CancelSaleResult> {
+    return this.http.post<CancelSaleResult>(`${BASE}/vendas/${saleId}/cancelar`, { reason });
   }
 
   getSales(): Observable<SaleRecord[]> {

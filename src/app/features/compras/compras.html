@@ -15,6 +15,7 @@
 
     <button
       type="button"
+      [hidden]="!can(PERMISSION.PurchasesCreate)"
       (click)="openNewEntryModal()"
       class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-sm font-bold rounded-lg cursor-pointer transition-colors shadow-xs shrink-0"
     >
@@ -106,10 +107,10 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 text-right">
-                  @if (isLocked(purchase)) {
+                  @if (!canEditPurchases()) {
                     <span
                       class="inline-flex p-1.5 text-[#a19b8f] cursor-not-allowed"
-                      title="Compra paga — não pode mais ser alterada"
+                      title="Sem permissão para editar pedidos de compra"
                     >
                       <span class="material-symbols-outlined text-[18px]">lock</span>
                     </span>
@@ -210,10 +211,10 @@
             </div>
 
             <div class="flex justify-end mt-1">
-              @if (isLocked(purchase)) {
-                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#a19b8f]">
+              @if (!canEditPurchases()) {
+                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#a19b8f]" title="Sem permissão para editar pedidos de compra">
                   <span class="material-symbols-outlined text-[14px]">lock</span>
-                  Paga — bloqueada
+                  Sem permissão
                 </span>
               } @else {
                 <button

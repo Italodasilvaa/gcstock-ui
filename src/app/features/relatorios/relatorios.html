@@ -97,7 +97,7 @@
                 </span>
                 {{ item.label }}
               </span>
-              <span class="text-[#827565] shrink-0">{{ item.count }} mov. • {{ formatKg(item.totalKg) }}</span>
+              <span class="text-[#827565] shrink-0">{{ item.count }} mov. • {{ item.quantityLabel }}</span>
             </div>
             <div class="h-2 rounded-full bg-[#f5f3f0] overflow-hidden">
               <div class="h-full rounded-full" [class]="movementBarClasses(item.type)" [style.width.%]="item.percent"></div>

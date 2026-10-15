@@ -9,6 +9,7 @@ import {
 } from '../../core/models/models';
 import { DateRange, emptyDateRange, isWithinDateRange } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
+import { formatTotalsByUnit } from '../../core/utils/format-quantity';
 
 interface CategorySummary {
   category: string;
@@ -30,7 +31,8 @@ interface MovementSummary {
   label: string;
   icon: string;
   count: number;
-  totalKg: number;
+  /** Quantidade movimentada por unidade (ex.: "12,5 kg • 8 pct"). */
+  quantityLabel: string;
   percent: number;
 }
 
@@ -134,17 +136,18 @@ export class Relatorios {
     const types: StockMovement['type'][] = ['entrada', 'baixa_pdv', 'perda_quebra'];
     const raw = types.map((type) => {
       const items = this.periodMovements().filter((m) => m.type === type);
-      const totalKg = items.reduce((sum, m) => sum + Math.abs(m.amountKg), 0);
+      const quantityLabel = formatTotalsByUnit(items.map((m) => ({ value: Math.abs(m.amountKg), unit: m.unit })));
       return {
         type,
         label: this.movementTypeLabel(type),
         icon: this.movementTypeIcon(type),
         count: items.length,
-        totalKg,
+        quantityLabel,
       };
     });
-    const maxKg = Math.max(1, ...raw.map((r) => r.totalKg));
-    return raw.map((r) => ({ ...r, percent: (r.totalKg / maxKg) * 100 }));
+    // A barra compara o número de movimentações (quantidades de unidades diferentes não se comparam).
+    const maxCount = Math.max(1, ...raw.map((r) => r.count));
+    return raw.map((r) => ({ ...r, percent: (r.count / maxCount) * 100 }));
   });
 
   // Kits mais rentáveis (maior margem primeiro)

@@ -88,6 +88,8 @@ export interface StockBatch {
   fiscalDoc: string;
   supplier: string;
   status: 'urgente' | 'regular' | 'novo' | 'vencido';
+  /** Unidade do produto (kg, pct, un...); availableKg está nessa unidade. */
+  unit: string;
 }
 
 export interface StockMovement {
@@ -96,7 +98,9 @@ export interface StockMovement {
   type: 'entrada' | 'baixa_pdv' | 'perda_quebra';
   title: string;
   docInfo: string;
+  /** Quantidade na unidade em `unit` (o nome é histórico). Negativo = saída. */
   amountKg: number;
+  unit: string;
   description: string;
   badgeLabel: string;
   auditLink: string;
@@ -138,6 +142,11 @@ export interface PurchaseEntry {
   paymentMode: 'pix' | 'dinheiro' | 'cartao' | 'a_prazo';
   items: PurchaseItem[];
 }
+
+/** Corpo de POST/PUT de compras: igual a PurchaseEntry, mas os itens não levam `id` (gerado pela API). */
+export type SavePurchasePayload = Omit<Partial<PurchaseEntry>, 'items'> & {
+  items: Omit<PurchaseItem, 'id'>[];
+};
 
 export interface AccountsPayableTitle {
   id: string;
@@ -200,10 +209,111 @@ export interface CartItem {
   id: string;
   kind: 'produto' | 'kit';
   name: string;
+  /** Preço unitário cobrado nesta venda (pode ser alterado na tela por quem tem permissão). */
   price: number;
+  /** Preço do cadastro (produto: preço de venda; kit: preço sugerido), para destacar quando foi alterado. */
+  catalogPrice: number;
   unit: string;
   description: string;
   quantity: number;
+}
+
+/** Item de uma venda do PDV. priceKnown=false em vendas antigas (preço por item não foi guardado). */
+export interface SaleHistoryItem {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+  subtotal: number;
+  priceKnown: boolean;
+  /** Custo médio unitário do estoque no momento da venda. */
+  unitCost: number;
+  totalCost: number;
+  /** true em vendas antigas: custo estimado pelo custo médio atual do produto. */
+  costEstimated: boolean;
+}
+
+/** Venda do PDV no histórico (inclui as canceladas). */
+export interface SaleHistory {
+  id: string;
+  saleId: string;
+  receiptNumber: string;
+  timestamp: string;
+  total: number;
+  netAmount: number;
+  feeAmount: number;
+  discountAmount: number;
+  paymentMode: string;
+  cardFlag?: string | null;
+  clientName?: string | null;
+  soldBy: string;
+  status: 'concluida' | 'cancelada';
+  canceledAt?: string | null;
+  canceledBy?: string | null;
+  cancelReason?: string | null;
+  /** Custo das mercadorias vendidas. */
+  costTotal: number;
+  /** Lucro bruto da venda: líquido recebido − custo. */
+  profit: number;
+  items: SaleHistoryItem[];
+}
+
+export interface SupplierSpend {
+  supplier: string;
+  orders: number;
+  amount: number;
+}
+
+export interface ProductProfit {
+  name: string;
+  unit: string;
+  qty: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  marginPercent: number;
+  hasEstimatedCost: boolean;
+}
+
+export interface ExpenseCategory {
+  category: string;
+  amount: number;
+}
+
+/** Situação financeira de um período: entradas (compras), vendas, custo, lucro, despesas e resultado. */
+export interface FinancialSummary {
+  from: string;
+  to: string;
+  purchaseCount: number;
+  purchasesTotal: number;
+  purchasesPaid: number;
+  purchasesPending: number;
+  purchasesShipping: number;
+  topSuppliers: SupplierSpend[];
+  salesCount: number;
+  canceledSalesCount: number;
+  grossRevenue: number;
+  discounts: number;
+  fees: number;
+  netRevenue: number;
+  costOfGoodsSold: number;
+  grossProfit: number;
+  grossMarginPercent: number;
+  operatingExpenses: number;
+  payroll: number;
+  netResult: number;
+  capitalExpenses: number;
+  expenses: ExpenseCategory[];
+  stockValue: number;
+  productProfits: ProductProfit[];
+  estimatedCostItems: number;
+}
+
+export interface CancelSaleResult {
+  sale: SaleHistory;
+  /** Aviso quando algo não pôde ser desfeito (ex.: item antigo sem vínculo com o cadastro). */
+  notice?: string | null;
 }
 
 export interface TenantBranch {
@@ -290,6 +400,8 @@ export interface AuthSession {
     email: string;
     role: 'admin' | 'gerente' | 'operador';
     employeeId?: string;
+    /** Permissões do usuário (dono: todas). Use AppStateService.can(). */
+    permissions: string[];
   };
   company: CompanyTenant;
   token: string;
@@ -307,6 +419,17 @@ export interface Employee {
   createdAt: string;
   /** Salário mensal — somado automaticamente ao fechamento mensal (Financeiro &amp; DRE &gt; Visão Mensal). */
   salary: number;
+  /** Permissões granulares do funcionário (ver PERMISSION). Só o dono as define. */
+  permissions: string[];
+}
+
+/** Permissão configurável por funcionário, vinda do catálogo da API. */
+export interface PermissionInfo {
+  key: string;
+  label: string;
+  description: string;
+  /** Tela/módulo a que a permissão pertence (agrupa a lista no cadastro de funcionários). */
+  group: string;
 }
 
 export interface AuditLogEntry {
@@ -332,4 +455,12 @@ export interface SaleRecord {
   paymentMode: string;
   clientName?: string;
   soldBy: string;
+}
+
+/** Arquivo enviado ao storage (Cloudflare R2) via POST /arquivos. `url` é a URL pública para gravar em imageUrl etc. */
+export interface UploadedFile {
+  key: string;
+  url: string;
+  contentType: string;
+  size: number;
 }

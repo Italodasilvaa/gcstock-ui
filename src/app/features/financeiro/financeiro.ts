@@ -1,21 +1,32 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
+import { PERMISSION } from '../../core/models/permissions';
 import {
   AccountsPayableTitle,
   AccountsReceivableTitle,
   CardSettlementTitle,
   Employee,
+  FinancialSummary,
   PurchaseEntry,
   SaleRecord,
 } from '../../core/models/models';
 import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
+import { formatQuantity } from '../../core/utils/format-quantity';
 
-type FinanceiroTab = 'dre' | 'pagar' | 'receber' | 'cartoes' | 'mensal';
+type FinanceiroTab = 'resultado' | 'dre' | 'pagar' | 'receber' | 'cartoes' | 'mensal';
+
+/** Primeiro e último dia do mês atual (data local), no formato yyyy-MM-dd. */
+function currentMonthRange(): DateRange {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return { from: `${now.getFullYear()}-${month}-01`, to: `${now.getFullYear()}-${month}-${String(lastDay).padStart(2, '0')}` };
+}
 
 interface MonthlyBreakdownRow {
   monthKey: string;
@@ -104,8 +115,23 @@ export class Financeiro implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
+  protected readonly PERMISSION = PERMISSION;
 
-  protected readonly activeTab = signal<FinanceiroTab>('dre');
+  protected can(permission: string): boolean {
+    return this.appState.can(permission);
+  }
+
+  protected readonly activeTab = signal<FinanceiroTab>('resultado');
+
+  // ---- Resultado (DRE): o que foi gasto em entradas, vendido, o custo e o lucro do período
+  protected readonly resultRange = signal<DateRange>(currentMonthRange());
+  protected readonly summary = signal<FinancialSummary | null>(null);
+  protected readonly isLoadingSummary = signal(false);
+  protected readonly isCurrentMonthRange = computed(() => {
+    const current = currentMonthRange();
+    const range = this.resultRange();
+    return range.from === current.from && range.to === current.to;
+  });
 
   protected readonly payables = signal<AccountsPayableTitle[]>([]);
   protected readonly receivables = signal<AccountsReceivableTitle[]>([]);
@@ -157,6 +183,8 @@ export class Financeiro implements OnInit {
   });
 
   constructor() {
+    // Recarrega o resumo sempre que o período muda.
+    effect(() => this.loadSummary(this.resultRange()));
     this.refreshPayables();
     this.refreshReceivables();
     this.refreshCardSettlements();
@@ -302,6 +330,50 @@ export class Financeiro implements OnInit {
     this.api.getCardSettlements().subscribe((list) => this.cardSettlements.set(list));
   }
 
+  private loadSummary(range: DateRange): void {
+    this.isLoadingSummary.set(true);
+    this.api.getFinancialSummary(range.from || undefined, range.to || undefined).subscribe({
+      next: (summary) => {
+        this.summary.set(summary);
+        this.isLoadingSummary.set(false);
+      },
+      error: () => {
+        this.isLoadingSummary.set(false);
+        this.appState.triggerToast('Não foi possível carregar o resultado financeiro.');
+      },
+    });
+  }
+
+  protected resetResultRange(): void {
+    this.resultRange.set(currentMonthRange());
+  }
+
+  protected formatPercent(value: number): string {
+    return `${(value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  }
+
+  protected formatDay(iso: string): string {
+    const [year, month, day] = iso.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  protected quantityLabel(value: number, unit: string): string {
+    return formatQuantity(value, unit);
+  }
+
+  protected expenseLabel(category: string): string {
+    switch (category) {
+      case 'outros':
+        return 'Despesas operacionais';
+      case 'equipamento':
+        return 'Equipamentos';
+      case 'investimento':
+        return 'Investimentos';
+      default:
+        return category;
+    }
+  }
+
   protected setTab(tab: FinanceiroTab): void {
     this.activeTab.set(tab);
   }
@@ -358,6 +430,7 @@ export class Financeiro implements OnInit {
   }
 
   protected settlePayable(item: AccountsPayableTitle): void {
+    if (!this.appState.requirePermission(PERMISSION.PayablesSettle)) return;
     this.api.settlePayable(item.id, 'Conta Padrão', 'Manual').subscribe({
       next: (updated) => {
         if (!updated) {
@@ -372,6 +445,7 @@ export class Financeiro implements OnInit {
   }
 
   protected openNewPayableModal(): void {
+    if (!this.appState.requirePermission(PERMISSION.PayablesCreate)) return;
     this.payableForm = emptyPayableForm();
     this.isPayableModalOpen.set(true);
   }
@@ -443,6 +517,7 @@ export class Financeiro implements OnInit {
   }
 
   protected settleReceivable(item: AccountsReceivableTitle): void {
+    if (!this.appState.requirePermission(PERMISSION.ReceivablesSettle)) return;
     this.api.settleReceivable(item.id).subscribe({
       next: (updated) => {
         if (!updated) {
@@ -457,6 +532,7 @@ export class Financeiro implements OnInit {
   }
 
   protected openNewReceivableModal(): void {
+    if (!this.appState.requirePermission(PERMISSION.ReceivablesCreate)) return;
     this.receivableForm = emptyReceivableForm();
     this.isReceivableModalOpen.set(true);
   }
@@ -521,6 +597,7 @@ export class Financeiro implements OnInit {
   }
 
   protected anticipateCard(item: CardSettlementTitle): void {
+    if (!this.appState.requirePermission(PERMISSION.CardsAnticipate)) return;
     this.api.anticipateCardTitle(item.id).subscribe({
       next: () => {
         this.refreshCardSettlements();

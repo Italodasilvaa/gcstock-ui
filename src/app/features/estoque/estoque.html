@@ -23,7 +23,7 @@
         <span class="material-symbols-outlined text-[#d8a34a] text-[20px]">scale</span>
         <div class="flex flex-col leading-tight">
           <span class="text-[11px] text-[#827565]">Total disponível</span>
-          <span class="text-sm font-bold text-[#1b1c1a]">{{ totalKg().toFixed(1) }} kg</span>
+          <span class="text-sm font-bold text-[#1b1c1a]">{{ totalLabel() }}</span>
         </div>
       </div>
     </div>
@@ -109,7 +109,7 @@
                   </div>
                 </td>
                 <td class="px-3 py-3 text-[#4f4537] font-medium">{{ batch.lotNumber }}</td>
-                <td class="px-3 py-3 text-[#1b1c1a] font-semibold">{{ batch.availableKg.toFixed(1) }} kg</td>
+                <td class="px-3 py-3 text-[#1b1c1a] font-semibold">{{ quantityLabel(batch.availableKg, batch.unit) }}</td>
                 <td class="px-3 py-3 text-[#4f4537]">{{ batch.entryDate | date:'dd/MM/yyyy' }}</td>
                 <td class="px-3 py-3 text-[#4f4537]">{{ batch.expiryDate | date:'dd/MM/yyyy' }}</td>
                 <td class="px-3 py-3">
@@ -172,7 +172,7 @@
                   <span class="text-[11px] text-[#827565]">{{ movement.docInfo }} • {{ timestampLabel(movement.timestamp) }}</span>
                 </div>
                 <span class="text-sm font-bold" [class]="amountClasses(movement.amountKg)">
-                  {{ amountLabel(movement.amountKg) }}
+                  {{ amountLabel(movement.amountKg, movement.unit) }}
                 </span>
               </div>
 

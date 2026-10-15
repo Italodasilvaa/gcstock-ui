@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiDataService } from '../../core/services/api-data';
+import { PERMISSION } from '../../core/models/permissions';
 import { AppStateService } from '../../core/services/app-state';
 import { ProductItem, PurchaseEntry } from '../../core/models/models';
 import { DateRange, emptyDateRange, isWithinDateRange } from '../../core/utils/date-range';
@@ -88,6 +89,11 @@ function emptyItemRow(): PurchaseFormItemRow {
 export class Compras {
   private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
+  protected readonly PERMISSION = PERMISSION;
+
+  protected can(permission: string): boolean {
+    return this.appState.can(permission);
+  }
 
   protected readonly purchases = signal<PurchaseEntry[]>([]);
   protected readonly products = signal<ProductItem[]>([]);
@@ -166,6 +172,7 @@ export class Compras {
   }
 
   protected openNewEntryModal(): void {
+    if (!this.appState.requirePermission(PERMISSION.PurchasesCreate)) return;
     this.isEditing.set(false);
     this.editingPurchaseId = null;
     this.form = emptyForm();
@@ -173,14 +180,14 @@ export class Compras {
     this.isModalOpen.set(true);
   }
 
-  /** Compra paga é definitiva: não pode mais ser editada (o backend também recusa). */
-  protected isLocked(purchase: PurchaseEntry): boolean {
-    return purchase.paymentStatus === 'pago';
+  /** Editar pedido de compra exige a permissão "compras.editar" (o dono sempre tem). Compras pagas também podem ser editadas. */
+  protected canEditPurchases(): boolean {
+    return this.appState.can(PERMISSION.PurchasesEdit);
   }
 
   protected openEditEntryModal(purchase: PurchaseEntry): void {
-    if (this.isLocked(purchase)) {
-      this.appState.triggerToast('Esta compra já está paga e não pode mais ser alterada.');
+    if (!this.canEditPurchases()) {
+      this.appState.triggerToast('Você não tem permissão para editar pedidos de compra.');
       return;
     }
     this.isEditing.set(true);
@@ -353,7 +360,8 @@ export class Compras {
       paymentCondition: this.form.paymentCondition,
       paymentMode: this.form.paymentMode,
       items: validItems.map((item) => ({
-        id: '',
+        // O id do item é gerado pela API; não é enviado. Todos os itens chegam aqui com productId real
+        // (produtos novos são cadastrados antes, em saveEntry).
         productId: item.productId,
         name: item.name,
         code: item.code,
@@ -384,10 +392,12 @@ export class Compras {
       },
       error: (err: HttpErrorResponse) =>
         this.appState.triggerToast(
-          err.error?.message ??
-            (this.isEditing()
+          err.status === 403
+            ? 'Você não tem permissão para editar pedidos de compra.'
+            : (err.error?.message ??
+              (this.isEditing()
               ? 'Não foi possível atualizar a entrada. Tente novamente.'
-              : 'Não foi possível registrar a entrada. Tente novamente.'),
+              : 'Não foi possível registrar a entrada. Tente novamente.')),
         ),
     });
   }

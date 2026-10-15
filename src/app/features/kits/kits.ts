@@ -4,7 +4,12 @@ import { Router } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
 import { CartBridgeService } from '../../core/services/cart-bridge';
 import { AppStateService } from '../../core/services/app-state';
+import { PERMISSION } from '../../core/models/permissions';
 import { BarbecueKit, ProductItem } from '../../core/models/models';
+import { resizeImageToJpeg } from '../../core/utils/image-resize';
+
+/** Maior lado da foto enviada ao storage — reduz o tamanho sem perder qualidade nos cards. */
+const MAX_IMAGE_SIDE = 800;
 
 interface KitFormModel {
   id?: string;
@@ -52,9 +57,15 @@ export class Kits {
   private readonly api = inject(ApiDataService);
   private readonly cartBridge = inject(CartBridgeService);
   private readonly appState = inject(AppStateService);
+  protected readonly PERMISSION = PERMISSION;
+
+  protected can(permission: string): boolean {
+    return this.appState.can(permission);
+  }
   private readonly router = inject(Router);
 
   protected readonly kits = signal<BarbecueKit[]>([]);
+  protected readonly isUploadingImage = signal(false);
   protected readonly products = signal<ProductItem[]>([]);
   protected readonly isModalOpen = signal(false);
   protected readonly isEditing = signal(false);
@@ -106,6 +117,7 @@ export class Kits {
   }
 
   protected openNewKitModal(): void {
+    if (!this.appState.requirePermission(PERMISSION.KitsCreate)) return;
     this.isEditing.set(false);
     this.form = emptyForm();
     this.formComponents.set([emptyComponentRow()]);
@@ -113,6 +125,7 @@ export class Kits {
   }
 
   protected openEditKitModal(kit: BarbecueKit): void {
+    if (!this.appState.requirePermission(PERMISSION.KitsEdit)) return;
     this.isEditing.set(true);
     this.form = {
       id: kit.id,
@@ -140,24 +153,35 @@ export class Kits {
     this.isModalOpen.set(true);
   }
 
-  /** Lê a imagem escolhida no computador e converte para data URL, guardado direto no mesmo campo do link. */
-  protected onImageFileSelected(event: Event): void {
+  /** Reduz a foto no navegador e envia ao storage (R2) pela API; o formulário guarda só a URL pública. */
+  protected async onImageFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
+    input.value = '';
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
       this.appState.triggerToast('Selecione um arquivo de imagem (JPG, PNG, etc.).');
-      input.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.form.imageUrl = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-    input.value = '';
+    this.isUploadingImage.set(true);
+    try {
+      const resized = await resizeImageToJpeg(file, MAX_IMAGE_SIDE);
+      this.api.uploadFile(resized, 'kits').subscribe({
+        next: (uploaded) => {
+          this.form.imageUrl = uploaded.url;
+          this.isUploadingImage.set(false);
+        },
+        error: () => {
+          this.isUploadingImage.set(false);
+          this.appState.triggerToast('Não foi possível enviar a imagem. Tente novamente.');
+        },
+      });
+    } catch {
+      this.isUploadingImage.set(false);
+      this.appState.triggerToast('Não foi possível ler essa imagem.');
+    }
   }
 
   protected addComponentRow(): void {
@@ -199,6 +223,10 @@ export class Kits {
   }
 
   protected saveKit(): void {
+    if (this.isUploadingImage()) {
+      this.appState.triggerToast('Aguarde o envio da imagem terminar.');
+      return;
+    }
     if (!this.form.name.trim()) {
       this.appState.triggerToast('Informe o nome do kit antes de salvar.');
       return;
@@ -261,6 +289,7 @@ export class Kits {
 
   /** Vender um kit nunca o exclui — só baixa o estoque dos componentes. Excluir é sempre uma ação explícita. */
   protected removeKit(kit: BarbecueKit): void {
+    if (!this.appState.requirePermission(PERMISSION.KitsDelete)) return;
     if (!confirm(`Excluir o kit "${kit.name}"? Esta ação não pode ser desfeita.`)) {
       return;
     }

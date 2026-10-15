@@ -2,6 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
+import { PERMISSION } from '../../core/models/permissions';
 import { Client } from '../../core/models/models';
 
 interface ClientFormModel {
@@ -37,6 +38,11 @@ function emptyForm(): ClientFormModel {
 export class Clientes {
   private readonly api = inject(ApiDataService);
   private readonly appState = inject(AppStateService);
+  protected readonly PERMISSION = PERMISSION;
+
+  protected can(permission: string): boolean {
+    return this.appState.can(permission);
+  }
 
   protected readonly clients = signal<Client[]>([]);
   protected readonly searchTerm = signal('');
@@ -75,12 +81,14 @@ export class Clientes {
   }
 
   protected openNewClientModal(): void {
+    if (!this.appState.requirePermission(PERMISSION.ClientsCreate)) return;
     this.isEditing.set(false);
     this.form = emptyForm();
     this.isModalOpen.set(true);
   }
 
   protected openEditClientModal(client: Client): void {
+    if (!this.appState.requirePermission(PERMISSION.ClientsEdit)) return;
     this.isEditing.set(true);
     this.form = {
       id: client.id,

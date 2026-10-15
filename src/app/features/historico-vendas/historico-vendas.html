@@ -1,0 +1,267 @@
+<div class="flex flex-col gap-6">
+  <!-- Header -->
+  <div class="flex items-center gap-3">
+    <div class="w-11 h-11 rounded-xl bg-[#0F1F3D] flex items-center justify-center shrink-0">
+      <span class="material-symbols-outlined text-[#d8a34a] text-[22px]">receipt_long</span>
+    </div>
+    <div>
+      <h1 class="text-[20px] md:text-[22px] font-bold text-[#1b1c1a] leading-tight">Histórico de Vendas</h1>
+      <p class="text-xs md:text-sm text-[#827565]">
+        Vendas feitas no PDV, com itens, preços e forma de pagamento. Errou algo? Cancele a venda para devolver o estoque.
+      </p>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-3">
+    <div class="flex flex-col sm:flex-row gap-3">
+      <div class="relative flex-1">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#827565] text-[20px]">search</span>
+        <input
+          type="text"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+          name="search"
+          placeholder="Buscar por cupom, cliente, vendedor ou item..."
+          class="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+        />
+      </div>
+      <select
+        [ngModel]="statusFilter()"
+        (ngModelChange)="statusFilter.set($event)"
+        name="status"
+        class="px-3 py-2.5 text-sm rounded-xl border border-[#e4e2df] bg-white focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+      >
+        <option value="todas">Todas as vendas</option>
+        <option value="concluida">Somente concluídas</option>
+        <option value="cancelada">Somente canceladas</option>
+      </select>
+    </div>
+
+    <app-date-range-filter label="Data da venda" [(range)]="dateRange" />
+
+    <p class="text-xs text-[#827565]">
+      {{ completedCount() }} venda(s) concluída(s) • Total vendido:
+      <span class="font-semibold text-[#1b1c1a]">{{ formatCurrency(totalSold()) }}</span>
+      @if (canceledCount() > 0) {
+        • <span class="text-[#ba1a1a] font-semibold">{{ canceledCount() }} cancelada(s)</span> (não entram no total)
+      }
+    </p>
+  </div>
+
+  <!-- Lista -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+    @if (isLoading()) {
+      <div class="p-10 text-center text-sm text-[#827565]">Carregando vendas...</div>
+    } @else if (filtered().length === 0) {
+      <div class="p-10 flex flex-col items-center justify-center text-center gap-2">
+        <span class="material-symbols-outlined text-[36px] text-[#827565]">receipt_long</span>
+        <p class="text-sm font-semibold text-[#1b1c1a]">
+          {{ sales().length === 0 ? 'Nenhuma venda registrada' : 'Nenhuma venda encontrada com esses filtros' }}
+        </p>
+        <p class="text-xs text-[#827565]">
+          {{ sales().length === 0 ? 'As vendas finalizadas no PDV aparecem aqui.' : 'Ajuste a busca, o status ou o período.' }}
+        </p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[860px]">
+          <thead>
+            <tr class="bg-[#f5f3f0] text-[11px] uppercase tracking-wider text-[#827565] font-bold">
+              <th class="px-4 py-3">Data</th>
+              <th class="px-4 py-3">Cupom</th>
+              <th class="px-4 py-3">Itens</th>
+              <th class="px-4 py-3">Cliente</th>
+              <th class="px-4 py-3">Pagamento</th>
+              <th class="px-4 py-3 text-right">Total</th>
+              <th class="px-4 py-3 text-right">Lucro</th>
+              <th class="px-4 py-3">Vendedor</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3 text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (sale of filtered(); track sale.id) {
+              <tr
+                class="border-t border-[#efeeeb] hover:bg-[#faf9f7] cursor-pointer"
+                [class.opacity-70]="sale.status === 'cancelada'"
+                (click)="toggleExpand(sale)"
+              >
+                <td class="px-4 py-3 text-xs text-[#4f4537] whitespace-nowrap">{{ formatDateTime(sale.timestamp) }}</td>
+                <td class="px-4 py-3 text-sm font-semibold text-[#1b1c1a] whitespace-nowrap">{{ sale.receiptNumber || '—' }}</td>
+                <td class="px-4 py-3 text-xs text-[#4f4537]">{{ itemsSummary(sale) }}</td>
+                <td class="px-4 py-3 text-xs text-[#4f4537]">{{ sale.clientName || '—' }}</td>
+                <td class="px-4 py-3 text-xs text-[#4f4537]">{{ paymentLabel(sale.paymentMode) }}</td>
+                <td class="px-4 py-3 text-sm font-bold text-[#1b1c1a] text-right whitespace-nowrap" [class.line-through]="sale.status === 'cancelada'">
+                  {{ formatCurrency(sale.total) }}
+                </td>
+                <td class="px-4 py-3 text-xs font-semibold text-right whitespace-nowrap"
+                    [class]="sale.status === 'cancelada' ? 'text-[#a19b8f]' : sale.profit >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">
+                  {{ sale.status === 'cancelada' ? '—' : formatCurrency(sale.profit) }}
+                </td>
+                <td class="px-4 py-3 text-xs text-[#4f4537]">{{ sale.soldBy }}</td>
+                <td class="px-4 py-3">
+                  @if (sale.status === 'cancelada') {
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ba1a1a]/10 text-[#ba1a1a] border border-[#ba1a1a]/20">Cancelada</span>
+                  } @else {
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4caf50]/10 text-[#4caf50] border border-[#4caf50]/30">Concluída</span>
+                  }
+                </td>
+                <td class="px-4 py-3 text-right">
+                  @if (canCancel(sale)) {
+                    <button
+                      type="button"
+                      (click)="$event.stopPropagation(); openCancel(sale)"
+                      class="inline-flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a] hover:underline cursor-pointer"
+                      title="Cancelar venda (estorno)"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">undo</span>
+                      Cancelar
+                    </button>
+                  } @else {
+                    <span class="material-symbols-outlined text-[18px] text-[#a19b8f]">
+                      {{ expandedId() === sale.id ? 'expand_less' : 'expand_more' }}
+                    </span>
+                  }
+                </td>
+              </tr>
+
+              @if (expandedId() === sale.id) {
+                <tr class="bg-[#faf9f7]">
+                  <td colspan="10" class="px-4 py-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <!-- Itens -->
+                      <div class="lg:col-span-2 rounded-xl border border-[#e4e2df] bg-white overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                          <thead>
+                            <tr class="bg-[#f5f3f0] text-[10px] uppercase tracking-wider text-[#827565] font-bold">
+                              <th class="px-3 py-2">Item</th>
+                              <th class="px-3 py-2 text-right">Quantidade</th>
+                              <th class="px-3 py-2 text-right">Preço unit.</th>
+                              <th class="px-3 py-2 text-right">Subtotal</th>
+                              <th class="px-3 py-2 text-right">Custo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (item of sale.items; track item.id) {
+                              <tr class="border-t border-[#efeeeb]">
+                                <td class="px-3 py-2 text-xs font-semibold text-[#1b1c1a]">{{ item.name }}</td>
+                                <td class="px-3 py-2 text-xs text-[#4f4537] text-right">{{ quantityLabel(item.qty, item.unit) }}</td>
+                                <td class="px-3 py-2 text-xs text-[#4f4537] text-right">
+                                  {{ item.priceKnown ? formatCurrency(item.unitPrice) : '—' }}
+                                </td>
+                                <td class="px-3 py-2 text-xs font-semibold text-[#1b1c1a] text-right">
+                                  {{ item.priceKnown ? formatCurrency(item.subtotal) : '—' }}
+                                </td>
+                                <td class="px-3 py-2 text-xs text-[#4f4537] text-right" [title]="item.costEstimated ? 'Custo estimado (venda anterior ao controle de custo)' : 'Custo médio do estoque no dia da venda'">
+                                  {{ formatCurrency(item.totalCost) }}{{ item.costEstimated ? '*' : '' }}
+                                </td>
+                              </tr>
+                            } @empty {
+                              <tr>
+                                <td colspan="5" class="px-3 py-4 text-xs text-[#827565] text-center">
+                                  Os itens desta venda antiga não foram registrados.
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                        @if (hasUnknownPrices(sale)) {
+                          <p class="px-3 py-2 text-[11px] text-[#7f5700] bg-[#fff8e8] border-t border-[#efeeeb]">
+                            Venda feita antes do histórico: os preços por item não foram guardados (só o total da venda).
+                          </p>
+                        }
+                      </div>
+
+                      <!-- Pagamento -->
+                      <div class="rounded-xl border border-[#e4e2df] bg-white p-4 flex flex-col gap-2 text-xs text-[#4f4537]">
+                        <div class="flex justify-between"><span>Forma de pagamento</span><span class="font-semibold text-[#1b1c1a]">{{ paymentLabel(sale.paymentMode) }}</span></div>
+                        @if (sale.cardFlag) {
+                          <div class="flex justify-between"><span>Bandeira</span><span class="font-semibold text-[#1b1c1a]">{{ sale.cardFlag }}</span></div>
+                        }
+                        @if (!hasUnknownPrices(sale) && sale.items.length > 0) {
+                          <div class="flex justify-between"><span>Subtotal dos itens</span><span class="font-semibold text-[#1b1c1a]">{{ formatCurrency(subtotalOf(sale)) }}</span></div>
+                        }
+                        @if (sale.discountAmount > 0) {
+                          <div class="flex justify-between"><span>Desconto</span><span class="font-semibold text-[#ba1a1a]">- {{ formatCurrency(sale.discountAmount) }}</span></div>
+                        }
+                        <div class="flex justify-between border-t border-[#efeeeb] pt-2"><span class="font-bold text-[#1b1c1a]">Total da venda</span><span class="font-bold text-[#1b1c1a]">{{ formatCurrency(sale.total) }}</span></div>
+                        @if (sale.feeAmount > 0) {
+                          <div class="flex justify-between"><span>Taxa da operadora</span><span class="font-semibold text-[#ba1a1a]">- {{ formatCurrency(sale.feeAmount) }}</span></div>
+                        }
+                        <div class="flex justify-between"><span>Líquido recebido</span><span class="font-semibold text-[#4caf50]">{{ formatCurrency(sale.netAmount) }}</span></div>
+                        <div class="flex justify-between"><span>Custo das mercadorias</span><span class="font-semibold text-[#ba1a1a]">- {{ formatCurrency(sale.costTotal) }}</span></div>
+                        <div class="flex justify-between border-t border-[#efeeeb] pt-2"><span class="font-bold text-[#1b1c1a]">Lucro da venda</span><span class="font-bold" [class]="sale.profit >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">{{ formatCurrency(sale.profit) }}</span></div>
+                        @if (sale.status === 'cancelada') {
+                          <div class="mt-1 rounded-lg bg-[#ba1a1a]/5 border border-[#ba1a1a]/20 p-2 text-[#ba1a1a]">
+                            <p class="font-bold">Cancelada em {{ formatDateTime(sale.canceledAt) }} por {{ sale.canceledBy || '—' }}</p>
+                            @if (sale.cancelReason) {
+                              <p class="mt-0.5">Motivo: {{ sale.cancelReason }}</p>
+                            }
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Modal: cancelar venda -->
+@if (cancelTarget(); as target) {
+  <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] overflow-y-auto p-6 border border-[#e4e2df]">
+      <div class="flex items-center gap-2 pb-3 mb-4 border-b border-[#efeeeb]">
+        <span class="material-symbols-outlined text-[22px] text-[#ba1a1a]">undo</span>
+        <h3 class="text-[17px] font-bold text-[#1b1c1a]">Cancelar venda {{ target.receiptNumber }}?</h3>
+      </div>
+
+      <p class="text-sm text-[#4f4537]">
+        Venda de <span class="font-semibold">{{ formatCurrency(target.total) }}</span> em
+        {{ paymentLabel(target.paymentMode) }}, feita em {{ formatDateTime(target.timestamp) }}.
+      </p>
+      <ul class="mt-3 text-xs text-[#4f4537] list-disc pl-5 flex flex-col gap-1">
+        <li>O <span class="font-semibold">estoque</span> dos itens é devolvido.</li>
+        <li>O <span class="font-semibold">título a receber</span> da venda (cartão ou a prazo) é removido.</li>
+        <li>A venda deixa de entrar nos <span class="font-semibold">relatórios financeiros</span>.</li>
+        <li>Essa ação <span class="font-semibold">não pode ser desfeita</span>; para corrigir, refaça a venda no PDV.</li>
+      </ul>
+
+      <label class="block text-xs font-bold text-[#4f4537] mt-4 mb-1.5">Motivo (recomendado)</label>
+      <textarea
+        [(ngModel)]="cancelReason"
+        name="cancelReason"
+        rows="2"
+        maxlength="200"
+        placeholder="Ex.: produto lançado errado, cliente desistiu..."
+        class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+      ></textarea>
+
+      <div class="flex items-center justify-end gap-3 pt-4 mt-4 border-t border-[#efeeeb]">
+        <button
+          type="button"
+          (click)="closeCancel()"
+          [disabled]="isCanceling()"
+          class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-50"
+        >
+          Voltar
+        </button>
+        <button
+          type="button"
+          (click)="confirmCancel()"
+          [disabled]="isCanceling()"
+          class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#ba1a1a] hover:bg-[#9a1414] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors disabled:opacity-60"
+        >
+          <span class="material-symbols-outlined text-[16px]">{{ isCanceling() ? 'progress_activity' : 'undo' }}</span>
+          {{ isCanceling() ? 'Cancelando...' : 'Cancelar venda' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

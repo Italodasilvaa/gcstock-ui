@@ -10,6 +10,7 @@
 
     <button
       type="button"
+      [hidden]="!can(PERMISSION.ProductsCreate)"
       (click)="openNewProductModal()"
       class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] font-bold rounded-lg cursor-pointer transition-colors shadow-xs shrink-0"
     >
@@ -123,6 +124,7 @@
                 <div class="flex items-center justify-end gap-1">
                   <button
                     type="button"
+                    [hidden]="!can(PERMISSION.ProductsEdit)"
                     (click)="openEditProductModal(product)"
                     title="Editar produto"
                     class="p-1.5 rounded-lg text-[#7f5700] hover:bg-[#ffdeae]/30 cursor-pointer"
@@ -131,6 +133,7 @@
                   </button>
                   <button
                     type="button"
+                    [hidden]="!can(PERMISSION.ProductsDelete)"
                     (click)="removeProduct(product)"
                     title="Excluir produto"
                     class="p-1.5 rounded-lg text-[#ba1a1a] hover:bg-[#ba1a1a]/10 cursor-pointer"
@@ -203,7 +206,12 @@
                 class="shrink-0 w-24 h-24 rounded-xl border-2 border-dashed border-[#e4e2df] hover:border-[#d8a34a] bg-[#f5f3f0] overflow-hidden flex items-center justify-center cursor-pointer transition-colors"
                 title="Enviar foto do computador"
               >
-                @if (form.imageUrl) {
+                @if (isUploadingImage()) {
+                  <span class="flex flex-col items-center gap-0.5 text-[#827565]">
+                    <span class="material-symbols-outlined text-[26px] animate-spin">progress_activity</span>
+                    <span class="text-[10px] font-semibold">Enviando...</span>
+                  </span>
+                } @else if (form.imageUrl) {
                   <img [src]="form.imageUrl" alt="Pré-visualização" class="w-full h-full object-cover" />
                 } @else {
                   <span class="flex flex-col items-center gap-0.5 text-[#827565]">
@@ -233,7 +241,8 @@
                   <button
                     type="button"
                     (click)="productImageFileInput.click()"
-                    class="inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer"
+                    [disabled]="isUploadingImage()"
+                    class="inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span class="material-symbols-outlined text-[16px]">upload</span>
                     {{ form.imageUrl ? 'Trocar foto' : 'Enviar do computador' }}
