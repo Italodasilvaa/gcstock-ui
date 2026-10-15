@@ -302,12 +302,58 @@ export interface FinancialSummary {
   grossMarginPercent: number;
   operatingExpenses: number;
   payroll: number;
+  /** Prejuízo das perdas de estoque no período. */
+  losses: number;
+  lossCount: number;
+  lossesByReason: LossReasonItem[];
   netResult: number;
   capitalExpenses: number;
   expenses: ExpenseCategory[];
   stockValue: number;
   productProfits: ProductProfit[];
   estimatedCostItems: number;
+}
+
+/** Perda de estoque (vencimento, quebra, furto...) com o valor do prejuízo (quantidade × custo informado). */
+export interface StockLoss {
+  id: string;
+  /** Dia da perda (yyyy-MM-dd). */
+  date: string;
+  createdAt: string;
+  productId: string;
+  productName: string;
+  qty: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+  reason: 'vencimento' | 'quebra' | 'furto' | 'outros';
+  notes?: string | null;
+  lotNumber: string;
+  createdBy: string;
+  /** "desfeita" devolveu a quantidade ao estoque e não conta no resultado. */
+  status: 'ativa' | 'desfeita';
+  undoneAt?: string | null;
+  undoneBy?: string | null;
+}
+
+export interface CreateStockLossRequest {
+  productId: string;
+  qty: number;
+  /** Custo unitário da perda; vazio = custo médio atual do produto. */
+  unitCost?: number | null;
+  reason: string;
+  notes?: string;
+  /** Dia da perda (yyyy-MM-dd); vazio = hoje. */
+  date?: string;
+  /** Lote perdido (opcional); vazio = sai primeiro o que vence antes. */
+  stockBatchId?: string | null;
+}
+
+export interface LossReasonItem {
+  reason: string;
+  label: string;
+  count: number;
+  amount: number;
 }
 
 export interface CancelSaleResult {

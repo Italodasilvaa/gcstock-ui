@@ -131,7 +131,7 @@
               {{ formatCurrency(s.netResult) }}
             </p>
             <p class="text-xs text-[#827565] mt-1">
-              {{ s.netResult >= 0 ? 'Lucro' : 'Prejuízo' }}: vendas − custo das mercadorias vendidas − despesas − folha de pagamento.
+              {{ s.netResult >= 0 ? 'Lucro' : 'Prejuízo' }}: vendas − custo das mercadorias vendidas − despesas − folha de pagamento − perdas de estoque.
             </p>
           </div>
           <div class="text-right">
@@ -191,6 +191,7 @@
               <div class="flex justify-between py-2 border-t border-[#efeeeb] bg-[#faf9f7] -mx-2 px-2 rounded"><span class="font-bold text-[#1b1c1a]">(=) Lucro bruto</span><span class="font-bold" [class]="s.grossProfit >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">{{ formatCurrency(s.grossProfit) }}</span></div>
               <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Despesas operacionais</span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-s.operatingExpenses) }}</span></div>
               <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Folha de pagamento</span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-s.payroll) }}</span></div>
+              <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Perdas e quebras @if (s.lossCount > 0) {<span class="text-[11px] text-[#827565]">({{ s.lossCount }})</span>}</span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-s.losses) }}</span></div>
               <div class="flex justify-between py-2.5 border-t-2 border-[#1b1c1a] mt-1"><span class="font-black text-[#1b1c1a]">(=) Resultado do período</span><span class="font-black" [class]="s.netResult >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">{{ formatCurrency(s.netResult) }}</span></div>
             </div>
             @if (s.capitalExpenses > 0) {
@@ -268,7 +269,7 @@
 
           <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
             <h2 class="text-base font-bold text-[#1b1c1a] mb-3">Outras despesas do período</h2>
-            @if (s.expenses.length === 0 && s.payroll === 0) {
+            @if (s.expenses.length === 0 && s.payroll === 0 && s.lossCount === 0) {
               <p class="text-center text-[#827565] text-sm py-6">Nenhuma despesa lançada no período.</p>
             } @else {
               <div class="flex flex-col divide-y divide-[#efeeeb]">
@@ -282,6 +283,12 @@
                   <div class="flex items-center justify-between py-2.5 text-sm">
                     <span class="text-[#4f4537]">Folha de pagamento</span>
                     <span class="font-bold text-[#1b1c1a]">{{ formatCurrency(s.payroll) }}</span>
+                  </div>
+                }
+                @for (loss of s.lossesByReason; track loss.reason) {
+                  <div class="flex items-center justify-between py-2.5 text-sm">
+                    <span class="text-[#4f4537]">Perda: {{ loss.label }} <span class="text-[11px] text-[#827565]">({{ loss.count }})</span></span>
+                    <span class="font-bold text-[#ba1a1a]">{{ formatCurrency(loss.amount) }}</span>
                   </div>
                 }
               </div>

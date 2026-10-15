@@ -181,10 +181,12 @@ export class VendasPdv implements OnInit {
   });
 
   protected readonly subtotal = computed(() =>
-    this.cart().reduce((acc, item) => acc + item.price * item.quantity, 0),
+    this.cart().reduce((acc, item) => acc + Math.round(item.price * item.quantity * 100) / 100, 0),
   );
 
-  protected readonly totalItems = computed(() => this.cart().reduce((acc, item) => acc + item.quantity, 0));
+  protected readonly totalItems = computed(() =>
+    Math.round(this.cart().reduce((acc, item) => acc + item.quantity, 0) * 1000) / 1000,
+  );
 
   protected readonly totalAfterDiscount = computed(() => Math.max(this.subtotal() - this.discount(), 0));
 
@@ -447,13 +449,40 @@ export class VendasPdv implements OnInit {
 
   protected incrementQuantity(item: CartItem): void {
     const step = this.quantityStep(item.unit);
-    if (!this.hasStockFor(item.id, item.name, item.unit, item.quantity + step)) return;
-    this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + step } : i)));
+    const next = Math.round((item.quantity + step) * 1000) / 1000;
+    if (!this.hasStockFor(item.id, item.name, item.unit, next)) return;
+    this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, quantity: next } : i)));
+  }
+
+  /**
+   * Digitar a quantidade direto no carrinho: kg aceita até 3 casas decimais (ex.: 1,298); unidade, pacote e kit são inteiros.
+   * Se a quantidade passar do estoque, avisa e o campo volta ao valor anterior.
+   */
+  protected onQuantityInput(item: CartItem, input: HTMLInputElement): void {
+    const parsed = parseFloat(String(input.value).replace(',', '.'));
+    if (!Number.isFinite(parsed)) {
+      input.value = String(item.quantity);
+      return;
+    }
+
+    const factor = item.unit === 'kg' ? 1000 : 1;
+    const quantity = Math.round(parsed * factor) / factor;
+    if (quantity <= 0) {
+      this.removeFromCart(item);
+      return;
+    }
+    if (!this.hasStockFor(item.id, item.name, item.unit, quantity)) {
+      input.value = String(item.quantity);
+      return;
+    }
+
+    input.value = String(quantity);
+    this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, quantity } : i)));
   }
 
   protected decrementQuantity(item: CartItem): void {
     const step = this.quantityStep(item.unit);
-    const nextQty = Math.round((item.quantity - step) * 100) / 100;
+    const nextQty = Math.round((item.quantity - step) * 1000) / 1000;
 
     if (nextQty <= 0) {
       this.removeFromCart(item);

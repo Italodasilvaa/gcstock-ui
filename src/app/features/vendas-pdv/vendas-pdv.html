@@ -189,9 +189,17 @@
                 >
                   <span class="material-symbols-outlined text-[14px]">remove</span>
                 </button>
-                <span class="text-[12px] font-bold text-[#1b1c1a] min-w-[34px] text-center">
-                  {{ item.unit === 'kg' ? item.quantity.toFixed(2) : item.quantity }}
-                </span>
+                <input
+                  type="number"
+                  inputmode="decimal"
+                  [min]="item.unit === 'kg' ? 0.001 : 1"
+                  [step]="item.unit === 'kg' ? 0.001 : 1"
+                  [value]="item.quantity"
+                  (change)="onQuantityInput(item, $any($event.target))"
+                  (keydown.enter)="$any($event.target).blur()"
+                  title="Digite a quantidade (kg aceita casas decimais, ex.: 1,298)"
+                  class="w-[68px] text-center text-[12px] font-bold text-[#1b1c1a] bg-white rounded-md border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 py-0.5"
+                />
                 <button
                   type="button"
                   (click)="incrementQuantity(item)"

@@ -31,6 +31,9 @@ export const PERMISSION = {
   EmployeesCreate: 'funcionarios.criar',
   EmployeesEdit: 'funcionarios.editar',
   EmployeesDelete: 'funcionarios.excluir',
+  // Perdas de estoque
+  LossesCreate: 'perdas.registrar',
+  LossesUndo: 'perdas.desfazer',
   // Financeiro
   PayablesCreate: 'contas-pagar.criar',
   PayablesSettle: 'contas-pagar.baixar',

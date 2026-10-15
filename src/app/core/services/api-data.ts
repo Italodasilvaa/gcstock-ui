@@ -9,6 +9,7 @@ import {
   AuthSession,
   BarbecueKit,
   CancelSaleResult,
+  CreateStockLossRequest,
   FinancialSummary,
   CardSettlementTitle,
   Client,
@@ -24,6 +25,7 @@ import {
   SaleHistory,
   SaleRecord,
   StockBatch,
+  StockLoss,
   StockMovement,
   TenantBranch,
   UploadedFile,
@@ -200,6 +202,21 @@ export class ApiDataService {
   // ---------------------------------------------------------------------
   // Estoque
   // ---------------------------------------------------------------------
+
+  /** Perdas de estoque lançadas (inclui as desfeitas). */
+  getLosses(): Observable<StockLoss[]> {
+    return this.http.get<StockLoss[]>(`${BASE}/estoque/perdas`);
+  }
+
+  /** Registra uma perda: abate do estoque e grava o prejuízo (quantidade × custo informado). */
+  createLoss(request: CreateStockLossRequest): Observable<StockLoss> {
+    return this.http.post<StockLoss>(`${BASE}/estoque/perdas`, request);
+  }
+
+  /** Desfaz uma perda lançada por engano (devolve a quantidade ao estoque). */
+  undoLoss(id: string): Observable<StockLoss> {
+    return this.http.delete<StockLoss>(`${BASE}/estoque/perdas/${id}`);
+  }
 
   getBatches(): Observable<StockBatch[]> {
     return this.http.get<StockBatch[]>(`${BASE}/estoque/lotes`);

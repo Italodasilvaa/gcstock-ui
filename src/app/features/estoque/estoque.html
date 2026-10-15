@@ -11,7 +11,16 @@
       </p>
     </div>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 flex-wrap">
+      <button
+        type="button"
+        [hidden]="!can(PERMISSION.LossesCreate)"
+        (click)="openLossModal()"
+        class="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-[#ba1a1a] hover:bg-[#9a1414] text-white text-xs font-bold rounded-xl cursor-pointer transition-colors shadow-xs"
+      >
+        <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+        Registrar perda
+      </button>
       <div class="bg-white rounded-xl border border-[#e4e2df] shadow-xs px-4 py-2 flex items-center gap-2">
         <span class="material-symbols-outlined text-[#ba1a1a] text-[20px]">schedule</span>
         <div class="flex flex-col leading-tight">
@@ -55,18 +64,32 @@
       <span class="material-symbols-outlined text-[18px]">history</span>
       Movimentações Recentes
     </button>
+    <button
+      type="button"
+      (click)="setTab('perdas')"
+      [class]="
+        activeTab() === 'perdas'
+          ? 'px-4 py-2.5 text-sm font-semibold text-[#0F1F3D] border-b-2 border-[#d8a34a] flex items-center gap-2 cursor-pointer'
+          : 'px-4 py-2.5 text-sm font-medium text-[#827565] hover:text-[#1b1c1a] flex items-center gap-2 cursor-pointer'
+      "
+    >
+      <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+      Perdas
+    </button>
   </div>
 
   <!-- Filtro de período -->
   <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-5 flex flex-col gap-2">
     <app-date-range-filter
-      [label]="activeTab() === 'lotes' ? 'Data de entrada' : 'Data da movimentação'"
+      [label]="activeTab() === 'lotes' ? 'Data de entrada' : activeTab() === 'perdas' ? 'Data da perda' : 'Data da movimentação'"
       [(range)]="dateRange"
     />
     @if (isDateFilterActive()) {
       <p class="text-xs text-[#827565]">
         @if (activeTab() === 'lotes') {
           Exibindo {{ sortedBatches().length }} de {{ totalBatches() }} lotes no período.
+        } @else if (activeTab() === 'perdas') {
+          Exibindo {{ filteredLosses().length }} de {{ losses().length }} perdas no período.
         } @else {
           Exibindo {{ sortedMovements().length }} de {{ totalMovements() }} movimentações no período.
         }
@@ -145,6 +168,90 @@
     </div>
   }
 
+  <!-- Perdas -->
+  @if (activeTab() === 'perdas') {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs overflow-hidden">
+      <div class="p-4 md:p-6 pb-0 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 class="text-base font-bold text-[#1b1c1a]">Perdas de estoque</h2>
+          <p class="text-xs text-[#827565] mt-0.5">
+            Vencimento, quebra, furto... Cada perda abate do estoque e entra no resultado financeiro como prejuízo.
+          </p>
+        </div>
+        <div class="text-right">
+          <p class="text-[11px] uppercase font-semibold text-[#827565]">Prejuízo no período</p>
+          <p class="text-lg font-black text-[#ba1a1a]">{{ formatCurrency(totalLossAmount()) }}</p>
+        </div>
+      </div>
+
+      @if (filteredLosses().length === 0) {
+        <div class="p-10 flex flex-col items-center justify-center text-center gap-2">
+          <span class="material-symbols-outlined text-[36px] text-[#827565]">delete_sweep</span>
+          <p class="text-sm font-semibold text-[#1b1c1a]">Nenhuma perda lançada</p>
+          <p class="text-xs text-[#827565]">Use "Registrar perda" para tirar do estoque o que venceu ou estragou.</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto p-4 md:p-6">
+          <table class="w-full text-sm border-separate border-spacing-y-2 min-w-[760px]">
+            <thead>
+              <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+                <th class="px-3 py-2 font-semibold">Data</th>
+                <th class="px-3 py-2 font-semibold">Produto</th>
+                <th class="px-3 py-2 font-semibold">Quantidade</th>
+                <th class="px-3 py-2 font-semibold text-right">Custo unit.</th>
+                <th class="px-3 py-2 font-semibold text-right">Prejuízo</th>
+                <th class="px-3 py-2 font-semibold">Motivo</th>
+                <th class="px-3 py-2 font-semibold">Lançado por</th>
+                <th class="px-3 py-2 font-semibold text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (loss of filteredLosses(); track loss.id) {
+                <tr class="bg-[#faf9f7]" [class.opacity-60]="loss.status === 'desfeita'">
+                  <td class="px-3 py-3 rounded-l-xl text-[#4f4537] whitespace-nowrap">{{ loss.date | date: 'dd/MM/yyyy' }}</td>
+                  <td class="px-3 py-3">
+                    <span class="font-semibold text-[#1b1c1a]">{{ loss.productName }}</span>
+                    @if (loss.lotNumber) {
+                      <span class="block text-[11px] text-[#827565]">Lote {{ loss.lotNumber }}</span>
+                    }
+                  </td>
+                  <td class="px-3 py-3 text-[#4f4537] whitespace-nowrap">{{ quantityLabel(loss.qty, loss.unit) }}</td>
+                  <td class="px-3 py-3 text-[#4f4537] text-right whitespace-nowrap">{{ formatCurrency(loss.unitCost) }}</td>
+                  <td class="px-3 py-3 text-right font-bold whitespace-nowrap" [class]="loss.status === 'desfeita' ? 'text-[#a19b8f] line-through' : 'text-[#ba1a1a]'">
+                    {{ formatCurrency(loss.totalCost) }}
+                  </td>
+                  <td class="px-3 py-3 text-[#4f4537]">
+                    {{ reasonLabel(loss.reason) }}
+                    @if (loss.notes) {
+                      <span class="block text-[11px] text-[#827565]">{{ loss.notes }}</span>
+                    }
+                  </td>
+                  <td class="px-3 py-3 text-[#4f4537]">{{ loss.createdBy }}</td>
+                  <td class="px-3 py-3 rounded-r-xl text-right">
+                    @if (loss.status === 'desfeita') {
+                      <span class="text-[11px] font-semibold text-[#827565]">Desfeita</span>
+                    } @else {
+                      <button
+                        type="button"
+                        [hidden]="!can(PERMISSION.LossesUndo)"
+                        (click)="undoLoss(loss)"
+                        class="inline-flex items-center gap-1 text-[11px] font-bold text-[#7f5700] hover:underline cursor-pointer"
+                        title="Desfazer esta perda (devolve ao estoque)"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">undo</span>
+                        Desfazer
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
   <!-- Movimentações Recentes -->
   @if (activeTab() === 'movimentacoes') {
     <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6">
@@ -200,3 +307,146 @@
     </div>
   }
 </div>
+
+<!-- Modal: registrar perda -->
+@if (isLossModalOpen()) {
+  <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 border border-[#e4e2df]">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#efeeeb]">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[22px] text-[#ba1a1a]">delete_sweep</span>
+          <h3 class="text-[17px] font-bold text-[#1b1c1a]">Registrar perda</h3>
+        </div>
+        <button type="button" (click)="closeLossModal()" class="p-1 rounded-lg text-[#827565] hover:bg-[#efeeeb] cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <form (ngSubmit)="saveLoss()" class="flex flex-col gap-3.5">
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Produto perdido *</label>
+          <select
+            [ngModel]="lossForm.productId"
+            (ngModelChange)="onLossProductChange($event)"
+            name="lossProduct"
+            class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] bg-white focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          >
+            <option value="">Selecione...</option>
+            @for (p of lossProducts(); track p.id) {
+              <option [value]="p.id">{{ p.name }} — {{ quantityLabel(p.stock, p.unit) }} em estoque</option>
+            }
+          </select>
+        </div>
+
+        @if (lossProduct(); as product) {
+          <div>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Lote perdido (opcional)</label>
+            <select
+              [(ngModel)]="lossForm.stockBatchId"
+              (ngModelChange)="touchLossForm()"
+              name="lossLot"
+              class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] bg-white focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            >
+              <option value="">Sai primeiro o que vence antes</option>
+              @for (lot of lossLots(); track lot.id) {
+                <option [value]="lot.id">
+                  {{ lot.lotNumber || 'Lote sem número' }} — {{ quantityLabel(lot.availableKg, lot.unit) }} (vence {{ lot.expiryDate | date: 'dd/MM/yyyy' }})
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Quantidade ({{ product.unit }}) *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.001"
+                [(ngModel)]="lossForm.qty"
+                (ngModelChange)="touchLossForm()"
+                name="lossQty"
+                class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Custo unitário (R$) *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [(ngModel)]="lossForm.unitCost"
+                (ngModelChange)="touchLossForm()"
+                name="lossCost"
+                class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+              />
+            </div>
+          </div>
+          <p class="text-[11px] text-[#827565] -mt-2">
+            O custo médio do produto é {{ formatCurrency(product.costPrice) }}. Troque pelo custo do que foi perdido (ex.: o lote comprado mais barato).
+          </p>
+        }
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Motivo *</label>
+            <select
+              [(ngModel)]="lossForm.reason"
+              name="lossReason"
+              class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] bg-white focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            >
+              @for (reason of lossReasons; track reason.value) {
+                <option [value]="reason.value">{{ reason.label }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Data da perda</label>
+            <input
+              type="date"
+              [(ngModel)]="lossForm.date"
+              name="lossDate"
+              class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Observação</label>
+          <input
+            type="text"
+            [(ngModel)]="lossForm.notes"
+            name="lossNotes"
+            maxlength="200"
+            placeholder="Ex.: venceu na câmara fria"
+            class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+        </div>
+
+        <div class="rounded-xl bg-[#ba1a1a]/5 border border-[#ba1a1a]/20 px-4 py-3 flex items-center justify-between">
+          <span class="text-xs font-semibold text-[#4f4537]">Prejuízo desta perda</span>
+          <span class="text-xl font-black text-[#ba1a1a]">{{ formatCurrency(lossTotal()) }}</span>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#efeeeb]">
+          <button
+            type="button"
+            (click)="closeLossModal()"
+            [disabled]="isSavingLoss()"
+            class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="isSavingLoss()"
+            class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#ba1a1a] hover:bg-[#9a1414] text-white text-xs font-bold rounded-lg cursor-pointer transition-colors disabled:opacity-60"
+          >
+            <span class="material-symbols-outlined text-[16px]">{{ isSavingLoss() ? 'progress_activity' : 'delete_sweep' }}</span>
+            {{ isSavingLoss() ? 'Registrando...' : 'Registrar perda' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
