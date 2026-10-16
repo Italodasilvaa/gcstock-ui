@@ -90,6 +90,10 @@ export interface StockBatch {
   status: 'urgente' | 'regular' | 'novo' | 'vencido';
   /** Unidade do produto (kg, pct, un...); availableKg está nessa unidade. */
   unit: string;
+  /** Custo unitário deste lote (o que foi pago na compra). */
+  unitCost: number;
+  /** Número do pedido de compra que originou o lote (ex.: PED-2026-0001); vazio no estoque sem lote. */
+  orderCode: string;
 }
 
 export interface StockMovement {
@@ -216,6 +220,8 @@ export interface CartItem {
   unit: string;
   description: string;
   quantity: number;
+  /** Lote escolhido para sair (opcional): o custo do item passa a ser o do lote. Vazio = sai do pedido mais antigo. */
+  lotId?: string | null;
 }
 
 /** Item de uma venda do PDV. priceKnown=false em vendas antigas (preço por item não foi guardado). */
@@ -345,7 +351,7 @@ export interface CreateStockLossRequest {
   notes?: string;
   /** Dia da perda (yyyy-MM-dd); vazio = hoje. */
   date?: string;
-  /** Lote perdido (opcional); vazio = sai primeiro o que vence antes. */
+  /** Lote perdido (opcional); vazio = sai primeiro o pedido mais antigo. */
   stockBatchId?: string | null;
 }
 
@@ -354,6 +360,85 @@ export interface LossReasonItem {
   label: string;
   count: number;
   amount: number;
+}
+
+/** Um mês do balanço (mesmo cálculo do resultado do período). */
+export interface MonthlyBalance {
+  month: number;
+  salesCount: number;
+  netRevenue: number;
+  costOfGoodsSold: number;
+  grossProfit: number;
+  operatingExpenses: number;
+  payroll: number;
+  losses: number;
+  netResult: number;
+  purchasesTotal: number;
+  capitalExpenses: number;
+}
+
+/** Lucro de um lote: receita líquida do que saiu dele − custo do lote − perdas. */
+export interface LotProfit {
+  lotId: string;
+  lotNumber: string;
+  productId: string;
+  productName: string;
+  supplier: string;
+  unit: string;
+  entryDate: string;
+  expiryDate: string;
+  unitCost: number;
+  qtyBought: number;
+  qtySold: number;
+  qtyLost: number;
+  qtyRemaining: number;
+  revenue: number;
+  cost: number;
+  lossCost: number;
+  profit: number;
+  marginPercent: number;
+  stockValue: number;
+}
+
+/** Aporte de capital: dinheiro colocado na empresa (entra no caixa como valor positivo). */
+export interface CapitalContribution {
+  id: string;
+  date: string;
+  description: string;
+  source: string;
+  amount: number;
+  createdBy: string;
+}
+
+/** Linha do extrato do caixa: amount positivo = entrou, negativo = saiu. */
+export interface CashMovement {
+  date: string;
+  kind: 'aporte' | 'venda' | 'recebimento' | 'compra' | 'equipamento' | 'despesa';
+  description: string;
+  amount: number;
+}
+
+/** Saúde financeira pelo regime de caixa (só o dinheiro que realmente entrou ou saiu). */
+export interface CashSummary {
+  from: string;
+  to: string;
+  openingBalance: number;
+  contributions: number;
+  salesReceived: number;
+  receivablesReceived: number;
+  totalIn: number;
+  purchasesPaid: number;
+  equipmentPaid: number;
+  expensesPaid: number;
+  totalOut: number;
+  closingBalance: number;
+  currentBalance: number;
+  toReceive: number;
+  toPay: number;
+  overduePayable: number;
+  stockValue: number;
+  monthlyPayroll: number;
+  movements: CashMovement[];
 }
 
 export interface CancelSaleResult {

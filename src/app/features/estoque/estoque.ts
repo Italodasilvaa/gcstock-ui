@@ -125,6 +125,14 @@ export class Estoque {
     this.touchLossForm();
   }
 
+  /** Escolher o lote perdido traz o custo daquele lote (o que foi pago por ele) para o prejuízo. */
+  protected onLossLotChange(lotId: string): void {
+    this.lossForm.stockBatchId = lotId;
+    const lot = this.batches().find((b) => b.id === lotId);
+    if (lot && lot.unitCost > 0) this.lossForm.unitCost = lot.unitCost;
+    this.touchLossForm();
+  }
+
   protected saveLoss(): void {
     if (this.isSavingLoss()) return;
     const product = this.lossProduct();

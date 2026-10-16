@@ -8,14 +8,14 @@
       <div>
         <h1 class="text-[20px] md:text-[22px] font-bold text-[#1b1c1a] leading-tight">Gestão da Empresa</h1>
         <p class="text-xs md:text-sm text-[#827565]">
-          Investimentos, equipamentos, folha de pagamento e outras despesas gerais — separado das compras de produtos.
+          Caixa da empresa, aportes, despesas e folha de pagamento — para saber sempre a sua saúde financeira.
         </p>
       </div>
     </div>
 
     <button
       type="button"
-      [hidden]="!can(PERMISSION.PayablesCreate)"
+      [hidden]="!can(PERMISSION.PayablesCreate) && !can(PERMISSION.CapitalManage)"
       (click)="openNewExpenseModal()"
       class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-sm font-bold rounded-lg cursor-pointer transition-colors shadow-xs shrink-0"
     >
@@ -24,39 +24,156 @@
     </button>
   </div>
 
-  <!-- KPIs -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
-      <div class="flex items-center justify-between">
-        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Investido este mês</p>
-        <span class="material-symbols-outlined text-[18px] text-[#4caf50]">trending_up</span>
+  <!-- Saúde financeira hoje -->
+  @if (cash(); as c) {
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="bg-[#0F1F3D] rounded-xl md:rounded-2xl p-4 col-span-2 lg:col-span-1">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#A0B0CB]">Caixa hoje</p>
+        <p class="text-2xl font-black mt-1" [class]="c.currentBalance >= 0 ? 'text-[#d8a34a]' : 'text-[#ff8a80]'">{{ formatCurrency(c.currentBalance) }}</p>
+        <p class="text-[11px] text-[#A0B0CB] mt-0.5">aportes + vendas recebidas − compras e despesas pagas</p>
       </div>
-      <p class="text-xl font-black text-[#1b1c1a] mt-1">{{ formatCurrency(investedThisMonth()) }}</p>
+      <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">A receber</p>
+        <p class="text-xl font-black text-[#1a7f37] mt-1">{{ formatCurrency(c.toReceive) }}</p>
+        <p class="text-[11px] text-[#827565] mt-0.5">cartão e fiado ainda não recebidos</p>
+      </div>
+      <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">A pagar</p>
+        <p class="text-xl font-black text-[#ba1a1a] mt-1">{{ formatCurrency(c.toPay) }}</p>
+        <p class="text-[11px] text-[#827565] mt-0.5">vencido: {{ formatCurrency(c.overduePayable) }}</p>
+      </div>
+      <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Estoque (a custo)</p>
+        <p class="text-xl font-black text-[#1b1c1a] mt-1">{{ formatCurrency(c.stockValue) }}</p>
+        <p class="text-[11px] text-[#827565] mt-0.5">mercadoria parada em estoque</p>
+      </div>
+      <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
+        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Patrimônio de curto prazo</p>
+        <p class="text-xl font-black mt-1" [class]="netWorth() >= 0 ? 'text-[#1b1c1a]' : 'text-[#ba1a1a]'">{{ formatCurrency(netWorth()) }}</p>
+        <p class="text-[11px] text-[#827565] mt-0.5">caixa + a receber + estoque − a pagar</p>
+      </div>
+    </div>
+  }
+
+  <!-- Caixa da empresa no período -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs">
+    <div class="p-4 md:p-6 pb-0">
+      <h2 class="text-base font-bold text-[#1b1c1a]">Caixa da Empresa</h2>
+      <p class="text-xs text-[#827565] mt-0.5">
+        Entra: aportes, vendas recebidas (dinheiro, Pix, débito) e cartão/fiado quando liquidados. Sai: compras e despesas
+        quando pagas (dar baixa). A folha ({{ formatCurrency(totalMonthlyPayroll()) }}/mês) não é descontada do caixa.
+      </p>
+      <div class="mt-4">
+        <app-date-range-filter label="Período do extrato" [(range)]="cashRange" />
+      </div>
     </div>
 
-    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
-      <div class="flex items-center justify-between">
-        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Equipamentos este mês</p>
-        <span class="material-symbols-outlined text-[18px] text-[#0F1F3D]">construction</span>
-      </div>
-      <p class="text-xl font-black text-[#1b1c1a] mt-1">{{ formatCurrency(equipmentThisMonth()) }}</p>
-    </div>
+    @if (cash(); as c) {
+      <div class="p-4 md:p-6 flex flex-col gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="rounded-xl bg-[#f5f3f0] p-3">
+            <p class="text-[11px] uppercase font-semibold text-[#827565]">Saldo inicial</p>
+            <p class="text-lg font-black text-[#1b1c1a]">{{ formatCurrency(c.openingBalance) }}</p>
+          </div>
+          <div class="rounded-xl bg-[#1a7f37]/5 border border-[#1a7f37]/20 p-3">
+            <p class="text-[11px] uppercase font-semibold text-[#1a7f37]">Entradas (+)</p>
+            <p class="text-lg font-black text-[#1a7f37]">{{ formatCurrency(c.totalIn) }}</p>
+            <p class="text-[11px] text-[#827565]">
+              aportes {{ formatCurrency(c.contributions) }} · vendas {{ formatCurrency(c.salesReceived) }} · recebido {{ formatCurrency(c.receivablesReceived) }}
+            </p>
+          </div>
+          <div class="rounded-xl bg-[#ba1a1a]/5 border border-[#ba1a1a]/20 p-3">
+            <p class="text-[11px] uppercase font-semibold text-[#ba1a1a]">Saídas (−)</p>
+            <p class="text-lg font-black text-[#ba1a1a]">{{ formatCurrency(c.totalOut) }}</p>
+            <p class="text-[11px] text-[#827565]">
+              compras {{ formatCurrency(c.purchasesPaid) }} · equip. {{ formatCurrency(c.equipmentPaid) }} · despesas {{ formatCurrency(c.expensesPaid) }}
+            </p>
+          </div>
+          <div class="rounded-xl bg-[#0F1F3D]/5 border border-[#0F1F3D]/20 p-3">
+            <p class="text-[11px] uppercase font-semibold text-[#0F1F3D]">Saldo final</p>
+            <p class="text-lg font-black" [class]="c.closingBalance >= 0 ? 'text-[#0F1F3D]' : 'text-[#ba1a1a]'">{{ formatCurrency(c.closingBalance) }}</p>
+          </div>
+        </div>
 
-    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
-      <div class="flex items-center justify-between">
-        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Folha de Pagamento (mês)</p>
-        <span class="material-symbols-outlined text-[18px] text-[#7f5700]">groups</span>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border-separate border-spacing-y-1.5 min-w-[560px]">
+            <thead>
+              <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+                <th class="px-3 py-2 font-semibold">Data</th>
+                <th class="px-3 py-2 font-semibold">Tipo</th>
+                <th class="px-3 py-2 font-semibold">Descrição</th>
+                <th class="px-3 py-2 font-semibold text-right">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of c.movements; track $index) {
+                <tr class="bg-[#faf9f7]">
+                  <td class="px-3 py-2 rounded-l-xl text-[#4f4537] whitespace-nowrap">{{ m.date | date: 'dd/MM/yyyy' }}</td>
+                  <td class="px-3 py-2 text-[#4f4537]">{{ movementLabel(m.kind) }}</td>
+                  <td class="px-3 py-2 text-[#1b1c1a]">{{ m.description }}</td>
+                  <td class="px-3 py-2 rounded-r-xl text-right font-bold whitespace-nowrap" [class]="m.amount >= 0 ? 'text-[#1a7f37]' : 'text-[#ba1a1a]'">
+                    {{ m.amount >= 0 ? '+' : '−' }} {{ formatCurrency(m.amount < 0 ? -m.amount : m.amount) }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="px-3 py-8 text-center text-[#827565]">Nenhuma movimentação de caixa no período.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
-      <p class="text-xl font-black text-[#1b1c1a] mt-1">{{ formatCurrency(totalMonthlyPayroll()) }}</p>
-      <p class="text-[11px] text-[#827565] mt-0.5">{{ activeEmployees().length }} funcionário(s) ativo(s)</p>
-    </div>
+    } @else {
+      <p class="p-6 text-sm text-[#827565]">Carregando caixa...</p>
+    }
+  </div>
 
-    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
-      <div class="flex items-center justify-between">
-        <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Despesas Gerais em Aberto</p>
-        <span class="material-symbols-outlined text-[18px] text-[#ba1a1a]">pending_actions</span>
-      </div>
-      <p class="text-xl font-black text-[#ba1a1a] mt-1">{{ formatCurrency(openExpensesTotal()) }}</p>
+  <!-- Aportes de capital -->
+  <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs">
+    <div class="p-4 md:p-6 pb-0">
+      <h2 class="text-base font-bold text-[#1b1c1a]">Aportes de Capital</h2>
+      <p class="text-xs text-[#827565] mt-0.5">
+        Dinheiro que você colocou na empresa. Entra no caixa como valor positivo e não conta como lucro.
+      </p>
+    </div>
+    <div class="overflow-x-auto p-4 md:p-6">
+      <table class="w-full text-sm border-separate border-spacing-y-1.5 min-w-[520px]">
+        <thead>
+          <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
+            <th class="px-3 py-2 font-semibold">Data</th>
+            <th class="px-3 py-2 font-semibold">Descrição</th>
+            <th class="px-3 py-2 font-semibold">Quem colocou</th>
+            <th class="px-3 py-2 font-semibold text-right">Valor</th>
+            <th class="px-3 py-2 font-semibold text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of contributions(); track item.id) {
+            <tr class="bg-[#faf9f7]">
+              <td class="px-3 py-2.5 rounded-l-xl text-[#4f4537] whitespace-nowrap">{{ item.date | date: 'dd/MM/yyyy' }}</td>
+              <td class="px-3 py-2.5 font-semibold text-[#1b1c1a]">{{ item.description }}</td>
+              <td class="px-3 py-2.5 text-[#4f4537]">{{ item.source || '—' }}</td>
+              <td class="px-3 py-2.5 text-right font-bold text-[#1a7f37] whitespace-nowrap">+ {{ formatCurrency(item.amount) }}</td>
+              <td class="px-3 py-2.5 rounded-r-xl text-right">
+                <button
+                  type="button"
+                  [hidden]="!can(PERMISSION.CapitalManage)"
+                  (click)="deleteContribution(item)"
+                  class="inline-flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a] hover:underline cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                  Excluir
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="px-3 py-8 text-center text-[#827565]">Nenhum aporte lançado ainda.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -86,9 +203,9 @@
   <!-- Lista de despesas gerais -->
   <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs">
     <div class="p-4 md:p-6 pb-0">
-      <h2 class="text-base font-bold text-[#1b1c1a]">Investimentos e Despesas Gerais</h2>
+      <h2 class="text-base font-bold text-[#1b1c1a]">Despesas Gerais</h2>
       <p class="text-xs text-[#827565] mt-0.5">
-        Equipamentos, investimentos e outros gastos que não são compra de produto — essas entradas também aparecem
+        Equipamentos e outros gastos que não são compra de produto. Saem do caixa quando você dá baixa — também aparecem
         em Financeiro &amp; DRE &gt; Contas a Pagar.
       </p>
       <div class="mt-4">
@@ -158,7 +275,7 @@
           } @empty {
             <tr>
               <td colspan="6" class="px-3 py-8 text-center text-[#827565]">
-                Nenhum investimento ou despesa geral lançado ainda.
+                Nenhuma despesa geral lançada ainda.
               </td>
             </tr>
           }
@@ -217,10 +334,10 @@
       <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#efeeeb]">
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-[22px] text-[#7f5700]">
-            {{ form.kind === 'investimento' ? 'trending_up' : 'receipt_long' }}
+            {{ form.kind === 'aporte' ? 'savings' : 'receipt_long' }}
           </span>
           <h3 class="text-[17px] font-bold text-[#1b1c1a]">
-            {{ form.kind === 'investimento' ? 'Novo Investimento' : 'Nova Despesa' }}
+            {{ form.kind === 'aporte' ? 'Novo Aporte no Caixa' : 'Nova Despesa' }}
           </h3>
         </div>
         <button
@@ -239,24 +356,26 @@
             <button
               type="button"
               role="radio"
-              [attr.aria-checked]="form.kind === 'investimento'"
-              (click)="setKind('investimento')"
+              [attr.aria-checked]="form.kind === 'aporte'"
+              [hidden]="!can(PERMISSION.CapitalManage)"
+              (click)="setKind('aporte')"
               [class]="
-                form.kind === 'investimento'
+                form.kind === 'aporte'
                   ? 'flex items-start gap-2 p-3 rounded-lg border-2 border-[#4caf50] bg-[#4caf50]/5 text-left cursor-pointer'
                   : 'flex items-start gap-2 p-3 rounded-lg border border-[#e4e2df] hover:border-[#4caf50]/50 text-left cursor-pointer'
               "
             >
-              <span class="material-symbols-outlined text-[20px] text-[#4caf50]">trending_up</span>
+              <span class="material-symbols-outlined text-[20px] text-[#4caf50]">savings</span>
               <span class="flex flex-col">
-                <span class="text-sm font-bold text-[#1b1c1a]">Investimento</span>
-                <span class="text-[11px] text-[#827565]">Equipamentos, reformas, melhorias</span>
+                <span class="text-sm font-bold text-[#1b1c1a]">Aporte (entra no caixa)</span>
+                <span class="text-[11px] text-[#827565]">Dinheiro que você colocou na empresa</span>
               </span>
             </button>
             <button
               type="button"
               role="radio"
               [attr.aria-checked]="form.kind === 'despesa'"
+              [hidden]="!can(PERMISSION.PayablesCreate)"
               (click)="setKind('despesa')"
               [class]="
                 form.kind === 'despesa'
@@ -266,8 +385,8 @@
             >
               <span class="material-symbols-outlined text-[20px] text-[#ba1a1a]">receipt_long</span>
               <span class="flex flex-col">
-                <span class="text-sm font-bold text-[#1b1c1a]">Despesa</span>
-                <span class="text-[11px] text-[#827565]">Aluguel, energia, manutenção, serviços</span>
+                <span class="text-sm font-bold text-[#1b1c1a]">Despesa (sai do caixa)</span>
+                <span class="text-[11px] text-[#827565]">Equipamento, aluguel, energia, serviços</span>
               </span>
             </button>
           </div>
@@ -279,24 +398,24 @@
             type="text"
             [(ngModel)]="form.description"
             name="description"
-            [placeholder]="form.kind === 'investimento' ? 'Ex: Freezer horizontal 500L' : 'Ex: Conta de energia de setembro'"
+            [placeholder]="form.kind === 'aporte' ? 'Ex: Investimento inicial' : 'Ex: Conta de energia de setembro'"
             class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
           />
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Fornecedor / Origem</label>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">{{ form.kind === 'aporte' ? 'Quem colocou o dinheiro' : 'Fornecedor / Origem' }}</label>
           <input
             type="text"
             [(ngModel)]="form.supplier"
             name="supplier"
-            [placeholder]="form.kind === 'investimento' ? 'Ex: Loja de Equipamentos XYZ' : 'Ex: Companhia de Energia'"
+            [placeholder]="form.kind === 'aporte' ? 'Ex: Italo, Nilson, banco...' : 'Ex: Companhia de Energia'"
             class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
           />
         </div>
 
-        <div [class]="form.kind === 'investimento' ? 'grid grid-cols-2 gap-3.5' : 'grid grid-cols-1 gap-3.5'">
-          @if (form.kind === 'investimento') {
+        <div [class]="form.kind === 'despesa' ? 'grid grid-cols-2 gap-3.5' : 'grid grid-cols-1 gap-3.5'">
+          @if (form.kind === 'despesa') {
             <div>
               <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Categoria</label>
               <select
@@ -304,7 +423,7 @@
                 name="category"
                 class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
               >
-                @for (option of categoriesByKind.investimento; track option.value) {
+                @for (option of expenseCategories; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                 }
               </select>
@@ -324,10 +443,11 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Vencimento</label>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">{{ form.kind === 'aporte' ? 'Data do aporte' : 'Vencimento' }}</label>
           <input
             type="date"
             [(ngModel)]="form.dueDate"
+            [attr.max]="form.kind === 'aporte' ? today : null"
             name="dueDate"
             class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
           />

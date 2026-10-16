@@ -169,6 +169,26 @@
                   {{ formatCurrency(item.price) }} <span class="text-[#827565] font-normal">/{{ item.unit }}</span>
                 </p>
               }
+              @if (item.kind === 'produto' && lotsFor(item.id).length > 0) {
+                <select
+                  [ngModel]="item.lotId ?? ''"
+                  (ngModelChange)="setItemLot(item, $event)"
+                  [name]="'lot-' + item.id"
+                  title="De qual pedido/lote sai este produto (o custo e o lucro usam o custo do lote). Sem escolher, sai do pedido mais antigo."
+                  class="mt-1 w-full max-w-[280px] px-1.5 py-0.5 text-[11px] rounded-md border bg-white focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+                  [class]="lotShortage(item) ? 'border-[#ba1a1a] text-[#ba1a1a]' : 'border-[#e4e2df] text-[#4f4537]'"
+                >
+                  <option value="">Pedido mais antigo primeiro (custo médio)</option>
+                  @for (lot of lotsFor(item.id); track lot.id) {
+                    <option [value]="lot.id">
+                      {{ lot.orderCode || 'Sem pedido' }} · Lote {{ lot.lotNumber || 's/ nº' }} · {{ lot.availableKg }} {{ lot.unit }} · custo {{ formatCurrency(lot.unitCost) }}
+                    </option>
+                  }
+                </select>
+                @if (lotShortage(item)) {
+                  <p class="text-[10px] text-[#ba1a1a] mt-0.5">Este lote tem menos que a quantidade pedida.</p>
+                }
+              }
             </div>
 
             <div class="flex flex-col items-end gap-1.5 shrink-0">

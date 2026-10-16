@@ -9,7 +9,11 @@ import {
   AuthSession,
   BarbecueKit,
   CancelSaleResult,
+  CapitalContribution,
+  CashSummary,
   CreateStockLossRequest,
+  LotProfit,
+  MonthlyBalance,
   FinancialSummary,
   CardSettlementTitle,
   Client,
@@ -203,6 +207,33 @@ export class ApiDataService {
   // Estoque
   // ---------------------------------------------------------------------
 
+  /** Caixa da empresa no período (yyyy-MM-dd): saldo, entradas, saídas e extrato. */
+  getCash(from: string, to: string): Observable<CashSummary> {
+    return this.http.get<CashSummary>(`${BASE}/financeiro/caixa?de=${from}&ate=${to}`);
+  }
+
+  getContributions(): Observable<CapitalContribution[]> {
+    return this.http.get<CapitalContribution[]>(`${BASE}/financeiro/aportes`);
+  }
+
+  addContribution(request: { description: string; source?: string; amount: number; date?: string }): Observable<CapitalContribution> {
+    return this.http.post<CapitalContribution>(`${BASE}/financeiro/aportes`, request);
+  }
+
+  deleteContribution(id: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/financeiro/aportes/${id}`);
+  }
+
+  /** Balanço mês a mês de um ano. */
+  getMonthlyBalance(year: number): Observable<MonthlyBalance[]> {
+    return this.http.get<MonthlyBalance[]>(`${BASE}/financeiro/balanco-mensal?ano=${year}`);
+  }
+
+  /** Lucro por lote no período (yyyy-MM-dd). */
+  getLotProfits(from: string, to: string): Observable<LotProfit[]> {
+    return this.http.get<LotProfit[]>(`${BASE}/financeiro/lucro-por-lote?de=${from}&ate=${to}`);
+  }
+
   /** Perdas de estoque lançadas (inclui as desfeitas). */
   getLosses(): Observable<StockLoss[]> {
     return this.http.get<StockLoss[]>(`${BASE}/estoque/perdas`);
@@ -350,7 +381,7 @@ export class ApiDataService {
     dueDate?: string;
     feeAmount: number;
     netAmount: number;
-    items: { name: string; qty: number; unit: string; price: number; productId?: string; kitId?: string }[];
+    items: { name: string; qty: number; unit: string; price: number; productId?: string; kitId?: string; stockBatchId?: string }[];
   }): Observable<{ saleId: string; receiptNumber: string }> {
     return this.http.post<{ saleId: string; receiptNumber: string }>(`${BASE}/pdv/finalizar-venda`, sale);
   }

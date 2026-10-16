@@ -11,6 +11,8 @@ import {
   CardSettlementTitle,
   Employee,
   FinancialSummary,
+  LotProfit,
+  MonthlyBalance,
   PurchaseEntry,
   SaleRecord,
 } from '../../core/models/models';
@@ -18,7 +20,7 @@ import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from 
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 import { formatQuantity } from '../../core/utils/format-quantity';
 
-type FinanceiroTab = 'resultado' | 'dre' | 'pagar' | 'receber' | 'cartoes' | 'mensal';
+type FinanceiroTab = 'resultado' | 'dre' | 'pagar' | 'receber' | 'cartoes' | 'mensal' | 'lotes' | 'balanco';
 
 /** Primeiro e último dia do mês atual (data local), no formato yyyy-MM-dd. */
 function currentMonthRange(): DateRange {
@@ -123,6 +125,79 @@ export class Financeiro implements OnInit {
 
   protected readonly activeTab = signal<FinanceiroTab>('resultado');
 
+  // ---- Lucro por lote: receita líquida do que saiu de cada lote − custo do lote − perdas
+  protected readonly lotRange = signal<DateRange>(currentMonthRange());
+  protected readonly lotProfits = signal<LotProfit[]>([]);
+  protected readonly isLoadingLots = signal(false);
+  protected readonly lotTotals = computed(() => {
+    const lots = this.lotProfits();
+    const revenue = lots.reduce((s, l) => s + l.revenue, 0);
+    const cost = lots.reduce((s, l) => s + l.cost, 0);
+    const lossCost = lots.reduce((s, l) => s + l.lossCost, 0);
+    const profit = revenue - cost - lossCost;
+    return {
+      revenue,
+      cost,
+      lossCost,
+      profit,
+      margin: revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : 0,
+      stockValue: lots.reduce((s, l) => s + l.stockValue, 0),
+    };
+  });
+
+  // ---- Balanço mensal: o resultado de cada mês do ano
+  protected readonly balanceYear = signal(new Date().getFullYear());
+  protected readonly monthlyBalance = signal<MonthlyBalance[]>([]);
+  protected readonly isLoadingBalance = signal(false);
+  protected readonly balanceTotals = computed(() => {
+    const rows = this.monthlyBalance();
+    const sum = (pick: (m: MonthlyBalance) => number) => rows.reduce((s, m) => s + pick(m), 0);
+    return {
+      salesCount: sum((m) => m.salesCount),
+      netRevenue: sum((m) => m.netRevenue),
+      costOfGoodsSold: sum((m) => m.costOfGoodsSold),
+      grossProfit: sum((m) => m.grossProfit),
+      operatingExpenses: sum((m) => m.operatingExpenses),
+      payroll: sum((m) => m.payroll),
+      losses: sum((m) => m.losses),
+      netResult: sum((m) => m.netResult),
+      purchasesTotal: sum((m) => m.purchasesTotal),
+      capitalExpenses: sum((m) => m.capitalExpenses),
+    };
+  });
+
+  protected monthName(month: number): string {
+    const label = new Date(2000, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  protected changeBalanceYear(delta: number): void {
+    this.balanceYear.update((y) => y + delta);
+  }
+
+  private loadLotProfits(range: DateRange): void {
+    if (!range.from || !range.to) return;
+    this.isLoadingLots.set(true);
+    this.api.getLotProfits(range.from, range.to).subscribe({
+      next: (list) => {
+        this.lotProfits.set(list);
+        this.isLoadingLots.set(false);
+      },
+      error: () => this.isLoadingLots.set(false),
+    });
+  }
+
+  private loadMonthlyBalance(year: number): void {
+    this.isLoadingBalance.set(true);
+    this.api.getMonthlyBalance(year).subscribe({
+      next: (list) => {
+        this.monthlyBalance.set(list);
+        this.isLoadingBalance.set(false);
+      },
+      error: () => this.isLoadingBalance.set(false),
+    });
+  }
+
   // ---- Resultado (DRE): o que foi gasto em entradas, vendido, o custo e o lucro do período
   protected readonly resultRange = signal<DateRange>(currentMonthRange());
   protected readonly summary = signal<FinancialSummary | null>(null);
@@ -185,6 +260,12 @@ export class Financeiro implements OnInit {
   constructor() {
     // Recarrega o resumo sempre que o período muda.
     effect(() => this.loadSummary(this.resultRange()));
+    effect(() => {
+      if (this.activeTab() === 'lotes') this.loadLotProfits(this.lotRange());
+    });
+    effect(() => {
+      if (this.activeTab() === 'balanco') this.loadMonthlyBalance(this.balanceYear());
+    });
     this.refreshPayables();
     this.refreshReceivables();
     this.refreshCardSettlements();

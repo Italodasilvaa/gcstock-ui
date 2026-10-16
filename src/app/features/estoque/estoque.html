@@ -112,6 +112,7 @@
           <thead>
             <tr class="text-left text-[11px] uppercase tracking-wide text-[#827565]">
               <th class="px-3 py-2 font-semibold">Produto</th>
+              <th class="px-3 py-2 font-semibold">Pedido</th>
               <th class="px-3 py-2 font-semibold">Lote</th>
               <th class="px-3 py-2 font-semibold">Disponível</th>
               <th class="px-3 py-2 font-semibold">Entrada</th>
@@ -131,6 +132,7 @@
                     <span class="text-[11px] text-[#827565]">{{ batch.sku }}</span>
                   </div>
                 </td>
+                <td class="px-3 py-3 text-[#0F1F3D] font-semibold whitespace-nowrap">{{ batch.orderCode || '—' }}</td>
                 <td class="px-3 py-3 text-[#4f4537] font-medium">{{ batch.lotNumber }}</td>
                 <td class="px-3 py-3 text-[#1b1c1a] font-semibold">{{ quantityLabel(batch.availableKg, batch.unit) }}</td>
                 <td class="px-3 py-3 text-[#4f4537]">{{ batch.entryDate | date:'dd/MM/yyyy' }}</td>
@@ -157,7 +159,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="9" class="px-3 py-8 text-center text-[#827565]">
+                <td colspan="10" class="px-3 py-8 text-center text-[#827565]">
                   Nenhum lote encontrado em estoque.
                 </td>
               </tr>
@@ -343,14 +345,14 @@
             <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Lote perdido (opcional)</label>
             <select
               [(ngModel)]="lossForm.stockBatchId"
-              (ngModelChange)="touchLossForm()"
+              (ngModelChange)="onLossLotChange($event)"
               name="lossLot"
               class="w-full px-3 py-2 text-sm rounded-xl border border-[#e4e2df] bg-white focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
             >
-              <option value="">Sai primeiro o que vence antes</option>
+              <option value="">Sai primeiro o pedido mais antigo</option>
               @for (lot of lossLots(); track lot.id) {
                 <option [value]="lot.id">
-                  {{ lot.lotNumber || 'Lote sem número' }} — {{ quantityLabel(lot.availableKg, lot.unit) }} (vence {{ lot.expiryDate | date: 'dd/MM/yyyy' }})
+                  {{ lot.orderCode || 'Sem pedido' }} · {{ lot.lotNumber || 'lote sem número' }} — {{ quantityLabel(lot.availableKg, lot.unit) }} (vence {{ lot.expiryDate | date: 'dd/MM/yyyy' }})
                 </option>
               }
             </select>

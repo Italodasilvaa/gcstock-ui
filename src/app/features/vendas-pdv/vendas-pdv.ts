@@ -14,6 +14,7 @@ import {
   PaymentFeeSetting,
   ProductCategory,
   ProductItem,
+  StockBatch,
 } from '../../core/models/models';
 
 /** 'todos', 'kits' ou o id de uma categoria de produto cadastrada. */
@@ -112,6 +113,25 @@ export class VendasPdv implements OnInit {
 
   private readonly products = signal<ProductItem[]>([]);
   private readonly kits = signal<BarbecueKit[]>([]);
+  private readonly batches = signal<StockBatch[]>([]);
+
+  /** Lotes com saldo de um produto (só lotes de verdade, não a linha "Sem lote"), para escolher de qual sai a venda. */
+  protected lotsFor(productId: string): StockBatch[] {
+    return this.batches()
+      .filter((b) => b.productId === productId && b.id !== b.productId && b.availableKg > 0)
+      .sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.orderCode.localeCompare(b.orderCode));
+  }
+
+  protected setItemLot(item: CartItem, lotId: string): void {
+    this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, lotId: lotId || null } : i)));
+  }
+
+  /** Lote escolhido não pode ter menos que a quantidade vendida (a API recusa, mas avisamos antes). */
+  protected lotShortage(item: CartItem): boolean {
+    if (!item.lotId) return false;
+    const lot = this.batches().find((b) => b.id === item.lotId);
+    return !!lot && item.quantity - lot.availableKg > 0.0001;
+  }
 
   protected readonly cart = signal<CartItem[]>([]);
   protected readonly searchTerm = signal('');
@@ -222,6 +242,7 @@ export class VendasPdv implements OnInit {
   ngOnInit(): void {
     this.api.getProducts().subscribe((list) => this.products.set(list));
     this.api.getKits().subscribe((list) => this.kits.set(list));
+    this.api.getBatches().subscribe((list) => this.batches.set(list));
     this.api.getClients().subscribe((list) => this.clients.set(list));
     this.loadCategories();
     this.api.getFees().subscribe({
@@ -551,6 +572,12 @@ export class VendasPdv implements OnInit {
       return;
     }
 
+    const short = this.cart().find((item) => this.lotShortage(item));
+    if (short) {
+      this.appState.triggerToast(`O lote escolhido para "${short.name}" não tem a quantidade pedida. Escolha outro lote ou reduza a quantidade.`);
+      return;
+    }
+
     if (option.mode === 'a_prazo' && !this.dueDate()) {
       this.appState.triggerToast('Informe a data de vencimento da cobrança.');
       return;
@@ -563,6 +590,7 @@ export class VendasPdv implements OnInit {
       price: item.price,
       productId: item.kind === 'produto' ? item.id : undefined,
       kitId: item.kind === 'kit' ? item.id : undefined,
+      stockBatchId: item.kind === 'produto' && item.lotId ? item.lotId : undefined,
     }));
 
     const client = this.selectedClient();

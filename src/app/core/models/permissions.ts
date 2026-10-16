@@ -34,6 +34,8 @@ export const PERMISSION = {
   // Perdas de estoque
   LossesCreate: 'perdas.registrar',
   LossesUndo: 'perdas.desfazer',
+  // Caixa da empresa
+  CapitalManage: 'aportes.gerenciar',
   // Financeiro
   PayablesCreate: 'contas-pagar.criar',
   PayablesSettle: 'contas-pagar.baixar',
