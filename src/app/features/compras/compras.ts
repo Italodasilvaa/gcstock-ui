@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { PERMISSION } from '../../core/models/permissions';
 import { AppStateService } from '../../core/services/app-state';
 import { ProductItem, PurchaseEntry } from '../../core/models/models';
@@ -88,6 +89,7 @@ function emptyItemRow(): PurchaseFormItemRow {
 })
 export class Compras {
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -181,6 +183,28 @@ export class Compras {
   }
 
   /** Editar pedido de compra exige a permissão "compras.editar" (o dono sempre tem). Compras pagas também podem ser editadas. */
+  protected async removePurchase(purchase: PurchaseEntry): Promise<void> {
+    if (!this.appState.requirePermission(PERMISSION.PurchasesDelete)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir pedido de compra?',
+      message: 'O estoque, os lotes e o custo médio voltam ao que eram antes dele, e a conta a pagar é apagada. Só é possível se nada dele foi vendido ou perdido.',
+      detail: `${purchase.orderCode} • ${purchase.supplierName} • ${this.formatCurrency(purchase.totalAmount)}`,
+      confirmLabel: 'Excluir pedido',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+
+    this.api.deletePurchase(purchase.id).subscribe({
+      next: () => {
+        this.refresh();
+        this.appState.triggerToast(`Pedido ${purchase.orderCode} excluído.`);
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível excluir o pedido.');
+      },
+    });
+  }
+
   protected canEditPurchases(): boolean {
     return this.appState.can(PERMISSION.PurchasesEdit);
   }

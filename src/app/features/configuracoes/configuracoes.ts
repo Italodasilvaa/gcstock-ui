@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { IconPicker } from '../../shared/icon-picker/icon-picker';
@@ -28,6 +29,7 @@ function emptyEmployeeForm(): EmployeeFormModel {
 })
 export class Configuracoes {
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -139,6 +141,27 @@ export class Configuracoes {
       settlementTerm: '',
       active: true,
       icon: 'credit_card',
+    });
+  }
+
+  protected async removeFee(fee: PaymentFeeSetting): Promise<void> {
+    if (!this.appState.requirePermission(PERMISSION.FeesDelete)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir forma de pagamento?',
+      message: 'Ela deixa de aparecer no PDV. Vendas já feitas não mudam.',
+      detail: fee.method,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    this.api.deleteFee(fee.id).subscribe({
+      next: () => {
+        this.api.getFees().subscribe((list) => this.fees.set(list));
+        this.appState.triggerToast(`Forma de pagamento "${fee.method}" excluída.`);
+      },
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível excluir a forma de pagamento.');
+      },
     });
   }
 
@@ -312,11 +335,16 @@ export class Configuracoes {
       });
   }
 
-  protected removeEmployee(employee: Employee): void {
+  protected async removeEmployee(employee: Employee): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.EmployeesDelete)) return;
-    if (!confirm(`Remover o acesso de "${employee.name}"? Essa ação não pode ser desfeita.`)) {
-      return;
-    }
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Remover funcionário?',
+      message: 'O acesso dele ao sistema será removido. Essa ação não pode ser desfeita.',
+      detail: employee.name,
+      confirmLabel: 'Remover',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     this.api.deleteEmployee(employee.id).subscribe({
       next: () => {
         this.refreshEmployees();

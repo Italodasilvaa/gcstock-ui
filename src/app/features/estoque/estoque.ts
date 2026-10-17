@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { ProductItem, StockBatch, StockLoss, StockMovement } from '../../core/models/models';
@@ -18,6 +19,7 @@ import { formatQuantity, formatTotalsByUnit } from '../../core/utils/format-quan
 })
 export class Estoque {
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -183,9 +185,17 @@ export class Estoque {
       });
   }
 
-  protected undoLoss(loss: StockLoss): void {
+  protected async undoLoss(loss: StockLoss): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.LossesUndo)) return;
-    if (!confirm(`Desfazer a perda de ${loss.productName} (${this.formatCurrency(loss.totalCost)})? A quantidade volta ao estoque.`)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Desfazer esta perda?',
+      message: 'A quantidade volta ao estoque e o prejuízo sai do resultado.',
+      detail: `${loss.productName} • ${this.formatCurrency(loss.totalCost)}`,
+      confirmLabel: 'Desfazer perda',
+      tone: 'warning',
+      icon: 'undo',
+    });
+    if (!confirmed) return;
 
     this.api.undoLoss(loss.id).subscribe({
       next: () => {

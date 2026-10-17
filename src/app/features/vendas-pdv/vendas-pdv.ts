@@ -6,6 +6,7 @@ import { ApiDataService } from '../../core/services/api-data';
 import { CartBridgeService } from '../../core/services/cart-bridge';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
+import { todayLocalIso } from '../../core/utils/date-range';
 import { IconPicker } from '../../shared/icon-picker/icon-picker';
 import {
   BarbecueKit,
@@ -535,13 +536,13 @@ export class VendasPdv implements OnInit {
   }
 
   private todayIso(): string {
-    return new Date().toISOString().split('T')[0];
+    return todayLocalIso();
   }
 
   private defaultDueDate(): string {
     const d = new Date();
     d.setDate(d.getDate() + 30);
-    return d.toISOString().split('T')[0];
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   protected togglePassFeeToCustomer(): void {

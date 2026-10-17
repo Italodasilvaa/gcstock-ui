@@ -30,7 +30,7 @@
       <div class="bg-[#0F1F3D] rounded-xl md:rounded-2xl p-4 col-span-2 lg:col-span-1">
         <p class="text-[11px] font-bold uppercase tracking-wide text-[#A0B0CB]">Caixa hoje</p>
         <p class="text-2xl font-black mt-1" [class]="c.currentBalance >= 0 ? 'text-[#d8a34a]' : 'text-[#ff8a80]'">{{ formatCurrency(c.currentBalance) }}</p>
-        <p class="text-[11px] text-[#A0B0CB] mt-0.5">aportes + vendas recebidas − compras e despesas pagas</p>
+        <p class="text-[11px] text-[#A0B0CB] mt-0.5">aportes + vendas recebidas − notas de entrada − despesas pagas</p>
       </div>
       <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
         <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">A receber</p>
@@ -40,7 +40,7 @@
       <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
         <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">A pagar</p>
         <p class="text-xl font-black text-[#ba1a1a] mt-1">{{ formatCurrency(c.toPay) }}</p>
-        <p class="text-[11px] text-[#827565] mt-0.5">vencido: {{ formatCurrency(c.overduePayable) }}</p>
+        <p class="text-[11px] text-[#827565] mt-0.5">compras {{ formatCurrency(c.purchasesUnpaid) }} (já fora do caixa) · vencido {{ formatCurrency(c.overduePayable) }}</p>
       </div>
       <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
         <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Estoque (a custo)</p>
@@ -50,7 +50,7 @@
       <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4">
         <p class="text-[11px] font-bold uppercase tracking-wide text-[#827565]">Patrimônio de curto prazo</p>
         <p class="text-xl font-black mt-1" [class]="netWorth() >= 0 ? 'text-[#1b1c1a]' : 'text-[#ba1a1a]'">{{ formatCurrency(netWorth()) }}</p>
-        <p class="text-[11px] text-[#827565] mt-0.5">caixa + a receber + estoque − a pagar</p>
+        <p class="text-[11px] text-[#827565] mt-0.5">caixa + a receber + estoque − despesas a pagar</p>
       </div>
     </div>
   }
@@ -60,8 +60,8 @@
     <div class="p-4 md:p-6 pb-0">
       <h2 class="text-base font-bold text-[#1b1c1a]">Caixa da Empresa</h2>
       <p class="text-xs text-[#827565] mt-0.5">
-        Entra: aportes, vendas recebidas (dinheiro, Pix, débito) e cartão/fiado quando liquidados. Sai: compras e despesas
-        quando pagas (dar baixa). A folha ({{ formatCurrency(totalMonthlyPayroll()) }}/mês) não é descontada do caixa.
+        Entra: aportes, vendas recebidas (dinheiro, Pix, débito) e cartão/fiado quando liquidados. Sai: toda nota de entrada
+        (compra) na data da entrada, paga ou não, e equipamentos/despesas quando pagos (dar baixa). A folha ({{ formatCurrency(totalMonthlyPayroll()) }}/mês) não é descontada do caixa.
       </p>
       <div class="mt-4">
         <app-date-range-filter label="Período do extrato" [(range)]="cashRange" />
@@ -156,15 +156,28 @@
               <td class="px-3 py-2.5 text-[#4f4537]">{{ item.source || '—' }}</td>
               <td class="px-3 py-2.5 text-right font-bold text-[#1a7f37] whitespace-nowrap">+ {{ formatCurrency(item.amount) }}</td>
               <td class="px-3 py-2.5 rounded-r-xl text-right">
-                <button
-                  type="button"
-                  [hidden]="!can(PERMISSION.CapitalManage)"
-                  (click)="deleteContribution(item)"
-                  class="inline-flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a] hover:underline cursor-pointer"
-                >
-                  <span class="material-symbols-outlined text-[16px]">delete</span>
-                  Excluir
-                </button>
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    [hidden]="!can(PERMISSION.CapitalManage)"
+                    (click)="openEditContribution(item)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                    title="Editar"
+                    aria-label="Editar"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    [hidden]="!can(PERMISSION.CapitalManage)"
+                    (click)="deleteContribution(item)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                    title="Excluir"
+                    aria-label="Excluir"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
               </td>
             </tr>
           } @empty {
@@ -206,7 +219,8 @@
       <h2 class="text-base font-bold text-[#1b1c1a]">Despesas Gerais</h2>
       <p class="text-xs text-[#827565] mt-0.5">
         Equipamentos e outros gastos que não são compra de produto. Saem do caixa quando você dá baixa — também aparecem
-        em Financeiro &amp; DRE &gt; Contas a Pagar.
+        em Financeiro &amp; DRE &gt; Contas a Pagar. <strong>Equipamento</strong> (máquinas e itens comprados com o capital)
+        não pesa no resultado; <strong>Despesa geral</strong> pesa. Mude a categoria na própria linha.
       </p>
       <div class="mt-4">
         <app-date-range-filter label="Vencimento" [(range)]="dateRange" />
@@ -226,6 +240,7 @@
             <th class="px-3 py-2 font-semibold">Descrição</th>
             <th class="px-3 py-2 font-semibold">Categoria</th>
             <th class="px-3 py-2 font-semibold">Vencimento</th>
+            <th class="px-3 py-2 font-semibold">Data de pagamento</th>
             <th class="px-3 py-2 font-semibold text-right">Valor</th>
             <th class="px-3 py-2 font-semibold">Status</th>
             <th class="px-3 py-2 font-semibold text-right">Ações</th>
@@ -239,14 +254,23 @@
                 <p class="text-[11px] text-[#827565]">{{ item.supplier }}</p>
               </td>
               <td class="px-3 py-3">
-                <span
-                  class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-bold border"
+                <select
+                  [ngModel]="item.category"
+                  (ngModelChange)="changeCategory(item, $event)"
+                  [name]="'cat-' + item.id"
+                  [disabled]="!can(PERMISSION.PayablesCreate)"
+                  title="Equipamento/maquinário comprado com o capital não pesa no resultado; despesa geral pesa"
+                  class="px-2 py-1 rounded-full text-[11px] font-bold border bg-white cursor-pointer"
                   [class]="categoryBadgeClass(item.category)"
                 >
-                  {{ categoryLabel(item.category) }}
-                </span>
+                  <option value="outros">Despesa geral</option>
+                  <option value="equipamento">Equipamento</option>
+                </select>
               </td>
-              <td class="px-3 py-3 text-[#4f4537]">{{ item.dueLabel }}</td>
+              <td class="px-3 py-3 text-[#4f4537] whitespace-nowrap">{{ item.dueDate | date: 'dd/MM/yyyy' }}</td>
+              <td class="px-3 py-3 whitespace-nowrap" [class]="item.paidDate ? 'text-[#2e7d32] font-semibold' : 'text-[#a19b8f]'">
+                {{ item.paidDate ? (item.paidDate | date: 'dd/MM/yyyy') : '—' }}
+              </td>
               <td class="px-3 py-3 text-right font-semibold text-[#1b1c1a]">{{ formatCurrency(item.amount) }}</td>
               <td class="px-3 py-3">
                 <span
@@ -257,24 +281,45 @@
                 </span>
               </td>
               <td class="px-3 py-3 rounded-r-xl text-right">
-                @if (item.status !== 'pago') {
+                <div class="flex items-center justify-end gap-1">
+                  @if (item.status !== 'pago') {
+                    <button
+                      type="button"
+                      [hidden]="!can(PERMISSION.PayablesSettle)"
+                      (click)="settleExpense(item)"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#2e7d32] hover:bg-[#4caf50]/10"
+                      title="Dar baixa (marcar como pago)"
+                      aria-label="Dar baixa"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                    </button>
+                  }
                   <button
                     type="button"
-                    [hidden]="!can(PERMISSION.PayablesSettle)"
-                    (click)="settleExpense(item)"
-                    class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#4caf50] border border-[#4caf50]/40 hover:bg-[#4caf50]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                    [hidden]="!can(PERMISSION.PayablesEdit)"
+                    (click)="openEditExpense(item)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                    title="Editar"
+                    aria-label="Editar"
                   >
-                    <span class="material-symbols-outlined text-[16px]">check_circle</span>
-                    Dar Baixa
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
                   </button>
-                } @else {
-                  <span class="text-[11px] text-[#827565]">Pago em {{ item.paidDate | date:'dd/MM/yyyy' }}</span>
-                }
+                  <button
+                    type="button"
+                    [hidden]="!can(PERMISSION.PayablesDelete)"
+                    (click)="deleteExpense(item)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                    title="Excluir"
+                    aria-label="Excluir"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="6" class="px-3 py-8 text-center text-[#827565]">
+              <td colspan="7" class="px-3 py-8 text-center text-[#827565]">
                 Nenhuma despesa geral lançada ainda.
               </td>
             </tr>
@@ -337,7 +382,7 @@
             {{ form.kind === 'aporte' ? 'savings' : 'receipt_long' }}
           </span>
           <h3 class="text-[17px] font-bold text-[#1b1c1a]">
-            {{ form.kind === 'aporte' ? 'Novo Aporte no Caixa' : 'Nova Despesa' }}
+            {{ editingId() ? (form.kind === 'aporte' ? 'Editar Aporte' : 'Editar Lançamento') : form.kind === 'aporte' ? 'Novo Aporte no Caixa' : 'Nova Despesa' }}
           </h3>
         </div>
         <button
@@ -350,6 +395,7 @@
       </div>
 
       <form (ngSubmit)="saveExpense()" class="flex flex-col gap-3.5">
+        @if (!editingId()) {
         <div>
           <span class="block text-xs font-bold text-[#4f4537] mb-1.5">Tipo de lançamento *</span>
           <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de lançamento">
@@ -391,6 +437,7 @@
             </button>
           </div>
         </div>
+        }
 
         <div>
           <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Descrição *</label>
@@ -442,6 +489,7 @@
           </div>
         </div>
 
+        @if (!editingPaid) {
         <div>
           <label class="block text-xs font-bold text-[#4f4537] mb-1.5">{{ form.kind === 'aporte' ? 'Data do aporte' : 'Vencimento' }}</label>
           <input
@@ -452,6 +500,18 @@
             class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
           />
         </div>
+        } @else if (form.kind === 'despesa') {
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Data do pagamento</label>
+          <input
+            type="date"
+            [(ngModel)]="form.paidDate"
+            [attr.max]="today"
+            name="paidDate"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+        }
 
         <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#efeeeb] mt-1">
           <button
@@ -466,7 +526,7 @@
             class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-xs font-bold rounded-lg cursor-pointer transition-colors shadow-xs"
           >
             <span class="material-symbols-outlined text-[16px]">save</span>
-            <span>Salvar Lançamento</span>
+            <span>{{ editingId() ? 'Salvar alterações' : 'Salvar Lançamento' }}</span>
           </button>
         </div>
       </form>

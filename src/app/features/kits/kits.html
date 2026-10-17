@@ -113,12 +113,14 @@
 
             <div class="flex items-center gap-2 mt-auto pt-3 border-t border-[#e4e2df]">
               <button
+                type="button"
                 [hidden]="!can(PERMISSION.KitsEdit)"
                 (click)="openEditKitModal(kit)"
-                class="flex-1 flex items-center justify-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg py-2 cursor-pointer transition-colors"
+                title="Editar"
+                aria-label="Editar"
+                class="shrink-0 flex items-center justify-center text-[#0F1F3D] hover:bg-[#0F1F3D]/10 border border-[#e4e2df] rounded-lg p-2 cursor-pointer transition-colors"
               >
                 <span class="material-symbols-outlined text-[16px]">edit</span>
-                Editar
               </button>
               <button
                 (click)="sellKit(kit)"
@@ -130,7 +132,8 @@
               <button
                 [hidden]="!can(PERMISSION.KitsDelete)"
                 (click)="removeKit(kit)"
-                title="Excluir kit"
+                title="Excluir"
+                aria-label="Excluir"
                 class="shrink-0 flex items-center justify-center text-[#ba1a1a] hover:bg-[#ba1a1a]/10 border border-[#e4e2df] hover:border-[#ba1a1a]/30 rounded-lg p-2 cursor-pointer transition-colors"
               >
                 <span class="material-symbols-outlined text-[16px]">delete</span>

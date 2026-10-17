@@ -115,14 +115,27 @@
                       <span class="material-symbols-outlined text-[18px]">lock</span>
                     </span>
                   } @else {
-                    <button
-                      type="button"
-                      (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
-                      class="p-1.5 rounded-lg text-[#827565] hover:text-[#0F1F3D] hover:bg-white cursor-pointer"
-                      title="Editar entrada"
-                    >
-                      <span class="material-symbols-outlined text-[18px]">edit</span>
-                    </button>
+                    <div class="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                        title="Editar"
+                        aria-label="Editar"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        [hidden]="!can(PERMISSION.PurchasesDelete)"
+                        (click)="$event.stopPropagation(); removePurchase(purchase)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                        title="Excluir"
+                        aria-label="Excluir"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
                   }
                 </td>
               </tr>
@@ -212,19 +225,31 @@
 
             <div class="flex justify-end mt-1">
               @if (!canEditPurchases()) {
-                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#a19b8f]" title="Sem permissão para editar pedidos de compra">
-                  <span class="material-symbols-outlined text-[14px]">lock</span>
-                  Sem permissão
+                <span class="inline-flex p-1.5 text-[#a19b8f]" title="Sem permissão para editar pedidos de compra">
+                  <span class="material-symbols-outlined text-[18px]">lock</span>
                 </span>
               } @else {
-                <button
-                  type="button"
-                  (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
-                  class="inline-flex items-center gap-1 text-[11px] font-bold text-[#0F1F3D] cursor-pointer"
-                >
-                  <span class="material-symbols-outlined text-[14px]">edit</span>
-                  Editar
-                </button>
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                    title="Editar"
+                    aria-label="Editar"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    [hidden]="!can(PERMISSION.PurchasesDelete)"
+                    (click)="$event.stopPropagation(); removePurchase(purchase)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                    title="Excluir"
+                    aria-label="Excluir"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
               }
             </div>
 

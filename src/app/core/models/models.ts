@@ -436,6 +436,8 @@ export interface CashSummary {
   toReceive: number;
   toPay: number;
   overduePayable: number;
+  /** Parte do "a pagar" que é de compras (já saiu do caixa na entrada). */
+  purchasesUnpaid: number;
   stockValue: number;
   monthlyPayroll: number;
   movements: CashMovement[];

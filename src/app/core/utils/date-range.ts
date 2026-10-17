@@ -4,6 +4,12 @@ export interface DateRange {
   to: string;
 }
 
+/** Hoje no fuso do computador, "yyyy-MM-dd" (toISOString usa UTC e, depois das 21h em Brasília, devolve o dia seguinte). */
+export function todayLocalIso(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 export function emptyDateRange(): DateRange {
   return { from: '', to: '' };
 }

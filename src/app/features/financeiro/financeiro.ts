@@ -3,6 +3,7 @@ import { Component, OnInit, computed, effect, inject, signal } from '@angular/co
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import {
@@ -16,7 +17,7 @@ import {
   PurchaseEntry,
   SaleRecord,
 } from '../../core/models/models';
-import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from '../../core/utils/date-range';
+import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange, todayLocalIso } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 import { formatQuantity } from '../../core/utils/format-quantity';
 
@@ -50,7 +51,9 @@ interface PayableFormModel {
   amount: number;
   paymentMethod: string;
   origin: string;
-  category: Exclude<AccountsPayableTitle['category'], 'compras'>;
+  category: 'outros' | 'equipamento';
+  /** Só ao editar uma conta já paga: data do pagamento. */
+  paidDate: string;
 }
 
 interface ReceivableFormModel {
@@ -69,11 +72,12 @@ function emptyPayableForm(): PayableFormModel {
     supplier: '',
     description: '',
     nfeReference: '',
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: todayLocalIso(),
     amount: 0,
     paymentMethod: 'Boleto Bancário',
     origin: 'Despesa Manual',
     category: 'outros',
+    paidDate: '',
   };
 }
 
@@ -82,7 +86,7 @@ function emptyReceivableForm(): ReceivableFormModel {
     clientOrOrigin: '',
     subCategory: '',
     reference: '',
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: todayLocalIso(),
     grossAmount: 0,
     feeRetention: 0,
     type: 'b2b',
@@ -116,6 +120,7 @@ function monthLabelFromKey(monthKey: string): string {
 export class Financeiro implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -283,6 +288,11 @@ export class Financeiro implements OnInit {
 
   protected readonly isPayableModalOpen = signal(false);
   protected readonly isReceivableModalOpen = signal(false);
+  /** Preenchidos ao editar um título existente; vazio = novo lançamento. */
+  protected readonly editingPayableId = signal<string | null>(null);
+  protected editingPayablePaid = false;
+  protected readonly editingReceivableId = signal<string | null>(null);
+  protected editingReceivableFromSale = false;
   protected payableForm: PayableFormModel = emptyPayableForm();
   protected receivableForm: ReceivableFormModel = emptyReceivableForm();
 
@@ -350,7 +360,7 @@ export class Financeiro implements OnInit {
 
     // Garante que o mês atual sempre apareça, mesmo sem nenhum lançamento ainda — a folha de
     // pagamento é um custo fixo que existe todo mês, independente de ter movimento ou não.
-    getRow(new Date().toISOString().slice(0, 7));
+    getRow(todayLocalIso().slice(0, 7));
 
     for (const sale of this.sales()) {
       const row = getRow(monthKeyFromIsoDate(sale.timestamp));
@@ -510,8 +520,64 @@ export class Financeiro implements OnInit {
     }
   }
 
-  protected settlePayable(item: AccountsPayableTitle): void {
+  /** Compras de mercadoria se editam e excluem em Compras / Entradas, não aqui. */
+  protected isManualPayable(item: AccountsPayableTitle): boolean {
+    return item.category !== 'compras';
+  }
+
+  protected openEditPayable(item: AccountsPayableTitle): void {
+    if (!this.appState.requirePermission(PERMISSION.PayablesEdit)) return;
+    this.payableForm = {
+      supplier: item.supplier,
+      description: item.description,
+      nfeReference: item.nfeReference,
+      dueDate: item.dueDate.slice(0, 10),
+      amount: item.amount,
+      paymentMethod: item.paymentMethod,
+      origin: item.origin,
+      category: item.category === 'equipamento' ? 'equipamento' : 'outros',
+      paidDate: item.paidDate ? item.paidDate.slice(0, 10) : '',
+    };
+    this.editingPayablePaid = item.status === 'pago';
+    this.editingPayableId.set(item.id);
+    this.isPayableModalOpen.set(true);
+  }
+
+  protected async deletePayable(item: AccountsPayableTitle): Promise<void> {
+    if (!this.appState.requirePermission(PERMISSION.PayablesDelete)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir conta a pagar?',
+      message:
+        item.status === 'pago'
+          ? 'Ela já foi paga: o valor volta para o caixa. Essa ação não pode ser desfeita.'
+          : 'Essa ação não pode ser desfeita.',
+      detail: `${item.supplier} • ${this.formatCurrency(item.amount)}`,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    this.api.deletePayable(item.id).subscribe({
+      next: () => {
+        this.refreshPayables();
+        this.appState.triggerToast('Conta a pagar excluída.');
+      },
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível excluir a conta.');
+      },
+    });
+  }
+
+  protected async settlePayable(item: AccountsPayableTitle): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.PayablesSettle)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Dar baixa nesta conta?',
+      message: 'Ela será marcada como paga hoje.',
+      detail: `${item.supplier} • ${this.formatCurrency(item.amount)}`,
+      confirmLabel: 'Dar baixa',
+      tone: 'warning',
+      icon: 'check_circle',
+    });
+    if (!confirmed) return;
     this.api.settlePayable(item.id, 'Conta Padrão', 'Manual').subscribe({
       next: (updated) => {
         if (!updated) {
@@ -527,6 +593,8 @@ export class Financeiro implements OnInit {
 
   protected openNewPayableModal(): void {
     if (!this.appState.requirePermission(PERMISSION.PayablesCreate)) return;
+    this.editingPayableId.set(null);
+    this.editingPayablePaid = false;
     this.payableForm = emptyPayableForm();
     this.isPayableModalOpen.set(true);
   }
@@ -538,6 +606,31 @@ export class Financeiro implements OnInit {
   protected savePayable(): void {
     if (!this.payableForm.supplier.trim() || !this.payableForm.description.trim()) {
       this.appState.triggerToast('Informe o fornecedor e a descrição antes de salvar.');
+      return;
+    }
+
+    const editId = this.editingPayableId();
+    if (editId) {
+      if (!this.appState.requirePermission(PERMISSION.PayablesEdit)) return;
+      this.api
+        .updatePayable(editId, {
+          supplier: this.payableForm.supplier.trim(),
+          description: this.payableForm.description.trim(),
+          amount: Number(this.payableForm.amount) || 0,
+          category: this.payableForm.category,
+          dueDate: this.editingPayablePaid ? undefined : this.payableForm.dueDate,
+          paidDate: this.editingPayablePaid && this.payableForm.paidDate ? this.payableForm.paidDate : undefined,
+        })
+        .subscribe({
+          next: () => {
+            this.refreshPayables();
+            this.isPayableModalOpen.set(false);
+            this.appState.triggerToast('Conta a pagar atualizada.');
+          },
+          error: (err: { status?: number; error?: { message?: string } }) => {
+            if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível atualizar a conta.');
+          },
+        });
       return;
     }
 
@@ -597,8 +690,60 @@ export class Financeiro implements OnInit {
     }
   }
 
-  protected settleReceivable(item: AccountsReceivableTitle): void {
+  /** Título criado por uma venda (referência NFCe-): só o vencimento muda; para desfazer, cancele a venda. */
+  protected isSaleReceivable(item: AccountsReceivableTitle): boolean {
+    return item.reference.toUpperCase().startsWith('NFCE-');
+  }
+
+  protected openEditReceivable(item: AccountsReceivableTitle): void {
+    if (!this.appState.requirePermission(PERMISSION.ReceivablesEdit)) return;
+    this.receivableForm = {
+      clientOrOrigin: item.clientOrOrigin,
+      subCategory: item.subCategory,
+      reference: item.reference,
+      dueDate: item.dueDate.slice(0, 10),
+      grossAmount: item.grossAmount,
+      feeRetention: item.feeRetention,
+      type: item.type,
+      paymentModeDesc: item.paymentModeDesc,
+    };
+    this.editingReceivableFromSale = this.isSaleReceivable(item);
+    this.editingReceivableId.set(item.id);
+    this.isReceivableModalOpen.set(true);
+  }
+
+  protected async deleteReceivable(item: AccountsReceivableTitle): Promise<void> {
+    if (!this.appState.requirePermission(PERMISSION.ReceivablesDelete)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir conta a receber?',
+      message: 'Essa ação não pode ser desfeita.',
+      detail: `${item.clientOrOrigin} • ${this.formatCurrency(item.netAmount)}`,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    this.api.deleteReceivable(item.id).subscribe({
+      next: () => {
+        this.refreshReceivables();
+        this.appState.triggerToast('Conta a receber excluída.');
+      },
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível excluir o título.');
+      },
+    });
+  }
+
+  protected async settleReceivable(item: AccountsReceivableTitle): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.ReceivablesSettle)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Marcar como recebido?',
+      message: 'O valor entra no caixa hoje.',
+      detail: `${item.clientOrOrigin} • ${this.formatCurrency(item.netAmount)}`,
+      confirmLabel: 'Marcar recebido',
+      tone: 'warning',
+      icon: 'check_circle',
+    });
+    if (!confirmed) return;
     this.api.settleReceivable(item.id).subscribe({
       next: (updated) => {
         if (!updated) {
@@ -614,6 +759,8 @@ export class Financeiro implements OnInit {
 
   protected openNewReceivableModal(): void {
     if (!this.appState.requirePermission(PERMISSION.ReceivablesCreate)) return;
+    this.editingReceivableId.set(null);
+    this.editingReceivableFromSale = false;
     this.receivableForm = emptyReceivableForm();
     this.isReceivableModalOpen.set(true);
   }
@@ -630,6 +777,29 @@ export class Financeiro implements OnInit {
 
     const gross = Number(this.receivableForm.grossAmount) || 0;
     const fee = Number(this.receivableForm.feeRetention) || 0;
+
+    const editId = this.editingReceivableId();
+    if (editId) {
+      if (!this.appState.requirePermission(PERMISSION.ReceivablesEdit)) return;
+      this.api
+        .updateReceivable(editId, {
+          clientOrOrigin: this.receivableForm.clientOrOrigin.trim(),
+          subCategory: this.receivableForm.subCategory.trim(),
+          grossAmount: gross,
+          dueDate: this.receivableForm.dueDate,
+        })
+        .subscribe({
+          next: () => {
+            this.refreshReceivables();
+            this.isReceivableModalOpen.set(false);
+            this.appState.triggerToast('Conta a receber atualizada.');
+          },
+          error: (err: { status?: number; error?: { message?: string } }) => {
+            if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível atualizar o título.');
+          },
+        });
+      return;
+    }
 
     this.api
       .addReceivable({
@@ -677,8 +847,17 @@ export class Financeiro implements OnInit {
     }
   }
 
-  protected anticipateCard(item: CardSettlementTitle): void {
+  protected async anticipateCard(item: CardSettlementTitle): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.CardsAnticipate)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Antecipar este recebível?',
+      message: 'Uma taxa de antecipação será descontada do valor.',
+      detail: `${item.acquirer} • ${this.formatCurrency(item.netAmount)}`,
+      confirmLabel: 'Antecipar',
+      tone: 'warning',
+      icon: 'bolt',
+    });
+    if (!confirmed) return;
     this.api.anticipateCardTitle(item.id).subscribe({
       next: () => {
         this.refreshCardSettlements();

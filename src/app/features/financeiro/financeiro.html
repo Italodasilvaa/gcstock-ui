@@ -642,19 +642,44 @@
                   </span>
                 </td>
                 <td class="px-3 py-3 rounded-r-xl text-right">
-                  @if (item.status !== 'pago') {
-                    <button
-                      type="button"
-                      [hidden]="!can(PERMISSION.PayablesSettle)"
-                      (click)="settlePayable(item)"
-                      class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#4caf50] border border-[#4caf50]/40 hover:bg-[#4caf50]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">check_circle</span>
-                      Dar Baixa
-                    </button>
-                  } @else {
-                    <span class="text-[11px] text-[#827565]">Pago em {{ item.paidDate | date:'dd/MM/yyyy' }}</span>
-                  }
+                  <div class="flex items-center justify-end gap-1">
+                    @if (item.status !== 'pago') {
+                      <button
+                        type="button"
+                        [hidden]="!can(PERMISSION.PayablesSettle)"
+                        (click)="settlePayable(item)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#2e7d32] hover:bg-[#4caf50]/10"
+                        title="Dar baixa (marcar como pago)"
+                        aria-label="Dar baixa"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                      </button>
+                    } @else {
+                      <span class="text-[11px] text-[#827565] mr-1" title="Data do pagamento">{{ item.paidDate | date:'dd/MM/yyyy' }}</span>
+                    }
+                    @if (isManualPayable(item)) {
+                      <button
+                        type="button"
+                        [hidden]="!can(PERMISSION.PayablesEdit)"
+                        (click)="openEditPayable(item)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                        title="Editar"
+                        aria-label="Editar"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        [hidden]="!can(PERMISSION.PayablesDelete)"
+                        (click)="deletePayable(item)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                        title="Excluir"
+                        aria-label="Excluir"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    }
+                  </div>
                 </td>
               </tr>
             } @empty {
@@ -728,19 +753,44 @@
                   </span>
                 </td>
                 <td class="px-3 py-3 rounded-r-xl text-right">
-                  @if (item.status !== 'recebido') {
-                    <button
-                      type="button"
-                      [hidden]="!can(PERMISSION.ReceivablesSettle)"
-                      (click)="settleReceivable(item)"
-                      class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#4caf50] border border-[#4caf50]/40 hover:bg-[#4caf50]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">check_circle</span>
-                      Marcar como Recebido
-                    </button>
-                  } @else {
-                    <span class="text-[11px] text-[#827565]">{{ item.paymentModeDesc }}</span>
-                  }
+                  <div class="flex items-center justify-end gap-1">
+                    @if (item.status !== 'recebido') {
+                      <button
+                        type="button"
+                        [hidden]="!can(PERMISSION.ReceivablesSettle)"
+                        (click)="settleReceivable(item)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#2e7d32] hover:bg-[#4caf50]/10"
+                        title="Marcar como recebido"
+                        aria-label="Marcar como recebido"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                      </button>
+                      <button
+                        type="button"
+                        [hidden]="!can(PERMISSION.ReceivablesEdit)"
+                        (click)="openEditReceivable(item)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                        title="Editar"
+                        aria-label="Editar"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      @if (!isSaleReceivable(item)) {
+                        <button
+                          type="button"
+                          [hidden]="!can(PERMISSION.ReceivablesDelete)"
+                          (click)="deleteReceivable(item)"
+                          class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                          title="Excluir"
+                          aria-label="Excluir"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      }
+                    } @else {
+                      <span class="text-[11px] text-[#827565]">{{ item.paymentModeDesc }}</span>
+                    }
+                  </div>
                 </td>
               </tr>
             } @empty {
@@ -803,10 +853,11 @@
                       type="button"
                       [hidden]="!can(PERMISSION.CardsAnticipate)"
                       (click)="anticipateCard(item)"
-                      class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#0F1F3D]/30 hover:bg-[#0F1F3D]/10 rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                      title="Antecipar recebível"
+                      aria-label="Antecipar recebível"
                     >
-                      <span class="material-symbols-outlined text-[16px]">bolt</span>
-                      Antecipar Recebível
+                      <span class="material-symbols-outlined text-[18px]">bolt</span>
                     </button>
                   } @else if (item.status === 'antecipado') {
                     <span class="text-[11px] text-[#827565]">Taxa: {{ formatCurrency(item.anticipatedFee || 0) }}</span>
@@ -906,7 +957,7 @@
   <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
       <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
-        <h2 class="text-lg font-bold text-[#1b1c1a]">Novo Lançamento - Contas a Pagar</h2>
+        <h2 class="text-lg font-bold text-[#1b1c1a]">{{ editingPayableId() ? 'Editar Conta a Pagar' : 'Novo Lançamento - Contas a Pagar' }}</h2>
         <button
           type="button"
           (click)="closePayableModal()"
@@ -951,15 +1002,27 @@
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
             />
           </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[12px] font-semibold text-[#4f4537]">Vencimento</label>
-            <input
-              type="date"
-              [(ngModel)]="payableForm.dueDate"
-              name="dueDate"
-              class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
-            />
-          </div>
+          @if (editingPayablePaid) {
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-semibold text-[#4f4537]">Data do pagamento</label>
+              <input
+                type="date"
+                [(ngModel)]="payableForm.paidDate"
+                name="paidDate"
+                class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+              />
+            </div>
+          } @else {
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-semibold text-[#4f4537]">Vencimento</label>
+              <input
+                type="date"
+                [(ngModel)]="payableForm.dueDate"
+                name="dueDate"
+                class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+              />
+            </div>
+          }
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -1005,8 +1068,7 @@
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
             >
               <option value="outros">Outros</option>
-              <option value="equipamento">Equipamento</option>
-              <option value="investimento">Investimento</option>
+              <option value="equipamento">Equipamento (não pesa no resultado)</option>
             </select>
           </div>
         </div>
@@ -1023,7 +1085,7 @@
             type="submit"
             class="px-4 py-2.5 rounded-xl text-sm font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] cursor-pointer transition-colors"
           >
-            Criar Lançamento
+            {{ editingPayableId() ? 'Salvar alterações' : 'Criar Lançamento' }}
           </button>
         </div>
       </form>
@@ -1036,7 +1098,7 @@
   <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
       <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
-        <h2 class="text-lg font-bold text-[#1b1c1a]">Novo Lançamento - Contas a Receber</h2>
+        <h2 class="text-lg font-bold text-[#1b1c1a]">{{ editingReceivableId() ? 'Editar Conta a Receber' : 'Novo Lançamento - Contas a Receber' }}</h2>
         <button
           type="button"
           (click)="closeReceivableModal()"
@@ -1048,6 +1110,11 @@
       </div>
 
       <form class="p-5 flex flex-col gap-4" (ngSubmit)="saveReceivable()">
+        @if (editingReceivableFromSale) {
+          <p class="text-[12px] text-[#7f5700] bg-[#d8a34a]/15 rounded-lg px-3 py-2">
+            Título gerado por uma venda: só o vencimento pode ser alterado. Para desfazer, cancele a venda.
+          </p>
+        }
         <div class="flex flex-col gap-1.5">
           <label class="text-[12px] font-semibold text-[#4f4537]">Cliente / Origem</label>
           <input
@@ -1154,7 +1221,7 @@
             type="submit"
             class="px-4 py-2.5 rounded-xl text-sm font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] cursor-pointer transition-colors"
           >
-            Criar Lançamento
+            {{ editingReceivableId() ? 'Salvar alterações' : 'Criar Lançamento' }}
           </button>
         </div>
       </form>

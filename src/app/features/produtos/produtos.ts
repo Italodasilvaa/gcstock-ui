@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { ProductCategory, ProductItem } from '../../core/models/models';
@@ -56,6 +57,7 @@ function emptyForm(): ProductFormModel {
 })
 export class Produtos {
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -275,9 +277,15 @@ export class Produtos {
       });
   }
 
-  protected removeProduct(product: ProductItem): void {
+  protected async removeProduct(product: ProductItem): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.ProductsDelete)) return;
-    const confirmed = confirm(`Excluir o produto "${product.name}"? Esta ação não pode ser desfeita.`);
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir produto?',
+      message: 'O produto e os lotes dele saem do estoque. Esta ação não pode ser desfeita.',
+      detail: product.name,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
     if (!confirmed) return;
 
     this.api.deleteProduct(product.id).subscribe({

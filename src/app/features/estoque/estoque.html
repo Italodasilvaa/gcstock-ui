@@ -237,11 +237,11 @@
                         type="button"
                         [hidden]="!can(PERMISSION.LossesUndo)"
                         (click)="undoLoss(loss)"
-                        class="inline-flex items-center gap-1 text-[11px] font-bold text-[#7f5700] hover:underline cursor-pointer"
-                        title="Desfazer esta perda (devolve ao estoque)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#7f5700] hover:bg-[#d8a34a]/20"
+                        title="Desfazer esta perda"
+                        aria-label="Desfazer esta perda"
                       >
-                        <span class="material-symbols-outlined text-[16px]">undo</span>
-                        Desfazer
+                        <span class="material-symbols-outlined text-[18px]">undo</span>
                       </button>
                     }
                   </td>

@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -28,6 +29,8 @@ interface ExpenseFormModel {
   amount: number;
   /** Aporte: dia em que o dinheiro entrou. Despesa: vencimento. */
   dueDate: string;
+  /** Só ao editar uma despesa já paga: data do pagamento. */
+  paidDate: string;
 }
 
 function todayIso(): string {
@@ -36,7 +39,7 @@ function todayIso(): string {
 }
 
 function emptyExpenseForm(): ExpenseFormModel {
-  return { kind: 'aporte', description: '', supplier: '', category: 'outros', amount: 0, dueDate: todayIso() };
+  return { kind: 'aporte', description: '', supplier: '', category: 'outros', amount: 0, dueDate: todayIso(), paidDate: '' };
 }
 
 @Component({
@@ -46,6 +49,7 @@ function emptyExpenseForm(): ExpenseFormModel {
 })
 export class GestaoEmpresa {
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -61,14 +65,20 @@ export class GestaoEmpresa {
   protected readonly cashRange = signal<DateRange>(monthToDateRange(todayIso().slice(0, 7)));
   protected readonly cash = signal<CashSummary | null>(null);
   protected readonly isLoadingCash = signal(false);
-  /** Caixa hoje + a receber + estoque (a custo) − a pagar: o que a empresa "vale" agora em valores de curto prazo. */
+  /**
+   * Caixa hoje + a receber + estoque (a custo) − o que ainda falta pagar. As compras já saíram do caixa na entrada,
+   * então só as despesas em aberto são descontadas aqui.
+   */
   protected readonly netWorth = computed(() => {
     const c = this.cash();
-    return c ? c.currentBalance + c.toReceive + c.stockValue - c.toPay : 0;
+    return c ? c.currentBalance + c.toReceive + c.stockValue - (c.toPay - c.purchasesUnpaid) : 0;
   });
   protected readonly employees = signal<Employee[]>([]);
   protected readonly isModalOpen = signal(false);
   protected form: ExpenseFormModel = emptyExpenseForm();
+  /** Preenchido ao editar um lançamento existente (aporte ou despesa); vazio = novo lançamento. */
+  protected readonly editingId = signal<string | null>(null);
+  protected editingPaid = false;
 
   /** Só os lançamentos que não são do Módulo Compras — equipamento e outras despesas gerais. */
   protected readonly expenses = computed(() =>
@@ -141,9 +151,16 @@ export class GestaoEmpresa {
     }
   }
 
-  protected deleteContribution(item: CapitalContribution): void {
+  protected async deleteContribution(item: CapitalContribution): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.CapitalManage)) return;
-    if (!confirm(`Excluir o aporte "${item.description}" de ${this.formatCurrency(item.amount)}? Ele sai do caixa.`)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir aporte?',
+      message: 'O valor sai do caixa. Essa ação não pode ser desfeita.',
+      detail: `${item.description} • ${this.formatCurrency(item.amount)}`,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     this.api.deleteContribution(item.id).subscribe({
       next: () => {
         this.refresh();
@@ -208,7 +225,41 @@ export class GestaoEmpresa {
   protected readonly expenseCategories = EXPENSE_CATEGORIES;
   protected readonly today = todayIso();
 
+  protected openEditExpense(item: AccountsPayableTitle): void {
+    if (!this.appState.requirePermission(PERMISSION.PayablesEdit)) return;
+    this.form = {
+      kind: 'despesa',
+      description: item.description,
+      supplier: item.supplier,
+      category: item.category === 'equipamento' ? 'equipamento' : 'outros',
+      amount: item.amount,
+      dueDate: item.dueDate.slice(0, 10),
+      paidDate: item.paidDate ? item.paidDate.slice(0, 10) : '',
+    };
+    this.editingPaid = item.status === 'pago';
+    this.editingId.set(item.id);
+    this.isModalOpen.set(true);
+  }
+
+  protected openEditContribution(item: CapitalContribution): void {
+    if (!this.appState.requirePermission(PERMISSION.CapitalManage)) return;
+    this.form = {
+      kind: 'aporte',
+      description: item.description,
+      supplier: item.source,
+      category: 'outros',
+      amount: item.amount,
+      dueDate: item.date.slice(0, 10),
+      paidDate: '',
+    };
+    this.editingPaid = false;
+    this.editingId.set(item.id);
+    this.isModalOpen.set(true);
+  }
+
   protected openNewExpenseModal(): void {
+    this.editingId.set(null);
+    this.editingPaid = false;
     const kind: EntryKind = this.can(PERMISSION.CapitalManage) ? 'aporte' : 'despesa';
     if (!this.can(PERMISSION.CapitalManage) && !this.appState.requirePermission(PERMISSION.PayablesCreate)) return;
     this.form = { ...emptyExpenseForm(), kind };
@@ -234,6 +285,55 @@ export class GestaoEmpresa {
     }
     if (!this.form.amount || this.form.amount <= 0) {
       this.appState.triggerToast('Informe um valor maior que zero.');
+      return;
+    }
+
+    const editId = this.editingId();
+
+    if (this.form.kind === 'aporte' && editId) {
+      if (!this.appState.requirePermission(PERMISSION.CapitalManage)) return;
+      this.api
+        .updateContribution(editId, {
+          description: this.form.description.trim(),
+          source: this.form.supplier.trim() || undefined,
+          amount: Number(this.form.amount),
+          date: this.form.dueDate || undefined,
+        })
+        .subscribe({
+          next: () => {
+            this.refresh();
+            this.isModalOpen.set(false);
+            this.appState.triggerToast('Aporte atualizado.');
+          },
+          error: (err: HttpErrorResponse) => {
+            if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível atualizar o aporte.');
+          },
+        });
+      return;
+    }
+
+    if (this.form.kind === 'despesa' && editId) {
+      if (!this.appState.requirePermission(PERMISSION.PayablesEdit)) return;
+      this.api
+        .updatePayable(editId, {
+          supplier: this.form.supplier.trim() || undefined,
+          description: this.form.description.trim(),
+          amount: Number(this.form.amount),
+          category: this.form.category,
+          dueDate: this.editingPaid ? undefined : this.form.dueDate,
+          issueDate: this.editingPaid ? undefined : this.form.dueDate,
+          paidDate: this.editingPaid && this.form.paidDate ? this.form.paidDate : undefined,
+        })
+        .subscribe({
+          next: () => {
+            this.refresh();
+            this.isModalOpen.set(false);
+            this.appState.triggerToast('Lançamento atualizado.');
+          },
+          error: (err: HttpErrorResponse) => {
+            if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível atualizar o lançamento.');
+          },
+        });
       return;
     }
 
@@ -284,8 +384,82 @@ export class GestaoEmpresa {
       });
   }
 
-  protected settleExpense(item: AccountsPayableTitle): void {
+  /** Equipamento/maquinário comprado com o capital não pesa no resultado (lucro); despesa geral pesa. */
+  protected async changeCategory(item: AccountsPayableTitle, category: 'equipamento' | 'outros'): Promise<void> {
+    if (item.category === category) {
+      this.refresh();
+      return;
+    }
+    if (!this.appState.requirePermission(PERMISSION.PayablesCreate)) {
+      this.refresh();
+      return;
+    }
+    const confirmed = await this.confirmDialog.ask({
+      title: category === 'equipamento' ? 'Mudar para equipamento?' : 'Mudar para despesa geral?',
+      message:
+        category === 'equipamento'
+          ? 'Deixa de pesar no resultado (lucro); continua saindo do caixa.'
+          : 'Passa a pesar no resultado (lucro) como despesa.',
+      detail: item.description,
+      confirmLabel: 'Mudar categoria',
+      tone: 'warning',
+      icon: 'swap_horiz',
+    });
+    if (!confirmed) {
+      this.refresh();
+      return;
+    }
+    this.api.changePayableCategory(item.id, category).subscribe({
+      next: () => {
+        this.refresh();
+        this.appState.triggerToast(
+          category === 'equipamento'
+            ? `"${item.description}" agora é equipamento: não entra como despesa no resultado.`
+            : `"${item.description}" agora é despesa geral: entra no resultado.`,
+        );
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível mudar a categoria.');
+      },
+    });
+  }
+
+  protected async deleteExpense(item: AccountsPayableTitle): Promise<void> {
+    if (!this.appState.requirePermission(PERMISSION.PayablesDelete)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir lançamento?',
+      message:
+        item.status === 'pago'
+          ? 'Ele já foi pago: o valor volta para o caixa. Essa ação não pode ser desfeita.'
+          : 'Essa ação não pode ser desfeita.',
+      detail: `${item.description} • ${this.formatCurrency(item.amount)}`,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+
+    this.api.deletePayable(item.id).subscribe({
+      next: () => {
+        this.refresh();
+        this.appState.triggerToast('Lançamento excluído.');
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível excluir o lançamento.');
+      },
+    });
+  }
+
+  protected async settleExpense(item: AccountsPayableTitle): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.PayablesSettle)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Dar baixa neste lançamento?',
+      message: 'Ele será marcado como pago hoje e sai do caixa.',
+      detail: `${item.description} • ${this.formatCurrency(item.amount)}`,
+      confirmLabel: 'Dar baixa',
+      tone: 'warning',
+      icon: 'check_circle',
+    });
+    if (!confirmed) return;
     this.api.settlePayable(item.id, 'Conta Padrão', 'Manual').subscribe({
       next: (updated) => {
         if (!updated) {

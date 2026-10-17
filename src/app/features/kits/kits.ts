@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { CartBridgeService } from '../../core/services/cart-bridge';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
@@ -55,6 +56,7 @@ function emptyComponentRow(): KitFormComponentRow {
 })
 export class Kits {
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly cartBridge = inject(CartBridgeService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
@@ -288,11 +290,16 @@ export class Kits {
   }
 
   /** Vender um kit nunca o exclui — só baixa o estoque dos componentes. Excluir é sempre uma ação explícita. */
-  protected removeKit(kit: BarbecueKit): void {
+  protected async removeKit(kit: BarbecueKit): Promise<void> {
     if (!this.appState.requirePermission(PERMISSION.KitsDelete)) return;
-    if (!confirm(`Excluir o kit "${kit.name}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir kit?',
+      message: 'Esta ação não pode ser desfeita.',
+      detail: kit.name,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     this.api.deleteKit(kit.id).subscribe({
       next: () => {
         this.refresh();

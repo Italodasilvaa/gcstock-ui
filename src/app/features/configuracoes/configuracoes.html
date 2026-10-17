@@ -230,15 +230,28 @@
                 </button>
               </td>
               <td class="px-3 py-3 text-center">
-                <button
-                  type="button"
-                  [hidden]="!can(PERMISSION.FeesEdit)"
-                  (click)="openEditFeeModal(fee)"
-                  class="p-1.5 rounded-lg text-[#827565] hover:text-[#0F1F3D] hover:bg-white cursor-pointer"
-                  title="Editar todos os dados desta taxa"
-                >
-                  <span class="material-symbols-outlined text-[18px]">edit</span>
-                </button>
+                <div class="flex items-center justify-center gap-1">
+                  <button
+                    type="button"
+                    [hidden]="!can(PERMISSION.FeesEdit)"
+                    (click)="openEditFeeModal(fee)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                    title="Editar"
+                    aria-label="Editar"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    [hidden]="!can(PERMISSION.FeesDelete)"
+                    (click)="removeFee(fee)"
+                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                    title="Excluir"
+                    aria-label="Excluir"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
               </td>
             </tr>
           } @empty {

@@ -269,6 +269,11 @@ export class ApiDataService {
     return this.http.post<PurchaseEntry>(`${BASE}/compras/entrada`, purchase);
   }
 
+  /** Apaga uma entrada lançada por engano (estorna estoque e custo; 409 se parte já foi vendida/perdida). */
+  deletePurchase(id: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/compras/${id}`);
+  }
+
   updatePurchase(id: string, purchase: SavePurchasePayload): Observable<PurchaseEntry> {
     return this.http.put<PurchaseEntry>(`${BASE}/compras/${id}`, purchase);
   }
@@ -283,6 +288,49 @@ export class ApiDataService {
 
   addPayable(item: Partial<AccountsPayableTitle>): Observable<AccountsPayableTitle> {
     return this.http.post<AccountsPayableTitle>(`${BASE}/financeiro/contas-a-pagar`, item);
+  }
+
+  /** Corrige uma despesa/equipamento lançado (descrição, fornecedor, valor, vencimento, categoria). */
+  updatePayable(
+    id: string,
+    changes: {
+      supplier?: string;
+      description?: string;
+      amount?: number;
+      dueDate?: string;
+      issueDate?: string;
+      category?: 'equipamento' | 'outros';
+      /** Só para conta já paga: corrige a data em que foi paga. */
+      paidDate?: string;
+    },
+  ): Observable<AccountsPayableTitle> {
+    return this.http.put<AccountsPayableTitle>(`${BASE}/financeiro/contas-a-pagar/${id}`, changes);
+  }
+
+  /** Corrige um título a receber em aberto (título de venda só muda o vencimento). */
+  updateReceivable(
+    id: string,
+    changes: { clientOrOrigin?: string; subCategory?: string; grossAmount?: number; dueDate?: string },
+  ): Observable<AccountsReceivableTitle> {
+    return this.http.put<AccountsReceivableTitle>(`${BASE}/financeiro/clientes-a-receber/${id}`, changes);
+  }
+
+  deleteReceivable(id: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/financeiro/clientes-a-receber/${id}`);
+  }
+
+  updateContribution(id: string, request: { description: string; source?: string; amount: number; date?: string }): Observable<CapitalContribution> {
+    return this.http.put<CapitalContribution>(`${BASE}/financeiro/aportes/${id}`, request);
+  }
+
+  /** Apaga uma despesa/equipamento lançado por engano (compras de mercadoria não). */
+  deletePayable(id: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/financeiro/contas-a-pagar/${id}`);
+  }
+
+  /** Reclassifica um lançamento: 'equipamento' (fora do resultado) ou 'outros' (despesa geral). */
+  changePayableCategory(id: string, category: 'equipamento' | 'outros'): Observable<AccountsPayableTitle> {
+    return this.http.put<AccountsPayableTitle>(`${BASE}/financeiro/contas-a-pagar/${id}/categoria`, { category });
   }
 
   settlePayable(id: string, bankAccount: string, paymentMode: string): Observable<AccountsPayableTitle | null> {
@@ -351,6 +399,10 @@ export class ApiDataService {
     return this.http.patch<PaymentFeeSetting>(`${BASE}/configuracoes/taxas/${fee.id}`, fee);
   }
 
+  deleteFee(id: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/configuracoes/taxas/${id}`);
+  }
+
   addFee(fee: Omit<PaymentFeeSetting, 'id'>): Observable<PaymentFeeSetting> {
     return this.http.post<PaymentFeeSetting>(`${BASE}/configuracoes/taxas`, fee);
   }
@@ -392,6 +444,10 @@ export class ApiDataService {
 
   getClients(): Observable<Client[]> {
     return this.http.get<Client[]>(`${BASE}/clientes`);
+  }
+
+  deleteClient(id: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/clientes/${id}`);
   }
 
   saveClient(client: Partial<Client>): Observable<Client> {

@@ -112,11 +112,11 @@
                     <button
                       type="button"
                       (click)="$event.stopPropagation(); openCancel(sale)"
-                      class="inline-flex items-center gap-1 text-[11px] font-bold text-[#ba1a1a] hover:underline cursor-pointer"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
                       title="Cancelar venda (estorno)"
+                      aria-label="Cancelar venda"
                     >
-                      <span class="material-symbols-outlined text-[16px]">undo</span>
-                      Cancelar
+                      <span class="material-symbols-outlined text-[18px]">cancel</span>
                     </button>
                   } @else {
                     <span class="material-symbols-outlined text-[18px] text-[#a19b8f]">

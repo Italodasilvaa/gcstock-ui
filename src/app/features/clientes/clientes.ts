@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiDataService } from '../../core/services/api-data';
+import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { Client } from '../../core/models/models';
@@ -37,6 +38,7 @@ function emptyForm(): ClientFormModel {
 })
 export class Clientes {
   private readonly api = inject(ApiDataService);
+  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -60,6 +62,27 @@ export class Clientes {
 
   constructor() {
     this.refresh();
+  }
+
+  protected async removeClient(client: Client): Promise<void> {
+    if (!this.appState.requirePermission(PERMISSION.ClientsDelete)) return;
+    const confirmed = await this.confirmDialog.ask({
+      title: 'Excluir cliente?',
+      message: 'O cadastro será apagado. As vendas já feitas continuam no histórico.',
+      detail: client.name,
+      confirmLabel: 'Excluir',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    this.api.deleteClient(client.id).subscribe({
+      next: () => {
+        this.refresh();
+        this.appState.triggerToast(`Cliente "${client.name}" excluído.`);
+      },
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível excluir o cliente.');
+      },
+    });
   }
 
   private refresh(): void {

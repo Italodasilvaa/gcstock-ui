@@ -17,6 +17,7 @@ export const PERMISSION = {
   KitsDelete: 'kits.excluir',
   // Compras
   PurchasesCreate: 'compras.criar',
+  PurchasesDelete: 'compras.excluir',
   PurchasesEdit: 'compras.editar',
   // Vendas (PDV)
   SalesCreate: 'vendas.criar',
@@ -27,6 +28,7 @@ export const PERMISSION = {
   // Clientes
   ClientsCreate: 'clientes.criar',
   ClientsEdit: 'clientes.editar',
+  ClientsDelete: 'clientes.excluir',
   // Funcionários (a atribuição de permissões é exclusiva do dono)
   EmployeesCreate: 'funcionarios.criar',
   EmployeesEdit: 'funcionarios.editar',
@@ -39,11 +41,16 @@ export const PERMISSION = {
   // Financeiro
   PayablesCreate: 'contas-pagar.criar',
   PayablesSettle: 'contas-pagar.baixar',
+  PayablesDelete: 'contas-pagar.excluir',
+  PayablesEdit: 'contas-pagar.editar',
   ReceivablesCreate: 'contas-receber.criar',
   ReceivablesSettle: 'contas-receber.liquidar',
+  ReceivablesEdit: 'contas-receber.editar',
+  ReceivablesDelete: 'contas-receber.excluir',
   CardsAnticipate: 'cartoes.antecipar',
   // Configurações
   FeesCreate: 'taxas.criar',
   FeesEdit: 'taxas.editar',
+  FeesDelete: 'taxas.excluir',
   AlertsEdit: 'alertas.editar',
 } as const;

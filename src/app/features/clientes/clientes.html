@@ -92,14 +92,28 @@
                   {{ client.favoriteCuts }}
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <button
-                    [hidden]="!can(PERMISSION.ClientsEdit)"
-                    (click)="openEditClientModal(client)"
-                    class="inline-flex items-center gap-1 text-[12px] font-semibold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">edit</span>
-                    Editar
-                  </button>
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      [hidden]="!can(PERMISSION.ClientsEdit)"
+                      (click)="openEditClientModal(client)"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                      title="Editar"
+                      aria-label="Editar"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      [hidden]="!can(PERMISSION.ClientsDelete)"
+                      (click)="removeClient(client)"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                      title="Excluir"
+                      aria-label="Excluir"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
