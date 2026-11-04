@@ -404,20 +404,27 @@ export class VendasPdv implements OnInit {
     return unit === 'kg' ? 0.5 : 1;
   }
 
-  /** O saldo cobre essa quantidade? Se não, avisa e bloqueia (a API também recusa vendas acima do estoque). */
-  private hasStockFor(id: string, name: string, unit: string, quantity: number): boolean {
+  /**
+   * Ajusta a quantidade ao saldo (a API recusa vendas acima do estoque). Enquanto houver saldo, a venda é
+   * possível: se o passo (ex.: 0,5 kg) passa do que sobrou, vende só o que sobrou e avisa.
+   * Devolve null quando não há nada a acrescentar (sem estoque ou carrinho já no limite).
+   */
+  private fitToStock(id: string, name: string, unit: string, quantity: number, current: number): number | null {
     const entry = this.catalog().find((e) => e.id === id);
-    if (!entry) return true;
-    if (quantity - entry.stock > 0.0001) {
-      const available = Math.max(0, entry.stock);
-      this.appState.triggerToast(
-        available === 0
-          ? `"${name}" está sem estoque.`
-          : `Estoque insuficiente: "${name}" tem apenas ${available} ${entry.kind === 'kit' ? 'kit(s)' : unit} disponível(is).`,
-      );
-      return false;
+    if (!entry || quantity - entry.stock <= 0.0001) return quantity;
+
+    const available = Math.max(0, Math.round(entry.stock * 1000) / 1000);
+    const unitLabel = entry.kind === 'kit' ? 'kit(s)' : unit;
+    if (available === 0) {
+      this.appState.triggerToast(`"${name}" está sem estoque.`);
+      return null;
     }
-    return true;
+    if (available - current <= 0.0001) {
+      this.appState.triggerToast(`Estoque insuficiente: "${name}" tem apenas ${available} ${unitLabel} disponível(is).`);
+      return null;
+    }
+    this.appState.triggerToast(`Quantidade ajustada: "${name}" tem apenas ${available} ${unitLabel} disponível(is).`);
+    return available;
   }
 
   /** Alterar o preço de um item na venda exige a permissão "vendas.alterar-preco" (o dono sempre tem). */
@@ -445,12 +452,12 @@ export class VendasPdv implements OnInit {
     const step = this.quantityStep(entry.unit);
     const existing = this.cart().find((item) => item.id === entry.id);
 
-    if (!this.hasStockFor(entry.id, entry.name, entry.unit, (existing?.quantity ?? 0) + step)) return;
+    const current = existing?.quantity ?? 0;
+    const quantity = this.fitToStock(entry.id, entry.name, entry.unit, current + step, current);
+    if (quantity === null) return;
 
     if (existing) {
-      this.cart.set(
-        this.cart().map((item) => (item.id === entry.id ? { ...item, quantity: item.quantity + step } : item)),
-      );
+      this.cart.set(this.cart().map((item) => (item.id === entry.id ? { ...item, quantity } : item)));
       return;
     }
 
@@ -464,7 +471,7 @@ export class VendasPdv implements OnInit {
         catalogPrice: entry.price,
         unit: entry.unit,
         description: entry.description,
-        quantity: step,
+        quantity,
       },
     ]);
   }
@@ -472,8 +479,9 @@ export class VendasPdv implements OnInit {
   protected incrementQuantity(item: CartItem): void {
     const step = this.quantityStep(item.unit);
     const next = Math.round((item.quantity + step) * 1000) / 1000;
-    if (!this.hasStockFor(item.id, item.name, item.unit, next)) return;
-    this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, quantity: next } : i)));
+    const quantity = this.fitToStock(item.id, item.name, item.unit, next, item.quantity);
+    if (quantity === null) return;
+    this.cart.set(this.cart().map((i) => (i.id === item.id ? { ...i, quantity } : i)));
   }
 
   /**
@@ -488,12 +496,14 @@ export class VendasPdv implements OnInit {
     }
 
     const factor = item.unit === 'kg' ? 1000 : 1;
-    const quantity = Math.round(parsed * factor) / factor;
-    if (quantity <= 0) {
+    const typed = Math.round(parsed * factor) / factor;
+    if (typed <= 0) {
       this.removeFromCart(item);
       return;
     }
-    if (!this.hasStockFor(item.id, item.name, item.unit, quantity)) {
+    // Digitou além do saldo: usa o máximo disponível (current 0 para nunca recusar enquanto houver saldo).
+    const quantity = this.fitToStock(item.id, item.name, item.unit, typed, 0);
+    if (quantity === null) {
       input.value = String(item.quantity);
       return;
     }

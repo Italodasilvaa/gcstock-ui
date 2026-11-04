@@ -783,9 +783,10 @@ export class Financeiro implements OnInit {
       if (!this.appState.requirePermission(PERMISSION.ReceivablesEdit)) return;
       this.api
         .updateReceivable(editId, {
-          clientOrOrigin: this.receivableForm.clientOrOrigin.trim(),
-          subCategory: this.receivableForm.subCategory.trim(),
-          grossAmount: gross,
+          // Título de venda: só o vencimento (valor e cliente vêm da venda).
+          clientOrOrigin: this.editingReceivableFromSale ? undefined : this.receivableForm.clientOrOrigin.trim(),
+          subCategory: this.editingReceivableFromSale ? undefined : this.receivableForm.subCategory.trim(),
+          grossAmount: this.editingReceivableFromSale ? undefined : gross,
           dueDate: this.receivableForm.dueDate,
         })
         .subscribe({

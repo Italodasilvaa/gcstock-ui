@@ -1112,7 +1112,7 @@
       <form class="p-5 flex flex-col gap-4" (ngSubmit)="saveReceivable()">
         @if (editingReceivableFromSale) {
           <p class="text-[12px] text-[#7f5700] bg-[#d8a34a]/15 rounded-lg px-3 py-2">
-            Título gerado por uma venda: só o vencimento pode ser alterado. Para desfazer, cancele a venda.
+            Título gerado por uma venda: o valor e o cliente vêm da venda e não podem ser alterados; só o vencimento. Para corrigir o valor, cancele a venda em Histórico de Vendas.
           </p>
         }
         <div class="flex flex-col gap-1.5">
@@ -1120,6 +1120,7 @@
           <input
             type="text"
             [(ngModel)]="receivableForm.clientOrOrigin"
+            [disabled]="editingReceivableFromSale"
             name="clientOrOrigin"
             placeholder="Ex.: Restaurante Fogo de Chão Moema"
             class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
@@ -1131,6 +1132,7 @@
           <input
             type="text"
             [(ngModel)]="receivableForm.subCategory"
+            [disabled]="editingReceivableFromSale"
             name="subCategory"
             placeholder="Ex.: B2B Food Service • Boleto 14 DDL"
             class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
@@ -1143,6 +1145,7 @@
             <input
               type="text"
               [(ngModel)]="receivableForm.reference"
+            [disabled]="editingReceivableFromSale"
               name="reference"
               placeholder="Ex.: Venda #1088"
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
@@ -1167,6 +1170,7 @@
               step="0.01"
               min="0"
               [(ngModel)]="receivableForm.grossAmount"
+            [disabled]="editingReceivableFromSale"
               name="grossAmount"
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
             />
@@ -1178,6 +1182,7 @@
               step="0.01"
               min="0"
               [(ngModel)]="receivableForm.feeRetention"
+            [disabled]="editingReceivableFromSale"
               name="feeRetention"
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
             />
@@ -1189,6 +1194,7 @@
             <label class="text-[12px] font-semibold text-[#4f4537]">Tipo</label>
             <select
               [(ngModel)]="receivableForm.type"
+            [disabled]="editingReceivableFromSale"
               name="type"
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
             >
@@ -1202,6 +1208,7 @@
             <input
               type="text"
               [(ngModel)]="receivableForm.paymentModeDesc"
+            [disabled]="editingReceivableFromSale"
               name="paymentModeDesc"
               placeholder="Ex.: Boleto Bancário (Itaú)"
               class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
