@@ -124,6 +124,15 @@
                 <div class="flex items-center justify-end gap-1">
                   <button
                     type="button"
+                    (click)="openCostHistory(product)"
+                    title="Histórico de custo"
+                    aria-label="Histórico de custo"
+                    class="p-1.5 rounded-lg text-[#0F1F3D] hover:bg-[#0F1F3D]/10 cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">history</span>
+                  </button>
+                  <button
+                    type="button"
                     [hidden]="!can(PERMISSION.ProductsEdit)"
                     (click)="openEditProductModal(product)"
                     title="Editar produto"
@@ -441,6 +450,60 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+}
+
+<!-- Histórico de custo médio do produto -->
+@if (costHistoryProduct(); as target) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeCostHistory()">
+    <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-xl p-5 flex flex-col gap-3" (click)="$event.stopPropagation()">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-[#1b1c1a]">Histórico de custo</h2>
+          <p class="text-[13px] text-[#4f4537]">{{ target.name }} • custo médio atual {{ formatCost(target.costPrice) }}</p>
+        </div>
+        <button type="button" (click)="closeCostHistory()" class="text-[#827565] hover:text-[#1b1c1a] cursor-pointer" aria-label="Fechar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p class="text-[11px] text-[#827565]">
+        Mudanças no custo médio não alteram o custo gravado nas vendas já feitas.
+      </p>
+
+      @if (isLoadingCostHistory()) {
+        <p class="text-sm text-[#827565] py-4 text-center">Carregando...</p>
+      } @else if (costHistory().length === 0) {
+        <p class="text-sm text-[#827565] py-4 text-center">Nenhuma mudança de custo registrada para este produto.</p>
+      } @else {
+        <div class="overflow-x-auto rounded-lg border border-[#e4e2df]">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="text-[10px] uppercase tracking-wider text-[#827565] font-bold bg-[#f5f3f0]">
+                <th class="px-3 py-2">Data</th>
+                <th class="px-3 py-2 text-right">Custo anterior</th>
+                <th class="px-3 py-2 text-right">Novo custo</th>
+                <th class="px-3 py-2">Origem</th>
+                <th class="px-3 py-2">Usuário</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of costHistory(); track row.id) {
+                <tr class="border-t border-[#efeeeb]">
+                  <td class="px-3 py-2 text-[12px] text-[#4f4537]">{{ row.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="px-3 py-2 text-right text-[12px] text-[#4f4537]">{{ formatCost(row.previousCost) }}</td>
+                  <td class="px-3 py-2 text-right text-[12px] font-semibold text-[#1b1c1a]">{{ formatCost(row.newCost) }}</td>
+                  <td class="px-3 py-2 text-[12px] text-[#4f4537]">
+                    {{ costSourceLabel(row.source) }}
+                    @if (row.purchaseCode) { <span class="text-[#827565]">({{ row.purchaseCode }})</span> }
+                  </td>
+                  <td class="px-3 py-2 text-[12px] text-[#4f4537]">{{ row.createdBy }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   </div>
 }

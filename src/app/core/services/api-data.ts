@@ -23,6 +23,7 @@ import {
   PaymentFeeSetting,
   PermissionInfo,
   ProductCategory,
+  ProductCostHistoryEntry,
   ProductItem,
   PurchaseEntry,
   SavePurchasePayload,
@@ -156,6 +157,11 @@ export class ApiDataService {
 
   getProducts(): Observable<ProductItem[]> {
     return this.http.get<ProductItem[]>(`${BASE}/produtos`);
+  }
+
+  /** Histórico de custo médio do produto, do mais recente para o mais antigo. */
+  getProductCostHistory(productId: string): Observable<ProductCostHistoryEntry[]> {
+    return this.http.get<ProductCostHistoryEntry[]>(`${BASE}/produtos/${productId}/historico-custo`);
   }
 
   saveProduct(product: Partial<ProductItem>): Observable<ProductItem> {

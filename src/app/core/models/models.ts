@@ -12,6 +12,17 @@ export type NavigationTab =
   | 'relatorios'
   | 'configuracoes';
 
+/** Uma mudança do custo médio de um produto (nunca altera o custo gravado nas vendas já feitas). */
+export interface ProductCostHistoryEntry {
+  id: string;
+  previousCost: number;
+  newCost: number;
+  source: 'compra' | 'edicao_compra' | 'cancelamento_compra' | 'ajuste_manual';
+  purchaseCode?: string | null;
+  createdAt: string;
+  createdBy: string;
+}
+
 export interface ProductItem {
   id: string;
   sku: string;

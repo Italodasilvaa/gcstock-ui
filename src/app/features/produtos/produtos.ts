@@ -5,7 +5,7 @@ import { ApiDataService } from '../../core/services/api-data';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
-import { ProductCategory, ProductItem } from '../../core/models/models';
+import { ProductCategory, ProductCostHistoryEntry, ProductItem } from '../../core/models/models';
 import { resizeImageToJpeg } from '../../core/utils/image-resize';
 
 interface ProductFormModel {
@@ -77,6 +77,49 @@ export class Produtos {
   protected readonly isModalOpen = signal(false);
   protected readonly isEditing = signal(false);
   protected form: ProductFormModel = emptyForm();
+
+  // Histórico de custo médio do produto
+  protected readonly costHistoryProduct = signal<ProductItem | null>(null);
+  protected readonly costHistory = signal<ProductCostHistoryEntry[]>([]);
+  protected readonly isLoadingCostHistory = signal(false);
+
+  protected openCostHistory(product: ProductItem): void {
+    this.costHistoryProduct.set(product);
+    this.costHistory.set([]);
+    this.isLoadingCostHistory.set(true);
+    this.api.getProductCostHistory(product.id).subscribe({
+      next: (rows) => {
+        this.costHistory.set(rows);
+        this.isLoadingCostHistory.set(false);
+      },
+      error: () => {
+        this.isLoadingCostHistory.set(false);
+        this.appState.triggerToast('Não foi possível carregar o histórico de custo.');
+      },
+    });
+  }
+
+  protected closeCostHistory(): void {
+    this.costHistoryProduct.set(null);
+  }
+
+  /** Custo unitário com até 4 casas (o custo médio é guardado com 4), sem zeros à direita desnecessários além dos centavos. */
+  protected formatCost(value: number): string {
+    return (value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  }
+
+  protected costSourceLabel(source: ProductCostHistoryEntry['source']): string {
+    switch (source) {
+      case 'compra':
+        return 'Compra';
+      case 'edicao_compra':
+        return 'Edição de compra';
+      case 'cancelamento_compra':
+        return 'Cancelamento de compra';
+      case 'ajuste_manual':
+        return 'Ajuste manual';
+    }
+  }
 
   private readonly registeredCategories = signal<ProductCategory[]>([]);
 
