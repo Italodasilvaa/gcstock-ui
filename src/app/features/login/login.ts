@@ -74,8 +74,12 @@ export class Login {
           this.loginError.set('E-mail ou senha inválidos. Crie o cadastro da sua empresa na aba ao lado.');
         }
       },
-      error: () => {
-        this.loginError.set('Não foi possível conectar ao servidor da GC Stock API. Tente novamente em instantes.');
+      error: (err) => {
+        this.loginError.set(
+          err?.status === 429
+            ? (err.error?.message ?? 'Muitas tentativas de login. Tente novamente em alguns minutos.')
+            : 'Não foi possível conectar ao servidor da GC Stock API. Tente novamente em instantes.',
+        );
       },
     });
   }
@@ -110,9 +114,13 @@ export class Login {
           this.appState.triggerToast(`Bem-vindo ao GC Stock, ${session.company.tradeName}!`);
           this.router.navigateByUrl('/dashboard');
         },
-        error: () => {
+        error: (err) => {
           this.isRegistering.set(false);
-          alert('Não foi possível cadastrar sua empresa. Tente novamente.');
+          alert(
+            err?.status === 403 || err?.status === 429
+              ? (err.error?.message ?? 'Não foi possível cadastrar sua empresa.')
+              : 'Não foi possível cadastrar sua empresa. Tente novamente.',
+          );
         },
       });
   }
