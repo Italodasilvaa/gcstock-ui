@@ -71,6 +71,7 @@ export class Kits {
   protected readonly products = signal<ProductItem[]>([]);
   protected readonly isModalOpen = signal(false);
   protected readonly isEditing = signal(false);
+  protected readonly isDuplicating = signal(false);
   protected readonly expandedKitId = signal<string | null>(null);
   protected form: KitFormModel = emptyForm();
   protected readonly formComponents = signal<KitFormComponentRow[]>([]);
@@ -121,6 +122,7 @@ export class Kits {
   protected openNewKitModal(): void {
     if (!this.appState.requirePermission(PERMISSION.KitsCreate)) return;
     this.isEditing.set(false);
+    this.isDuplicating.set(false);
     this.form = emptyForm();
     this.formComponents.set([emptyComponentRow()]);
     this.isModalOpen.set(true);
@@ -129,6 +131,21 @@ export class Kits {
   protected openEditKitModal(kit: BarbecueKit): void {
     if (!this.appState.requirePermission(PERMISSION.KitsEdit)) return;
     this.isEditing.set(true);
+    this.isDuplicating.set(false);
+    this.fillFormFromKit(kit);
+  }
+
+  /** Abre o modal de novo kit já preenchido com os dados de um kit existente; ao salvar cria outro, o original não muda. */
+  protected openDuplicateKitModal(kit: BarbecueKit): void {
+    if (!this.appState.requirePermission(PERMISSION.KitsCreate)) return;
+    this.isEditing.set(false);
+    this.isDuplicating.set(true);
+    this.fillFormFromKit(kit);
+    this.form.id = undefined;
+    this.form.name = `${kit.name} (cópia)`;
+  }
+
+  private fillFormFromKit(kit: BarbecueKit): void {
     this.form = {
       id: kit.id,
       name: kit.name,

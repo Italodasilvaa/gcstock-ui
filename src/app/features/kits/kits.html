@@ -123,6 +123,16 @@
                 <span class="material-symbols-outlined text-[16px]">edit</span>
               </button>
               <button
+                type="button"
+                [hidden]="!can(PERMISSION.KitsCreate)"
+                (click)="openDuplicateKitModal(kit)"
+                title="Duplicar"
+                aria-label="Duplicar"
+                class="shrink-0 flex items-center justify-center text-[#0F1F3D] hover:bg-[#0F1F3D]/10 border border-[#e4e2df] rounded-lg p-2 cursor-pointer transition-colors"
+              >
+                <span class="material-symbols-outlined text-[16px]">content_copy</span>
+              </button>
+              <button
                 (click)="sellKit(kit)"
                 class="flex-1 flex items-center justify-center gap-1 text-[12px] font-bold text-[#1b1c1a] bg-[#d8a34a] hover:bg-[#c8933d] rounded-lg py-2 cursor-pointer transition-colors"
               >
@@ -152,7 +162,7 @@
     <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
       <div class="flex items-center justify-between px-5 py-4 border-b border-[#e4e2df]">
         <h2 class="text-lg font-bold text-[#1b1c1a]">
-          {{ isEditing() ? 'Editar Kit de Churrasco' : 'Novo Kit de Churrasco' }}
+          {{ isEditing() ? 'Editar Kit de Churrasco' : isDuplicating() ? 'Duplicar Kit de Churrasco' : 'Novo Kit de Churrasco' }}
         </h2>
         <button
           (click)="closeModal()"
