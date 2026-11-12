@@ -269,9 +269,17 @@ export class ApiDataService {
     return this.http.post<PurchaseEntry>(`${BASE}/compras/entrada`, purchase);
   }
 
-  /** Apaga uma entrada lançada por engano (estorna estoque e custo; 409 se parte já foi vendida/perdida). */
-  deletePurchase(id: string): Observable<void> {
-    return this.http.delete<void>(`${BASE}/compras/${id}`);
+  /** Cancela a compra (nunca apaga): estorna estoque e custo por movimentações inversas; 409 se parte já foi vendida/perdida. */
+  cancelPurchase(id: string, reason: string): Observable<PurchaseEntry> {
+    return this.http.post<PurchaseEntry>(`${BASE}/compras/${id}/cancelar`, { reason });
+  }
+
+  /** Registra dinheiro devolvido pelo fornecedor por uma compra paga e cancelada. */
+  registerPurchaseRefund(
+    id: string,
+    refund: { amount: number; date: string | null; notes: string | null },
+  ): Observable<PurchaseEntry> {
+    return this.http.post<PurchaseEntry>(`${BASE}/compras/${id}/devolucoes`, refund);
   }
 
   updatePurchase(id: string, purchase: SavePurchasePayload): Observable<PurchaseEntry> {

@@ -98,13 +98,13 @@
                 <td class="px-4 py-3 text-[13px] text-[#4f4537]">{{ purchase.paymentCondition }}</td>
                 <td class="px-4 py-3">
                   <span
-                    [class]="
-                      'inline-flex items-center px-2 py-1 rounded-full text-[11px] font-bold ' +
-                      paymentStatusBadgeClass(purchase.paymentStatus)
-                    "
+                    [class]="'inline-flex items-center px-2 py-1 rounded-full text-[11px] font-bold ' + purchaseBadgeClass(purchase)"
                   >
-                    {{ paymentStatusLabel(purchase.paymentStatus) }}
+                    {{ purchaseBadgeLabel(purchase) }}
                   </span>
+                  @if (refundLabel(purchase); as refund) {
+                    <p class="text-[10px] font-semibold text-[#ba1a1a] mt-1">{{ refund }}</p>
+                  }
                 </td>
                 <td class="px-4 py-3 text-right">
                   @if (!canEditPurchases()) {
@@ -116,25 +116,39 @@
                     </span>
                   } @else {
                     <div class="flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
-                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
-                        title="Editar"
-                        aria-label="Editar"
-                      >
-                        <span class="material-symbols-outlined text-[18px]">edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        [hidden]="!can(PERMISSION.PurchasesDelete)"
-                        (click)="$event.stopPropagation(); removePurchase(purchase)"
-                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
-                        title="Excluir"
-                        aria-label="Excluir"
-                      >
-                        <span class="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
+                      @if (purchase.isDeleted) {
+                        @if (canRegisterRefund(purchase)) {
+                          <button
+                            type="button"
+                            (click)="$event.stopPropagation(); openRefundModal(purchase)"
+                            class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                            title="Registrar devolução do fornecedor"
+                            aria-label="Registrar devolução do fornecedor"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">currency_exchange</span>
+                          </button>
+                        }
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
+                          class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                          title="Editar"
+                          aria-label="Editar"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          [hidden]="!can(PERMISSION.PurchasesDelete)"
+                          (click)="$event.stopPropagation(); openCancelModal(purchase)"
+                          class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                          title="Cancelar compra"
+                          aria-label="Cancelar compra"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">cancel</span>
+                        </button>
+                      }
                     </div>
                   }
                 </td>
@@ -149,6 +163,29 @@
                         <span><span class="font-semibold">Frete:</span> {{ formatCurrency(purchase.shippingCost) }}</span>
                         <span><span class="font-semibold">Forma de pagamento:</span> {{ paymentModeLabel(purchase.paymentMode) }}</span>
                       </div>
+
+                      @if (purchase.isDeleted) {
+                        <div class="text-[12px] text-[#7f1d1d] bg-[#ba1a1a]/5 border border-[#ba1a1a]/20 rounded-lg px-3 py-2">
+                          <p>
+                            <span class="font-semibold">Cancelada</span>
+                            @if (purchase.cancelledAt) { em {{ purchase.cancelledAt | date:'dd/MM/yyyy HH:mm' }} }
+                            @if (purchase.cancelledBy) { por {{ purchase.cancelledBy }} }
+                          </p>
+                          <p><span class="font-semibold">Motivo:</span> {{ purchase.cancelReason }}</p>
+                          @if (purchase.refundStatus !== 'nao_aplicavel') {
+                            <p>
+                              <span class="font-semibold">Devolução do fornecedor:</span>
+                              {{ formatCurrency(purchase.refundedAmount) }} de {{ formatCurrency(purchase.totalAmount) }}
+                            </p>
+                            @for (refund of purchase.refunds ?? []; track refund.id) {
+                              <p class="text-[11px]">
+                                • {{ formatCurrency(refund.amount) }} em {{ refund.date | date:'dd/MM/yyyy' }}
+                                @if (refund.notes) { — {{ refund.notes }} }
+                              </p>
+                            }
+                          }
+                        </div>
+                      }
 
                       @if (purchase.items.length === 0) {
                         <p class="text-xs text-[#827565] italic">Nenhum item detalhado para esta entrada.</p>
@@ -210,12 +247,9 @@
                 <p class="text-[11px] text-[#827565]">{{ purchase.entryDate | date:'dd/MM/yyyy' }} {{ purchase.entryTime }} • {{ purchase.nfeNumber }}</p>
               </div>
               <span
-                [class]="
-                  'inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold shrink-0 ' +
-                  paymentStatusBadgeClass(purchase.paymentStatus)
-                "
+                [class]="'inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold shrink-0 ' + purchaseBadgeClass(purchase)"
               >
-                {{ paymentStatusLabel(purchase.paymentStatus) }}
+                {{ purchaseBadgeLabel(purchase) }}
               </span>
             </div>
             <div class="flex items-center justify-between mt-2 text-[12px] text-[#4f4537]">
@@ -230,25 +264,39 @@
                 </span>
               } @else {
                 <div class="flex items-center gap-1">
-                  <button
-                    type="button"
-                    (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
-                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
-                    title="Editar"
-                    aria-label="Editar"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">edit</span>
-                  </button>
-                  <button
-                    type="button"
-                    [hidden]="!can(PERMISSION.PurchasesDelete)"
-                    (click)="$event.stopPropagation(); removePurchase(purchase)"
-                    class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
-                    title="Excluir"
-                    aria-label="Excluir"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">delete</span>
-                  </button>
+                  @if (purchase.isDeleted) {
+                    @if (canRegisterRefund(purchase)) {
+                      <button
+                        type="button"
+                        (click)="$event.stopPropagation(); openRefundModal(purchase)"
+                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                        title="Registrar devolução do fornecedor"
+                        aria-label="Registrar devolução do fornecedor"
+                      >
+                        <span class="material-symbols-outlined text-[18px]">currency_exchange</span>
+                      </button>
+                    }
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="$event.stopPropagation(); openEditEntryModal(purchase)"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                      title="Editar"
+                      aria-label="Editar"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      [hidden]="!can(PERMISSION.PurchasesDelete)"
+                      (click)="$event.stopPropagation(); openCancelModal(purchase)"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#ba1a1a] hover:bg-[#ba1a1a]/10"
+                      title="Cancelar compra"
+                      aria-label="Cancelar compra"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">cancel</span>
+                    </button>
+                  }
                 </div>
               }
             </div>
@@ -371,6 +419,7 @@
               [(ngModel)]="form.entryDate"
               name="entryDate"
               [max]="today"
+              [disabled]="lockedFinancials()"
               required
               title="Dia em que a mercadoria chegou — usado no lote do estoque e na conta a pagar"
               class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
@@ -386,6 +435,7 @@
               [ngModel]="form.shippingCost || null"
               (ngModelChange)="form.shippingCost = $event ?? 0"
               name="shippingCost"
+              [disabled]="lockedFinancials()"
               placeholder="Ex: 150,00 (vazio se não houve frete)"
               class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
             />
@@ -397,6 +447,7 @@
               type="text"
               [(ngModel)]="form.paymentCondition"
               name="paymentCondition"
+              [disabled]="lockedFinancials()"
               placeholder="Boleto 28 dias"
               class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
             />
@@ -407,6 +458,7 @@
             <select
               [(ngModel)]="form.paymentMode"
               name="paymentMode"
+              [disabled]="lockedFinancials()"
               class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
             >
               @for (option of paymentModeOptions; track option.value) {
@@ -416,8 +468,18 @@
           </div>
         </div>
 
+        @if (lockedFinancials()) {
+          <p class="text-[12px] text-[#7f5700] bg-[#d8a34a]/15 border border-[#d8a34a]/40 rounded-lg px-3 py-2 flex items-start gap-2">
+            <span class="material-symbols-outlined text-[16px] mt-0.5">lock</span>
+            <span>
+              Compra já paga: só fornecedor e dados da nota podem ser corrigidos. Para mudar itens, valores, pagamento ou
+              data, cancele a compra e lance uma nova.
+            </span>
+          </p>
+        }
+
         <!-- Itens da Compra (somam automaticamente ao estoque do produto selecionado) -->
-        <div class="pt-2 border-t border-[#efeeeb]">
+        <fieldset [disabled]="lockedFinancials()" class="pt-2 border-t border-[#efeeeb] min-w-0 disabled:opacity-60">
           <div class="flex items-center justify-between mb-2">
             <div>
               <p class="text-xs font-bold text-[#4f4537]">Itens da Compra *</p>
@@ -590,7 +652,7 @@
           <p class="text-xs text-[#4f4537] font-semibold mt-2 text-right">
             {{ formItems().length }} item(ns) • {{ totalWeightKg() }} kg • Total dos itens: {{ formatCurrency(totalItemsAmount()) }}
           </p>
-        </div>
+        </fieldset>
 
         <div class="flex items-center justify-end gap-2 pt-3 border-t border-[#efeeeb] mt-1">
           <button
@@ -609,6 +671,105 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+}
+
+<!-- Cancelar compra (com motivo obrigatório) -->
+@if (cancelTarget(); as target) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeCancelModal()">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-xl p-5 flex flex-col gap-3" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-bold text-[#1b1c1a]">Cancelar compra {{ target.orderCode }}?</h2>
+      <p class="text-[13px] text-[#4f4537]">
+        O estoque, os lotes e o custo médio voltam ao que eram antes dela, por movimentações de estorno. A compra continua
+        no histórico como cancelada. Só é possível se nada dela foi vendido ou perdido.
+      </p>
+      <p class="text-[13px] font-semibold text-[#1b1c1a] bg-[#f5f3f0] rounded-lg px-3 py-2">
+        {{ target.supplierName }} • {{ formatCurrency(target.totalAmount) }}
+      </p>
+      @if (target.paymentStatus === 'pago') {
+        <p class="text-[12px] text-[#7f5700] bg-[#d8a34a]/15 border border-[#d8a34a]/40 rounded-lg px-3 py-2">
+          Esta compra já foi paga. O pagamento continua registrado no caixa e a devolução do fornecedor fica pendente até
+          você registrar o valor devolvido.
+        </p>
+      }
+      <label class="block text-xs font-bold text-[#4f4537]">Motivo do cancelamento *</label>
+      <textarea
+        [(ngModel)]="cancelReason"
+        name="cancelReason"
+        rows="3"
+        placeholder="Ex.: nota lançada em duplicidade"
+        class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+      ></textarea>
+      <div class="flex items-center justify-end gap-2 mt-1">
+        <button type="button" (click)="closeCancelModal()" class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer">
+          Voltar
+        </button>
+        <button
+          type="button"
+          (click)="confirmCancel()"
+          [disabled]="isCancelling() || !cancelReason.trim()"
+          class="px-4 py-2 bg-[#ba1a1a] hover:bg-[#9a1414] text-white text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ isCancelling() ? 'Cancelando...' : 'Cancelar compra' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Registrar devolução do fornecedor (compra paga e cancelada) -->
+@if (refundTarget(); as target) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeRefundModal()">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-xl p-5 flex flex-col gap-3" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-bold text-[#1b1c1a]">Devolução do fornecedor — {{ target.orderCode }}</h2>
+      <p class="text-[13px] text-[#4f4537]">
+        Já devolvido: {{ formatCurrency(target.refundedAmount) }} de {{ formatCurrency(target.totalAmount) }}. O valor
+        registrado entra no caixa na data informada.
+      </p>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Valor devolvido (R$) *</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            [(ngModel)]="refundAmount"
+            name="refundAmount"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Data</label>
+          <input
+            type="date"
+            [(ngModel)]="refundDate"
+            name="refundDate"
+            [max]="today"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+        </div>
+      </div>
+      <input
+        type="text"
+        [(ngModel)]="refundNotes"
+        name="refundNotes"
+        placeholder="Observação (opcional)"
+        class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+      />
+      <div class="flex items-center justify-end gap-2 mt-1">
+        <button type="button" (click)="closeRefundModal()" class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer">
+          Fechar
+        </button>
+        <button
+          type="button"
+          (click)="confirmRefund()"
+          [disabled]="isRefunding() || !(refundAmount > 0)"
+          class="px-4 py-2 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ isRefunding() ? 'Salvando...' : 'Registrar devolução' }}
+        </button>
+      </div>
     </div>
   </div>
 }

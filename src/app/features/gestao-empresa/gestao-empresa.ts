@@ -144,6 +144,8 @@ export class GestaoEmpresa {
         return 'Recebimento';
       case 'compra':
         return 'Compra';
+      case 'devolucao_compra':
+        return 'Devolução de compra';
       case 'equipamento':
         return 'Equipamento';
       case 'despesa':

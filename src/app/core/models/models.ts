@@ -145,6 +145,24 @@ export interface PurchaseEntry {
   paymentStatus: 'pago' | 'pendente';
   paymentMode: 'pix' | 'dinheiro' | 'cartao' | 'a_prazo';
   items: PurchaseItem[];
+  /** true = compra cancelada: continua no histórico (exclusão lógica), não conta no estoque. */
+  isDeleted: boolean;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancelReason?: string | null;
+  /** Só tem sentido para compra paga e cancelada: o dinheiro devolvido pelo fornecedor. */
+  refundStatus: 'nao_aplicavel' | 'pendente' | 'parcial' | 'devolvido';
+  refundedAmount: number;
+  refunds?: PurchaseRefund[] | null;
+}
+
+export interface PurchaseRefund {
+  id: string;
+  amount: number;
+  date: string;
+  notes?: string | null;
+  createdBy: string;
+  createdAt: string;
 }
 
 /** Corpo de POST/PUT de compras: igual a PurchaseEntry, mas os itens não levam `id` (gerado pela API). */
@@ -413,7 +431,7 @@ export interface CapitalContribution {
 /** Linha do extrato do caixa: amount positivo = entrou, negativo = saiu. */
 export interface CashMovement {
   date: string;
-  kind: 'aporte' | 'venda' | 'recebimento' | 'compra' | 'equipamento' | 'despesa';
+  kind: 'aporte' | 'venda' | 'recebimento' | 'compra' | 'devolucao_compra' | 'equipamento' | 'despesa';
   description: string;
   amount: number;
 }

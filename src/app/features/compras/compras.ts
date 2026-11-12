@@ -4,7 +4,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { ApiDataService } from '../../core/services/api-data';
-import { ConfirmService } from '../../core/services/confirm.service';
 import { PERMISSION } from '../../core/models/permissions';
 import { AppStateService } from '../../core/services/app-state';
 import { ProductItem, PurchaseEntry } from '../../core/models/models';
@@ -89,7 +88,6 @@ function emptyItemRow(): PurchaseFormItemRow {
 })
 export class Compras {
   private readonly api = inject(ApiDataService);
-  private readonly confirmDialog = inject(ConfirmService);
   private readonly appState = inject(AppStateService);
   protected readonly PERMISSION = PERMISSION;
 
@@ -104,7 +102,19 @@ export class Compras {
   protected readonly today = todayLocalIso();
   protected readonly isModalOpen = signal(false);
   protected readonly isEditing = signal(false);
+  /** Compra já paga: itens, valores, pagamento e data ficam travados (só fornecedor e nota podem ser corrigidos). */
+  protected readonly lockedFinancials = signal(false);
   protected editingPurchaseId: string | null = null;
+
+  // Cancelamento (motivo obrigatório) e devolução do fornecedor
+  protected readonly cancelTarget = signal<PurchaseEntry | null>(null);
+  protected cancelReason = '';
+  protected readonly isCancelling = signal(false);
+  protected readonly refundTarget = signal<PurchaseEntry | null>(null);
+  protected refundAmount = 0;
+  protected refundDate = todayLocalIso();
+  protected refundNotes = '';
+  protected readonly isRefunding = signal(false);
   protected readonly expandedPurchaseId = signal<string | null>(null);
   protected form: PurchaseFormModel = emptyForm();
   protected readonly formItems = signal<PurchaseFormItemRow[]>([]);
@@ -176,33 +186,104 @@ export class Compras {
   protected openNewEntryModal(): void {
     if (!this.appState.requirePermission(PERMISSION.PurchasesCreate)) return;
     this.isEditing.set(false);
+    this.lockedFinancials.set(false);
     this.editingPurchaseId = null;
     this.form = emptyForm();
     this.formItems.set([emptyItemRow()]);
     this.isModalOpen.set(true);
   }
 
-  /** Editar pedido de compra exige a permissão "compras.editar" (o dono sempre tem). Compras pagas também podem ser editadas. */
-  protected async removePurchase(purchase: PurchaseEntry): Promise<void> {
-    if (!this.appState.requirePermission(PERMISSION.PurchasesDelete)) return;
-    const confirmed = await this.confirmDialog.ask({
-      title: 'Excluir pedido de compra?',
-      message: 'O estoque, os lotes e o custo médio voltam ao que eram antes dele, e a conta a pagar é apagada. Só é possível se nada dele foi vendido ou perdido.',
-      detail: `${purchase.orderCode} • ${purchase.supplierName} • ${this.formatCurrency(purchase.totalAmount)}`,
-      confirmLabel: 'Excluir pedido',
-      tone: 'danger',
-    });
-    if (!confirmed) return;
+  protected purchaseBadgeClass(purchase: PurchaseEntry): string {
+    return purchase.isDeleted
+      ? 'bg-[#ba1a1a]/10 text-[#ba1a1a] border border-[#ba1a1a]/30'
+      : this.paymentStatusBadgeClass(purchase.paymentStatus);
+  }
 
-    this.api.deletePurchase(purchase.id).subscribe({
+  protected purchaseBadgeLabel(purchase: PurchaseEntry): string {
+    return purchase.isDeleted ? 'Cancelada' : this.paymentStatusLabel(purchase.paymentStatus);
+  }
+
+  /** Aviso sob o status de uma compra paga e cancelada: o dinheiro ainda não voltou (ou voltou só em parte). */
+  protected refundLabel(purchase: PurchaseEntry): string | null {
+    if (purchase.refundStatus === 'pendente') return 'Devolução pendente';
+    if (purchase.refundStatus === 'parcial') return 'Devolução parcial';
+    return null;
+  }
+
+  protected canRegisterRefund(purchase: PurchaseEntry): boolean {
+    return (
+      purchase.isDeleted &&
+      (purchase.refundStatus === 'pendente' || purchase.refundStatus === 'parcial') &&
+      this.appState.can(PERMISSION.PurchasesEdit)
+    );
+  }
+
+  /** Compra nunca é apagada: cancelar exige a permissão "compras.excluir" e um motivo, e fica no histórico. */
+  protected openCancelModal(purchase: PurchaseEntry): void {
+    if (!this.appState.requirePermission(PERMISSION.PurchasesDelete)) return;
+    this.cancelReason = '';
+    this.cancelTarget.set(purchase);
+  }
+
+  protected closeCancelModal(): void {
+    if (!this.isCancelling()) this.cancelTarget.set(null);
+  }
+
+  protected confirmCancel(): void {
+    const purchase = this.cancelTarget();
+    const reason = this.cancelReason.trim();
+    if (!purchase || !reason) return;
+
+    this.isCancelling.set(true);
+    this.api.cancelPurchase(purchase.id, reason).subscribe({
       next: () => {
+        this.isCancelling.set(false);
+        this.cancelTarget.set(null);
         this.refresh();
-        this.appState.triggerToast(`Pedido ${purchase.orderCode} excluído.`);
+        this.appState.triggerToast(`Pedido ${purchase.orderCode} cancelado.`);
       },
       error: (err: HttpErrorResponse) => {
-        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível excluir o pedido.');
+        this.isCancelling.set(false);
+        if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível cancelar o pedido.');
       },
     });
+  }
+
+  protected openRefundModal(purchase: PurchaseEntry): void {
+    if (!this.appState.requirePermission(PERMISSION.PurchasesEdit)) return;
+    this.refundAmount = Math.max(0, Math.round((purchase.totalAmount - purchase.refundedAmount) * 100) / 100);
+    this.refundDate = todayLocalIso();
+    this.refundNotes = '';
+    this.refundTarget.set(purchase);
+  }
+
+  protected closeRefundModal(): void {
+    if (!this.isRefunding()) this.refundTarget.set(null);
+  }
+
+  protected confirmRefund(): void {
+    const purchase = this.refundTarget();
+    if (!purchase || !(this.refundAmount > 0)) return;
+
+    this.isRefunding.set(true);
+    this.api
+      .registerPurchaseRefund(purchase.id, {
+        amount: this.refundAmount,
+        date: this.refundDate || null,
+        notes: this.refundNotes.trim() || null,
+      })
+      .subscribe({
+        next: () => {
+          this.isRefunding.set(false);
+          this.refundTarget.set(null);
+          this.refresh();
+          this.appState.triggerToast(`Devolução registrada na compra ${purchase.orderCode}.`);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isRefunding.set(false);
+          if (err.status !== 403) this.appState.triggerToast(err.error?.message ?? 'Não foi possível registrar a devolução.');
+        },
+      });
   }
 
   protected canEditPurchases(): boolean {
@@ -215,6 +296,7 @@ export class Compras {
       return;
     }
     this.isEditing.set(true);
+    this.lockedFinancials.set(purchase.paymentStatus === 'pago');
     this.editingPurchaseId = purchase.id;
     this.form = {
       entryDate: purchase.entryDate?.slice(0, 10) || todayLocalIso(),
