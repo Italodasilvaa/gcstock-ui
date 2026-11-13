@@ -295,6 +295,8 @@ export class Estoque {
         return 'shopping_cart';
       case 'perda_quebra':
         return 'warning';
+      default:
+        return 'sync_alt';
     }
   }
 
@@ -306,6 +308,8 @@ export class Estoque {
         return 'bg-[#0F1F3D]/10 text-[#0F1F3D]';
       case 'perda_quebra':
         return 'bg-[#ba1a1a]/10 text-[#ba1a1a]';
+      default:
+        return 'bg-[#827565]/10 text-[#827565]';
     }
   }
 

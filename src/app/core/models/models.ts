@@ -133,7 +133,7 @@ export interface StockBatch {
 export interface StockMovement {
   id: string;
   timestamp: string;
-  type: 'entrada' | 'baixa_pdv' | 'perda_quebra';
+  type: 'entrada' | 'baixa_pdv' | 'perda_quebra' | 'estorno_compra' | 'estorno_venda' | 'estorno_perda' | 'ajuste_estoque';
   title: string;
   docInfo: string;
   /** Quantidade na unidade em `unit` (o nome é histórico). Negativo = saída. */

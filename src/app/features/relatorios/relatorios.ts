@@ -184,6 +184,8 @@ export class Relatorios {
         return 'Baixas de PDV';
       case 'perda_quebra':
         return 'Perdas / Quebras';
+      default:
+        return 'Estornos e ajustes';
     }
   }
 
@@ -195,6 +197,8 @@ export class Relatorios {
         return 'point_of_sale';
       case 'perda_quebra':
         return 'delete_sweep';
+      default:
+        return 'sync_alt';
     }
   }
 
@@ -206,6 +210,8 @@ export class Relatorios {
         return 'bg-[#0F1F3D]/10 text-[#0F1F3D]';
       case 'perda_quebra':
         return 'bg-[#ba1a1a]/10 text-[#ba1a1a]';
+      default:
+        return 'bg-[#827565]/10 text-[#827565]';
     }
   }
 
@@ -217,6 +223,8 @@ export class Relatorios {
         return 'bg-[#0F1F3D]';
       case 'perda_quebra':
         return 'bg-[#ba1a1a]';
+      default:
+        return 'bg-[#827565]';
     }
   }
 

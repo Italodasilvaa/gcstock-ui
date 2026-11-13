@@ -133,6 +133,8 @@ export class Dashboard {
         return 'point_of_sale';
       case 'perda_quebra':
         return 'delete_sweep';
+      default:
+        return 'sync_alt';
     }
   }
 
@@ -144,6 +146,8 @@ export class Dashboard {
         return 'bg-[#d8a34a]/15 text-[#7f5700]';
       case 'perda_quebra':
         return 'bg-[#ba1a1a]/10 text-[#ba1a1a]';
+      default:
+        return 'bg-[#827565]/10 text-[#827565]';
     }
   }
 

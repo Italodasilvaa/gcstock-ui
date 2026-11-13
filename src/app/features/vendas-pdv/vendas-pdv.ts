@@ -119,7 +119,8 @@ export class VendasPdv implements OnInit {
   /** Lotes com saldo de um produto (só lotes de verdade, não a linha "Sem lote"), para escolher de qual sai a venda. */
   protected lotsFor(productId: string): StockBatch[] {
     return this.batches()
-      .filter((b) => b.productId === productId && b.id !== b.productId && b.availableKg > 0)
+      // Lote vencido não pode ser vendido: não aparece para escolha (o servidor também recusa).
+      .filter((b) => b.productId === productId && b.id !== b.productId && b.availableKg > 0 && b.status !== 'vencido')
       .sort((a, b) => a.entryDate.localeCompare(b.entryDate) || a.orderCode.localeCompare(b.orderCode));
   }
 
