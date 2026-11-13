@@ -263,6 +263,8 @@ export interface GlobalAlertSetting {
   recipients: string[];
   /** Margem mínima padrão (%) dos kits da empresa; cada kit pode ter a sua. */
   minKitMarginPercent: number;
+  /** Meta mensal de faturamento da empresa (R$), usada no painel. */
+  monthlyRevenueGoal: number;
 }
 
 export interface CartItem {
@@ -743,4 +745,133 @@ export interface PosSaleResult {
   feeAmount: number;
   discountAmount: number;
   installments: number;
+}
+
+// ---------------------------------------------------------------------------
+// Painel (dashboard): indicadores calculados no servidor a partir de dados reais.
+// ---------------------------------------------------------------------------
+
+export interface DashPeriodRevenue {
+  from: string;
+  to: string;
+  revenue: number;
+  previousRevenue: number;
+  /** Variação % sobre o período anterior; nulo quando não há base de comparação. */
+  changePercent: number | null;
+  salesCount: number;
+  previousSalesCount: number;
+}
+
+export interface DashGoal {
+  target: number;
+  realized: number;
+  remaining: number;
+  percentAchieved: number;
+  /** Estimativa de fechamento do mês no ritmo atual (projeção, não valor realizado). */
+  projection: number;
+  daysElapsed: number;
+  daysInMonth: number;
+}
+
+export interface DashRankedItem {
+  name: string;
+  unit: string;
+  qty: number;
+  revenue: number;
+}
+
+export interface DashMonthPoint {
+  month: number;
+  netRevenue: number;
+  netResult: number;
+}
+
+export interface DashStockAlertItem {
+  productId: string;
+  name: string;
+  unit: string;
+  stock: number;
+  minStock: number;
+  daysRemaining: number;
+  qty: number;
+}
+
+export interface DashTurnoverItem {
+  name: string;
+  unit: string;
+  soldLast30Days: number;
+  stock: number;
+}
+
+export interface DashKitRow {
+  id: string;
+  name: string;
+  costPrice: number;
+  suggestedPrice: number;
+  marginPercent: number;
+  minMarginPercent: number;
+  isBelowMinMargin: boolean;
+  priceIncreaseNeeded: number;
+  totalWeightKg: number;
+  available: number;
+  stockStatus: string;
+}
+
+export interface DashKitRank {
+  name: string;
+  qty: number;
+  revenue: number;
+  profit: number;
+}
+
+export interface Dashboard {
+  reference: string;
+  commercial: {
+    day: DashPeriodRevenue;
+    week: DashPeriodRevenue;
+    month: DashPeriodRevenue;
+    goal: DashGoal;
+    kitsSold: number;
+    averageTicket: number;
+    previousAverageTicket: number;
+    topProducts: DashRankedItem[];
+    topKits: DashRankedItem[];
+    byCategory: { category: string; revenue: number }[];
+  };
+  financial: {
+    from: string;
+    to: string;
+    revenue: number;
+    costOfGoodsSold: number;
+    grossProfit: number;
+    grossMarginPercent: number;
+    totalExpenses: number;
+    netResult: number;
+    cashBalance: number;
+    payablesOpen: number;
+    payablesOverdue: number;
+    receivablesOpen: number;
+    evolution: DashMonthPoint[];
+  };
+  stock: {
+    lowStockCount: number;
+    lowStock: DashStockAlertItem[];
+    outOfStockCount: number;
+    outOfStock: DashStockAlertItem[];
+    nearExpiryCount: number;
+    nearExpiry: DashStockAlertItem[];
+    expiredCount: number;
+    expired: DashStockAlertItem[];
+    stockValue: number;
+    topTurnover: DashTurnoverItem[];
+    stagnantCount: number;
+    stagnant: DashTurnoverItem[];
+  };
+  kits: {
+    kits: DashKitRow[];
+    belowMarginCount: number;
+    bestSeller: DashKitRank | null;
+    mostProfitable: DashKitRank | null;
+    costDrivers: { product: string; amount: number; sharePercent: number }[];
+  };
 }

@@ -5,6 +5,7 @@ import { ApiDataService } from '../../core/services/api-data';
 import { AppStateService } from '../../core/services/app-state';
 import { formatRelativeTimestamp } from '../../core/utils/format-timestamp';
 import { formatQuantity } from '../../core/utils/format-quantity';
+import { DashboardIndicators } from './indicadores/dashboard-indicators';
 import {
   AccountsPayableTitle,
   AccountsReceivableTitle,
@@ -29,11 +30,12 @@ const DEFAULT_ALERT_CONFIG: GlobalAlertSetting = {
   notifyWhatsapp: true,
   recipients: [],
   minKitMarginPercent: 30,
+  monthlyRevenueGoal: 3000,
 };
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, DashboardIndicators],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {

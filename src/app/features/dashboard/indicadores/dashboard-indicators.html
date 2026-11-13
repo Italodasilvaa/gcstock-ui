@@ -1,0 +1,356 @@
+<section class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs">
+  <header class="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 pt-4 md:pt-5">
+    <div>
+      <h2 class="text-lg font-bold text-[#1b1c1a]">Indicadores</h2>
+      <p class="text-[12px] text-[#827565]">Calculados das vendas, compras e estoque reais da sua empresa.</p>
+    </div>
+    <button
+      type="button"
+      (click)="load()"
+      class="inline-flex items-center gap-1 text-xs font-bold text-[#0F1F3D] border border-[#e4e2df] hover:bg-[#f5f3f0] rounded-lg px-3 py-1.5 cursor-pointer"
+    >
+      <span class="material-symbols-outlined text-[16px]">refresh</span>
+      Atualizar
+    </button>
+  </header>
+
+  <nav class="flex gap-1 px-4 md:px-6 mt-3 border-b border-[#efeeeb] overflow-x-auto" aria-label="Indicadores">
+    @for (item of tabs; track item.id) {
+      <button
+        type="button"
+        (click)="tab.set(item.id)"
+        class="inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-semibold border-b-2 cursor-pointer whitespace-nowrap -mb-px"
+        [class]="tab() === item.id ? 'border-[#d8a34a] text-[#1b1c1a]' : 'border-transparent text-[#827565] hover:text-[#1b1c1a]'"
+      >
+        <span class="material-symbols-outlined text-[18px]">{{ item.icon }}</span>
+        {{ item.label }}
+      </button>
+    }
+  </nav>
+
+  <div class="p-4 md:p-6">
+    @if (isLoading()) {
+      <p class="text-sm text-[#827565] py-6 text-center">Carregando indicadores...</p>
+    } @else if (hasError() || !data()) {
+      <p class="text-sm text-[#ba1a1a] py-6 text-center">Não foi possível carregar os indicadores. Tente atualizar.</p>
+    } @else {
+      @let d = data()!;
+
+      <!-- ================= COMERCIAL ================= -->
+      @if (tab() === 'comercial') {
+        <div class="flex flex-col gap-4">
+          <!-- Meta do mês -->
+          <div class="rounded-xl border border-[#d8a34a]/40 bg-[#d8a34a]/5 p-4">
+            <div class="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p class="text-[11px] uppercase font-bold text-[#827565]">Meta do mês</p>
+                <p class="text-2xl font-black text-[#1b1c1a]">
+                  {{ formatCurrency(d.commercial.goal.realized) }}
+                  <span class="text-sm font-semibold text-[#827565]">de {{ formatCurrency(d.commercial.goal.target) }}</span>
+                </p>
+              </div>
+              <p class="text-xl font-black" [class]="d.commercial.goal.percentAchieved >= 100 ? 'text-[#2e7d32]' : 'text-[#8a6a2e]'">
+                {{ formatNumber(d.commercial.goal.percentAchieved) }}%
+              </p>
+            </div>
+            <div class="h-3 rounded-full bg-white border border-[#e4e2df] overflow-hidden mt-2">
+              <div class="h-full rounded-full bg-[#d8a34a]" [style.width.%]="goalBarWidth()"></div>
+            </div>
+            <div class="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-[12px] text-[#4f4537]">
+              <span><span class="font-semibold">Falta:</span> {{ formatCurrency(d.commercial.goal.remaining) }}</span>
+              @if (d.commercial.goal.daysElapsed > 0) {
+                <span>
+                  <span class="font-semibold">Projeção do mês:</span> {{ formatCurrency(d.commercial.goal.projection) }}
+                  <span class="text-[#827565]">(estimativa no ritmo de {{ d.commercial.goal.daysElapsed }} de {{ d.commercial.goal.daysInMonth }} dias)</span>
+                </span>
+              }
+              @if (d.commercial.goal.target === 0) {
+                <span class="text-[#827565]">Defina a meta em Configurações.</span>
+              }
+            </div>
+          </div>
+
+          <!-- Faturamento diário, semanal, mensal -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            @for (card of [
+              { title: 'Hoje', p: d.commercial.day },
+              { title: 'Esta semana', p: d.commercial.week },
+              { title: 'Este mês', p: d.commercial.month }
+            ]; track card.title) {
+              <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-4">
+                <p class="text-[11px] uppercase font-bold text-[#827565]">{{ card.title }}</p>
+                <p class="text-xl font-black text-[#0F1F3D]">{{ formatCurrency(card.p.revenue) }}</p>
+                <p class="text-[12px] text-[#4f4537]">{{ card.p.salesCount }} venda(s)</p>
+                <p class="text-[11px] font-semibold" [class]="changeClass(card.p)">{{ changeLabel(card.p) }}</p>
+              </div>
+            }
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Ticket médio (mês)</p>
+              <p class="text-lg font-black text-[#1b1c1a]">{{ formatCurrency(d.commercial.averageTicket) }}</p>
+              @if (ticketChange() !== null) {
+                <p class="text-[11px] font-semibold" [class]="(ticketChange() ?? 0) >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">
+                  {{ (ticketChange() ?? 0) > 0 ? '+' : '' }}{{ formatNumber(ticketChange() ?? 0) }}% vs. mês anterior
+                </p>
+              }
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Vendas no mês</p>
+              <p class="text-lg font-black text-[#1b1c1a]">{{ d.commercial.month.salesCount }}</p>
+              <p class="text-[11px] text-[#827565]">mês anterior: {{ d.commercial.month.previousSalesCount }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Kits vendidos (mês)</p>
+              <p class="text-lg font-black text-[#1b1c1a]">{{ d.commercial.kitsSold }}</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-[13px]">
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Produtos mais vendidos</p>
+              @for (item of d.commercial.topProducts; track item.name) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]">
+                  <span class="truncate">{{ item.name }}</span>
+                  <span class="text-[#4f4537] whitespace-nowrap">{{ formatNumber(item.qty) }} {{ item.unit }} • {{ formatCurrency(item.revenue) }}</span>
+                </p>
+              } @empty {
+                <p class="text-[#827565] py-1">Nenhuma venda de produto neste mês.</p>
+              }
+            </div>
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Kits mais vendidos</p>
+              @for (item of d.commercial.topKits; track item.name) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]">
+                  <span class="truncate">{{ item.name }}</span>
+                  <span class="text-[#4f4537] whitespace-nowrap">{{ formatNumber(item.qty) }} un • {{ formatCurrency(item.revenue) }}</span>
+                </p>
+              } @empty {
+                <p class="text-[#827565] py-1">Nenhum kit vendido neste mês.</p>
+              }
+            </div>
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Vendas por categoria</p>
+              @for (item of d.commercial.byCategory; track item.category) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]">
+                  <span class="truncate">{{ item.category }}</span>
+                  <span class="text-[#4f4537] whitespace-nowrap">{{ formatCurrency(item.revenue) }}</span>
+                </p>
+              } @empty {
+                <p class="text-[#827565] py-1">Sem vendas neste mês.</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ================= FINANCEIRO ================= -->
+      @if (tab() === 'financeiro') {
+        <div class="flex flex-col gap-4">
+          <p class="text-[12px] text-[#827565]">
+            Mês de {{ d.financial.from | date:'MM/yyyy' }} (regime de competência, como na DRE). Saldo de caixa e títulos em aberto são a posição de hoje.
+          </p>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Receita</p>
+              <p class="text-lg font-black text-[#0F1F3D]">{{ formatCurrency(d.financial.revenue) }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Custos (mercadorias)</p>
+              <p class="text-lg font-black text-[#ba1a1a]">{{ formatCurrency(d.financial.costOfGoodsSold) }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Lucro bruto</p>
+              <p class="text-lg font-black" [class]="d.financial.grossProfit >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">{{ formatCurrency(d.financial.grossProfit) }}</p>
+              <p class="text-[11px] text-[#827565]">margem {{ formatNumber(d.financial.grossMarginPercent) }}%</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Resultado (lucro líquido)</p>
+              <p class="text-lg font-black" [class]="d.financial.netResult >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">{{ formatCurrency(d.financial.netResult) }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Despesas do mês</p>
+              <p class="text-lg font-black text-[#1b1c1a]">{{ formatCurrency(d.financial.totalExpenses) }}</p>
+              <p class="text-[11px] text-[#827565]">operacionais, folha, perdas e financeiras</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Saldo de caixa</p>
+              <p class="text-lg font-black" [class]="d.financial.cashBalance >= 0 ? 'text-[#1b1c1a]' : 'text-[#ba1a1a]'">{{ formatCurrency(d.financial.cashBalance) }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Contas a pagar</p>
+              <p class="text-lg font-black text-[#1b1c1a]">{{ formatCurrency(d.financial.payablesOpen) }}</p>
+              @if (d.financial.payablesOverdue > 0) {
+                <p class="text-[11px] font-semibold text-[#ba1a1a]">{{ formatCurrency(d.financial.payablesOverdue) }} vencido</p>
+              }
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Contas a receber</p>
+              <p class="text-lg font-black text-[#1b1c1a]">{{ formatCurrency(d.financial.receivablesOpen) }}</p>
+            </div>
+          </div>
+
+          <div>
+            <p class="font-bold text-[#1b1c1a] text-sm mb-2">Evolução mensal (receita líquida e resultado)</p>
+            <div class="grid grid-cols-12 gap-1 items-end h-32">
+              @for (m of evolution(); track m.label) {
+                <div class="flex flex-col items-center justify-end h-full gap-0.5" [title]="m.label + ': receita ' + formatCurrency(m.netRevenue) + ', resultado ' + formatCurrency(m.netResult)">
+                  <div class="flex items-end gap-0.5 h-full w-full justify-center">
+                    <div class="w-2 rounded-t bg-[#0F1F3D]/70" [style.height.%]="m.revenueHeight"></div>
+                    <div class="w-2 rounded-t" [class]="m.netResult >= 0 ? 'bg-[#4caf50]' : 'bg-[#ba1a1a]'" [style.height.%]="m.resultHeight"></div>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="grid grid-cols-12 gap-1 mt-1">
+              @for (m of evolution(); track m.label) {
+                <span class="text-[10px] text-center text-[#827565]">{{ m.label }}</span>
+              }
+            </div>
+            <p class="text-[11px] text-[#827565] mt-1">Azul: receita líquida • verde/vermelho: resultado do mês.</p>
+          </div>
+        </div>
+      }
+
+      <!-- ================= ESTOQUE ================= -->
+      @if (tab() === 'estoque') {
+        <div class="flex flex-col gap-4">
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Estoque baixo</p>
+              <p class="text-lg font-black" [class]="d.stock.lowStockCount > 0 ? 'text-[#b45309]' : 'text-[#1b1c1a]'">{{ d.stock.lowStockCount }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Sem estoque</p>
+              <p class="text-lg font-black" [class]="d.stock.outOfStockCount > 0 ? 'text-[#ba1a1a]' : 'text-[#1b1c1a]'">{{ d.stock.outOfStockCount }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Perto de vencer</p>
+              <p class="text-lg font-black" [class]="d.stock.nearExpiryCount > 0 ? 'text-[#b45309]' : 'text-[#1b1c1a]'">{{ d.stock.nearExpiryCount }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Vencidos</p>
+              <p class="text-lg font-black" [class]="d.stock.expiredCount > 0 ? 'text-[#ba1a1a]' : 'text-[#1b1c1a]'">{{ d.stock.expiredCount }}</p>
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Valor em estoque</p>
+              <p class="text-lg font-black text-[#0F1F3D]">{{ formatCurrency(d.stock.stockValue) }}</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-[13px]">
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Estoque abaixo do mínimo</p>
+              @for (p of d.stock.lowStock; track p.productId) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]"><span class="truncate">{{ p.name }}</span><span class="text-[#b45309] whitespace-nowrap">{{ formatNumber(p.stock) }} / mín. {{ formatNumber(p.minStock) }} {{ p.unit }}</span></p>
+              } @empty { <p class="text-[#827565] py-1">Nenhum produto abaixo do mínimo.</p> }
+              @if (d.stock.lowStockCount > d.stock.lowStock.length) { <p class="text-[11px] text-[#827565]">e mais {{ d.stock.lowStockCount - d.stock.lowStock.length }}...</p> }
+            </div>
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Sem estoque</p>
+              @for (p of d.stock.outOfStock; track p.productId) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]"><span class="truncate">{{ p.name }}</span><span class="text-[#ba1a1a] whitespace-nowrap">zerado</span></p>
+              } @empty { <p class="text-[#827565] py-1">Nenhum produto zerado.</p> }
+              @if (d.stock.outOfStockCount > d.stock.outOfStock.length) { <p class="text-[11px] text-[#827565]">e mais {{ d.stock.outOfStockCount - d.stock.outOfStock.length }}...</p> }
+            </div>
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Validade crítica</p>
+              @for (p of d.stock.nearExpiry; track p.productId) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]"><span class="truncate">{{ p.name }}</span><span class="text-[#b45309] whitespace-nowrap">vence em {{ p.daysRemaining }} dia(s)</span></p>
+              } @empty { <p class="text-[#827565] py-1">Nada perto de vencer.</p> }
+            </div>
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Com lote vencido <span class="text-[11px] font-normal text-[#827565]">(registre a perda em Perdas)</span></p>
+              @for (p of d.stock.expired; track p.productId) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]"><span class="truncate">{{ p.name }}</span><span class="text-[#ba1a1a] whitespace-nowrap">{{ formatNumber(p.qty) }} {{ p.unit }} vencido(s)</span></p>
+              } @empty { <p class="text-[#827565] py-1">Nenhum lote vencido com saldo.</p> }
+            </div>
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Maior giro (últimos 30 dias)</p>
+              @for (p of d.stock.topTurnover; track p.name) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]"><span class="truncate">{{ p.name }}</span><span class="text-[#4f4537] whitespace-nowrap">saíram {{ formatNumber(p.soldLast30Days) }} {{ p.unit }} • estoque {{ formatNumber(p.stock) }}</span></p>
+              } @empty { <p class="text-[#827565] py-1">Sem vendas nos últimos 30 dias.</p> }
+            </div>
+            <div>
+              <p class="font-bold text-[#1b1c1a] mb-1">Parados (sem venda em 30 dias)</p>
+              @for (p of d.stock.stagnant; track p.name) {
+                <p class="flex justify-between gap-2 py-1 border-t border-[#efeeeb]"><span class="truncate">{{ p.name }}</span><span class="text-[#4f4537] whitespace-nowrap">{{ formatNumber(p.stock) }} {{ p.unit }} parado(s)</span></p>
+              } @empty { <p class="text-[#827565] py-1">Nenhum produto parado.</p> }
+              @if (d.stock.stagnantCount > d.stock.stagnant.length) { <p class="text-[11px] text-[#827565]">e mais {{ d.stock.stagnantCount - d.stock.stagnant.length }}...</p> }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ================= KITS ================= -->
+      @if (tab() === 'kits') {
+        <div class="flex flex-col gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Kit mais vendido (mês)</p>
+              @if (d.kits.bestSeller; as best) {
+                <p class="text-base font-black text-[#1b1c1a]">{{ best.name }}</p>
+                <p class="text-[12px] text-[#4f4537]">{{ formatNumber(best.qty) }} un • {{ formatCurrency(best.revenue) }}</p>
+              } @else { <p class="text-[#827565] text-sm">Nenhum kit vendido no mês.</p> }
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Kit mais rentável (lucro no mês)</p>
+              @if (d.kits.mostProfitable; as top) {
+                <p class="text-base font-black text-[#1b1c1a]">{{ top.name }}</p>
+                <p class="text-[12px] text-[#2e7d32] font-semibold">{{ formatCurrency(top.profit) }} de lucro</p>
+              } @else { <p class="text-[#827565] text-sm">Nenhum kit vendido no mês.</p> }
+            </div>
+            <div class="rounded-xl border border-[#e4e2df] p-4">
+              <p class="text-[11px] uppercase font-bold text-[#827565]">Alertas de margem</p>
+              <p class="text-lg font-black" [class]="d.kits.belowMarginCount > 0 ? 'text-[#ba1a1a]' : 'text-[#2e7d32]'">{{ d.kits.belowMarginCount }}</p>
+              <p class="text-[11px] text-[#827565]">kit(s) abaixo da margem mínima</p>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto rounded-lg border border-[#e4e2df]">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="text-[10px] uppercase tracking-wider text-[#827565] font-bold bg-[#f5f3f0]">
+                  <th class="px-3 py-2">Kit</th>
+                  <th class="px-3 py-2 text-right">Custo atual</th>
+                  <th class="px-3 py-2 text-right">Preço</th>
+                  <th class="px-3 py-2 text-right">Margem</th>
+                  <th class="px-3 py-2 text-right">Peso</th>
+                  <th class="px-3 py-2 text-right">Disponível</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (k of d.kits.kits; track k.id) {
+                  <tr class="border-t border-[#efeeeb]">
+                    <td class="px-3 py-2 text-[13px] font-semibold text-[#1b1c1a]">{{ k.name }}</td>
+                    <td class="px-3 py-2 text-right text-[13px] text-[#4f4537]">{{ formatCurrency(k.costPrice) }}</td>
+                    <td class="px-3 py-2 text-right text-[13px] text-[#4f4537]">{{ formatCurrency(k.suggestedPrice) }}</td>
+                    <td class="px-3 py-2 text-right text-[13px]" [class]="marginClass(k.isBelowMinMargin)">
+                      {{ formatNumber(k.marginPercent) }}%
+                      @if (k.isBelowMinMargin) { <span class="block text-[10px] font-normal">mín. {{ formatNumber(k.minMarginPercent) }}% • subir {{ formatCurrency(k.priceIncreaseNeeded) }}</span> }
+                    </td>
+                    <td class="px-3 py-2 text-right text-[13px] text-[#4f4537]">{{ formatNumber(k.totalWeightKg) }} kg</td>
+                    <td class="px-3 py-2 text-right text-[13px]" [class]="k.available <= 0 ? 'text-[#ba1a1a] font-bold' : 'text-[#4f4537]'">{{ formatNumber(k.available) }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="6" class="px-3 py-4 text-center text-sm text-[#827565]">Nenhum kit cadastrado. <a routerLink="/kits" class="text-[#0F1F3D] font-semibold underline">Cadastrar kit</a></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <p class="font-bold text-[#1b1c1a] text-sm mb-1">Produtos que mais pesam no custo dos kits</p>
+            @for (c of d.kits.costDrivers; track c.product) {
+              <div class="py-1 border-t border-[#efeeeb]">
+                <p class="flex justify-between gap-2 text-[13px]"><span class="truncate">{{ c.product }}</span><span class="text-[#4f4537] whitespace-nowrap">{{ formatCurrency(c.amount) }} • {{ formatNumber(c.sharePercent) }}%</span></p>
+                <div class="h-1.5 rounded-full bg-[#efeeeb] mt-1"><div class="h-full rounded-full bg-[#d8a34a]" [style.width.%]="c.sharePercent"></div></div>
+              </div>
+            } @empty { <p class="text-[#827565] text-sm py-1">Sem kits com componentes.</p> }
+          </div>
+        </div>
+      }
+    }
+  </div>
+</section>

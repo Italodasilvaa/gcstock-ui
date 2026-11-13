@@ -62,6 +62,7 @@ export class Configuracoes {
     notifyWhatsapp: true,
     recipients: [],
     minKitMarginPercent: 30,
+    monthlyRevenueGoal: 3000,
   };
   protected readonly newRecipient = signal('');
 
