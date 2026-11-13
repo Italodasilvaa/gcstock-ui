@@ -1,38 +1,38 @@
 # Esteira do front-end (GC Stock UI): valida, gera a imagem (nginx) e publica no Swarm da VPS.
 #
-# Fluxo:  feature -> Pull Request (só valida) -> branch "staging" (publica em homologação) -> branch "production" (publica em produção).
+# Fluxo:  feature -> Pull Request (só valida) -> branch "stg" (publica em homologação) -> branch "prod" (publica em produção).
 # Cada ambiente é construído com a URL da API dele (angular.json: configuração "staging" ou "production").
 
 trigger:
   branches:
     include:
-      - production
-      - staging
+      - prod
+      - stg
 
 # Pull Request: roda só a validação (tipos + build), sem gerar imagem nem publicar.
 pr:
   branches:
     include:
       - main
-      - staging
-      - production
+      - stg
+      - prod
 
 variables:
   RegistryUrl: "registry.iwsolutions.cloud"
   RegistryConnection: "registry.iwsolutions.cloud"
   UiImageName: "gcstock-ui"
   DockerTag: "$(Build.BuildId)"
-  ${{ if eq(variables['Build.SourceBranchName'], 'production') }}:
+  ${{ if eq(variables['Build.SourceBranchName'], 'prod') }}:
     Environment: "production"
     BuildConfiguration: "production"
     StackName: "gcstock-ui-prd"
     HostDomain: "app.iwsolutions.cloud"
-  ${{ if eq(variables['Build.SourceBranchName'], 'staging') }}:
+  ${{ if eq(variables['Build.SourceBranchName'], 'stg') }}:
     Environment: "staging"
     BuildConfiguration: "staging"
     StackName: "gcstock-ui-nprd"
     HostDomain: "app-nprd.iwsolutions.cloud"
-  ${{ if and(ne(variables['Build.SourceBranchName'], 'production'), ne(variables['Build.SourceBranchName'], 'staging')) }}:
+  ${{ if and(ne(variables['Build.SourceBranchName'], 'prod'), ne(variables['Build.SourceBranchName'], 'stg')) }}:
     BuildConfiguration: "production"
 
 pool:
@@ -59,7 +59,7 @@ stages:
           - script: npx ng build --configuration $(BuildConfiguration)
             displayName: "ng build ($(BuildConfiguration))"
 
-          # Só gera e envia a imagem nas branches de publicação (Pull Request para aqui).
+          # Só gera e envia a imagem nas branches de publicação (stg e prod) (Pull Request para aqui).
           - task: Docker@2
             displayName: "Build e push da imagem do front-end"
             condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
