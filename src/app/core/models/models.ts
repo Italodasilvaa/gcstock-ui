@@ -133,7 +133,7 @@ export interface StockBatch {
 export interface StockMovement {
   id: string;
   timestamp: string;
-  type: 'entrada' | 'baixa_pdv' | 'perda_quebra' | 'estorno_compra' | 'estorno_venda' | 'estorno_perda' | 'ajuste_estoque';
+  type: 'entrada' | 'baixa_pdv' | 'perda_quebra' | 'estorno_compra' | 'estorno_venda' | 'estorno_perda' | 'devolucao_venda' | 'ajuste_estoque';
   title: string;
   docInfo: string;
   /** Quantidade na unidade em `unit` (o nome é histórico). Negativo = saída. */
@@ -292,6 +292,31 @@ export interface SaleHistoryItem {
   totalCost: number;
   /** true em vendas antigas: custo estimado pelo custo médio atual do produto. */
   costEstimated: boolean;
+  /** Quantidade deste item que o cliente já devolveu. */
+  returnedQty?: number;
+}
+
+export interface SaleReturnLine {
+  name: string;
+  qty: number;
+  unit: string;
+  refundAmount: number;
+  /** true = voltou ao estoque (apto para revenda); false = virou perda. */
+  restocked: boolean;
+}
+
+/** Devolução registrada numa venda (a venda original nunca é editada). */
+export interface SaleReturn {
+  id: string;
+  date: string;
+  createdBy: string;
+  reason: string;
+  refundAmount: number;
+  /** Parte que abateu títulos a receber em aberto. */
+  receivableAbated: number;
+  /** Parte que saiu do caixa (o dinheiro já tinha sido recebido). */
+  cashRefundAmount: number;
+  lines: SaleReturnLine[];
 }
 
 /** Venda do PDV no histórico (inclui as canceladas). */
@@ -317,6 +342,9 @@ export interface SaleHistory {
   /** Lucro bruto da venda: líquido recebido − custo. */
   profit: number;
   items: SaleHistoryItem[];
+  returns?: SaleReturn[] | null;
+  /** Total já devolvido ao cliente nesta venda. */
+  returnedAmount?: number;
 }
 
 export interface SupplierSpend {
@@ -467,7 +495,7 @@ export interface CapitalContribution {
 /** Linha do extrato do caixa: amount positivo = entrou, negativo = saiu. */
 export interface CashMovement {
   date: string;
-  kind: 'aporte' | 'venda' | 'recebimento' | 'compra' | 'devolucao_compra' | 'equipamento' | 'despesa';
+  kind: 'aporte' | 'venda' | 'recebimento' | 'compra' | 'devolucao_compra' | 'devolucao_venda' | 'equipamento' | 'despesa';
   description: string;
   amount: number;
 }

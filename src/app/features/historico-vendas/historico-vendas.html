@@ -107,7 +107,18 @@
                     <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4caf50]/10 text-[#4caf50] border border-[#4caf50]/30">Concluída</span>
                   }
                 </td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                  @if (canReturn(sale)) {
+                    <button
+                      type="button"
+                      (click)="$event.stopPropagation(); openReturn(sale)"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                      title="Devolução de itens"
+                      aria-label="Devolução de itens"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">assignment_return</span>
+                    </button>
+                  }
                   @if (canCancel(sale)) {
                     <button
                       type="button"
@@ -192,6 +203,29 @@
                         <div class="flex justify-between"><span>Líquido recebido</span><span class="font-semibold text-[#4caf50]">{{ formatCurrency(sale.netAmount) }}</span></div>
                         <div class="flex justify-between"><span>Custo das mercadorias</span><span class="font-semibold text-[#ba1a1a]">- {{ formatCurrency(sale.costTotal) }}</span></div>
                         <div class="flex justify-between border-t border-[#efeeeb] pt-2"><span class="font-bold text-[#1b1c1a]">Lucro da venda</span><span class="font-bold" [class]="sale.profit >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">{{ formatCurrency(sale.profit) }}</span></div>
+                        @if ((sale.returns ?? []).length > 0) {
+                          <div class="mt-1 rounded-lg bg-[#d8a34a]/10 border border-[#d8a34a]/30 p-2 text-[#7f5700] flex flex-col gap-1">
+                            <p class="font-bold">Devoluções: {{ formatCurrency(sale.returnedAmount ?? 0) }}</p>
+                            @for (ret of sale.returns ?? []; track ret.id) {
+                              <p>
+                                {{ ret.date }} • {{ formatCurrency(ret.refundAmount) }} • {{ ret.reason }}
+                                ({{ ret.createdBy }})
+                              </p>
+                              @for (line of ret.lines; track $index) {
+                                <p class="text-[11px] pl-2">
+                                  {{ quantityLabel(line.qty, line.unit) }} de {{ line.name }} —
+                                  {{ line.restocked ? 'voltou ao estoque' : 'perda (sem condição de revenda)' }}
+                                </p>
+                              }
+                              @if (ret.receivableAbated > 0 || ret.cashRefundAmount > 0) {
+                                <p class="text-[11px] pl-2">
+                                  Abatido do a receber: {{ formatCurrency(ret.receivableAbated) }} • Saiu do caixa:
+                                  {{ formatCurrency(ret.cashRefundAmount) }}
+                                </p>
+                              }
+                            }
+                          </div>
+                        }
                         @if (sale.status === 'cancelada') {
                           <div class="mt-1 rounded-lg bg-[#ba1a1a]/5 border border-[#ba1a1a]/20 p-2 text-[#ba1a1a]">
                             <p class="font-bold">Cancelada em {{ formatDateTime(sale.canceledAt) }} por {{ sale.canceledBy || '—' }}</p>
@@ -260,6 +294,81 @@
         >
           <span class="material-symbols-outlined text-[16px]">{{ isCanceling() ? 'progress_activity' : 'undo' }}</span>
           {{ isCanceling() ? 'Cancelando...' : 'Cancelar venda' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: devolução parcial de itens -->
+@if (returnTarget(); as target) {
+  <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" (click)="closeReturn()">
+    <div
+      class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 border border-[#e4e2df] flex flex-col gap-3"
+      (click)="$event.stopPropagation()"
+    >
+      <h3 class="text-[17px] font-bold text-[#1b1c1a]">Devolução de itens — {{ target.receiptNumber }}</h3>
+      <p class="text-[13px] text-[#4f4537]">
+        Informe quanto de cada item o cliente devolveu. A venda original não é alterada: o que está apto para revenda volta ao
+        estoque; o que não está vira perda. O valor devolvido abate primeiro o que o cliente ainda não pagou.
+      </p>
+
+      <div class="flex flex-col gap-2">
+        @for (row of returnRows; track row.itemId) {
+          <div class="grid grid-cols-[1fr_auto] gap-2 items-center p-2.5 rounded-lg border border-[#e4e2df] bg-[#f5f3f0]">
+            <div class="min-w-0">
+              <p class="text-[13px] font-semibold text-[#1b1c1a] truncate">{{ row.name }}</p>
+              <p class="text-[11px] text-[#827565]">Pode devolver até {{ quantityLabel(row.max, row.unit) }}</p>
+              <label class="flex items-center gap-1.5 mt-1 text-[12px] text-[#4f4537] cursor-pointer">
+                <input type="checkbox" [(ngModel)]="row.restock" [name]="'restock' + row.itemId" class="accent-[#d8a34a]" />
+                Apto para revenda (volta ao estoque)
+              </label>
+            </div>
+            <input
+              type="number"
+              min="0"
+              [max]="row.max"
+              step="0.001"
+              [(ngModel)]="row.qty"
+              [name]="'qty' + row.itemId"
+              placeholder="0"
+              class="w-24 px-2.5 py-1.5 rounded-lg border border-[#e4e2df] text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            />
+          </div>
+        }
+      </div>
+
+      <label class="block text-xs font-bold text-[#4f4537]">Motivo da devolução *</label>
+      <textarea
+        [(ngModel)]="returnReason"
+        name="returnReason"
+        rows="2"
+        placeholder="Ex.: cliente devolveu um pacote fechado"
+        class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+      ></textarea>
+
+      <label class="block text-xs font-bold text-[#4f4537]">Valor devolvido (R$) — opcional</label>
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        [(ngModel)]="returnRefund"
+        name="returnRefund"
+        placeholder="Vazio = calculado pelo preço pago"
+        class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+      />
+
+      <div class="flex items-center justify-end gap-2 mt-1">
+        <button type="button" (click)="closeReturn()" class="px-4 py-2 bg-[#f5f3f0] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-lg cursor-pointer">
+          Voltar
+        </button>
+        <button
+          type="button"
+          (click)="confirmReturn()"
+          [disabled]="!canConfirmReturn()"
+          class="px-4 py-2 bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ isReturning() ? 'Registrando...' : 'Registrar devolução' }}
         </button>
       </div>
     </div>

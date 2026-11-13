@@ -130,6 +130,85 @@ export class HistoricoVendas {
     });
   }
 
+  // Devolução parcial
+  protected readonly returnTarget = signal<SaleHistory | null>(null);
+  protected readonly isReturning = signal(false);
+  protected returnRows: { itemId: string; name: string; unit: string; max: number; qty: number; restock: boolean }[] = [];
+  protected returnReason = '';
+  protected returnRefund: number | null = null;
+
+  /** Quanto de um item ainda pode ser devolvido (vendido menos o já devolvido). */
+  protected returnableQty(sale: SaleHistory, itemId: string): number {
+    const item = sale.items.find((i) => i.id === itemId);
+    return item ? Math.max(0, Math.round((item.qty - (item.returnedQty ?? 0)) * 1000) / 1000) : 0;
+  }
+
+  protected canReturn(sale: SaleHistory): boolean {
+    return (
+      sale.status === 'concluida' &&
+      this.appState.can(PERMISSION.SalesCancel) &&
+      sale.items.some((item) => this.returnableQty(sale, item.id) > 0)
+    );
+  }
+
+  protected openReturn(sale: SaleHistory): void {
+    if (!this.appState.requirePermission(PERMISSION.SalesCancel)) return;
+    this.returnReason = '';
+    this.returnRefund = null;
+    this.returnRows = sale.items
+      .map((item) => ({
+        itemId: item.id,
+        name: item.name,
+        unit: item.unit,
+        max: this.returnableQty(sale, item.id),
+        qty: 0,
+        restock: true,
+      }))
+      .filter((row) => row.max > 0);
+    this.returnTarget.set(sale);
+  }
+
+  protected closeReturn(): void {
+    if (this.isReturning()) return;
+    this.returnTarget.set(null);
+  }
+
+  protected returnLines(): { saleItemId: string; qty: number; restock: boolean }[] {
+    return this.returnRows
+      .filter((row) => row.qty > 0)
+      .map((row) => ({ saleItemId: row.itemId, qty: Math.min(row.qty, row.max), restock: row.restock }));
+  }
+
+  protected canConfirmReturn(): boolean {
+    return this.returnLines().length > 0 && this.returnReason.trim().length > 0 && !this.isReturning();
+  }
+
+  protected confirmReturn(): void {
+    const sale = this.returnTarget();
+    if (!sale || !this.canConfirmReturn()) return;
+
+    this.isReturning.set(true);
+    this.api
+      .returnSaleItems(sale.saleId, {
+        reason: this.returnReason.trim(),
+        lines: this.returnLines(),
+        refundAmount: this.returnRefund && this.returnRefund > 0 ? this.returnRefund : undefined,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.sales.set(this.sales().map((s) => (s.id === updated.id ? updated : s)));
+          this.isReturning.set(false);
+          this.returnTarget.set(null);
+          this.appState.triggerToast(`Devolução registrada na venda ${sale.receiptNumber}.`);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isReturning.set(false);
+          if (err.status === 403) return; // o interceptor já avisa que falta permissão
+          this.appState.triggerToast(err.error?.message ?? 'Não foi possível registrar a devolução. Tente novamente.');
+        },
+      });
+  }
+
   protected formatCurrency(value: number): string {
     return (value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }

@@ -400,6 +400,14 @@ export class ApiDataService {
     return this.http.post<CancelSaleResult>(`${BASE}/vendas/${saleId}/cancelar`, { reason });
   }
 
+  /** Devolução parcial: o que está apto volta ao estoque, o resto vira perda; o financeiro é abatido. */
+  returnSaleItems(
+    saleId: string,
+    body: { reason: string; lines: { saleItemId: string; qty: number; restock: boolean }[]; refundAmount?: number },
+  ): Observable<SaleHistory> {
+    return this.http.post<SaleHistory>(`${BASE}/vendas/${saleId}/devolucao`, body);
+  }
+
   getSales(): Observable<SaleRecord[]> {
     return this.http.get<SaleRecord[]>(`${BASE}/financeiro/vendas`);
   }
