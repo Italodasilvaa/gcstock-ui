@@ -23,6 +23,7 @@ import {
   KitCostHistoryEntry,
   PaymentFeeSetting,
   PermissionInfo,
+  PosSaleResult,
   ProductCategory,
   ProductCostHistoryEntry,
   ProductItem,
@@ -453,9 +454,14 @@ export class ApiDataService {
     dueDate?: string;
     feeAmount: number;
     netAmount: number;
+    /** Desconto em R$ e forma de pagamento escolhida: o servidor calcula taxa, total e líquido a partir deles. */
+    discount: number;
+    paymentOptionId?: string;
+    passFeeToCustomer: boolean;
+    installments: number;
     items: { name: string; qty: number; unit: string; price: number; productId?: string; kitId?: string; stockBatchId?: string }[];
-  }): Observable<{ saleId: string; receiptNumber: string }> {
-    return this.http.post<{ saleId: string; receiptNumber: string }>(`${BASE}/pdv/finalizar-venda`, sale);
+  }): Observable<PosSaleResult> {
+    return this.http.post<PosSaleResult>(`${BASE}/pdv/finalizar-venda`, sale);
   }
 
   // ---------------------------------------------------------------------

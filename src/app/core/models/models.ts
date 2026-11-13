@@ -651,3 +651,14 @@ export interface UploadedFile {
   contentType: string;
   size: number;
 }
+
+/** Valores definitivos de uma venda do PDV, calculados pelo servidor (a tela só simula antes de finalizar). */
+export interface PosSaleResult {
+  saleId: string;
+  receiptNumber: string;
+  total: number;
+  netAmount: number;
+  feeAmount: number;
+  discountAmount: number;
+  installments: number;
+}

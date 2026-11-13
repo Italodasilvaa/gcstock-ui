@@ -147,6 +147,9 @@ export class VendasPdv implements OnInit {
   protected readonly dueDate = signal<string>(this.defaultDueDate());
   protected readonly passFeeToCustomer = signal(true);
   protected readonly minDueDate = this.todayIso();
+  /** Parcelas do cartão parcelado ou da venda a prazo (1 a 12); nos demais pagamentos vale sempre 1. */
+  protected readonly installments = signal(1);
+  protected readonly installmentOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
   private readonly productCategories = signal<ProductCategory[]>([]);
 
@@ -535,11 +538,13 @@ export class VendasPdv implements OnInit {
     this.selectedClientId.set(null);
     this.dueDate.set(this.defaultDueDate());
     this.passFeeToCustomer.set(true);
+    this.installments.set(1);
   }
 
   protected selectPaymentOption(option: PaymentOption): void {
     this.selectedPaymentId.set(option.id);
     this.passFeeToCustomer.set(true);
+    this.installments.set(1);
     if (option.mode !== 'a_prazo') {
       this.selectedClientId.set(null);
       this.dueDate.set(this.defaultDueDate());
@@ -624,16 +629,22 @@ export class VendasPdv implements OnInit {
         dueDate: option.mode === 'a_prazo' ? dueDate : undefined,
         feeAmount,
         netAmount,
+        // O servidor recalcula tudo a partir do desconto, da forma de pagamento e dos itens; estes valores só são conferidos.
+        discount: this.discount(),
+        paymentOptionId: option.id,
+        passFeeToCustomer: this.passFeeToCustomer(),
+        installments: option.mode === 'parcelado' || option.mode === 'a_prazo' ? this.installments() : 1,
         items,
       })
       .subscribe({
         next: (result) => {
+          // Valores definitivos vêm do servidor (o que ficou gravado na venda).
           this.saleSummary.set({
             saleId: result.saleId,
             receiptNumber: result.receiptNumber,
-            total: chargedTotal,
-            netAmount,
-            feeAmount,
+            total: result.total,
+            netAmount: result.netAmount,
+            feeAmount: result.feeAmount,
             paymentLabel: option.label,
             itemsCount,
             clientName: client?.name,
