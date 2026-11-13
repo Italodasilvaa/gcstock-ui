@@ -307,6 +307,22 @@
             >Horário de envio do resumo diário de estoque e validades.</span
           >
         </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[12px] font-semibold text-[#4f4537]">Margem mínima dos kits (%)</label>
+          <input
+            type="number"
+            min="0"
+            max="99.99"
+            step="0.5"
+            [(ngModel)]="alertForm.minKitMarginPercent"
+            name="minKitMarginPercent"
+            class="border border-[#e4e2df] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+          />
+          <span class="text-[11px] text-[#827565]"
+            >Kits com margem abaixo disso são sinalizados. Cada kit pode ter a sua margem mínima.</span
+          >
+        </div>
       </div>
 
       <div class="flex flex-col gap-2">

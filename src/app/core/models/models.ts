@@ -84,6 +84,29 @@ export interface BarbecueKit {
   stockAvailable: number;
   stockStatus: 'amplo' | 'disponivel' | 'alerta';
   barcodeEan: string;
+  /** Margem mínima efetiva (a do kit ou a padrão da empresa). */
+  minMarginPercent: number;
+  /** true quando o kit não tem margem própria e usa a da empresa. */
+  usesCompanyMinMargin: boolean;
+  isBelowMinMargin: boolean;
+  /** Menor preço de venda que entrega a margem mínima sobre o custo atual. */
+  priceForMinMargin: number;
+  /** Quanto o preço atual precisaria subir para atingir a margem mínima. */
+  priceIncreaseNeeded: number;
+}
+
+/** Uma mudança de custo/margem de um kit (o preço de venda não muda no recálculo). */
+export interface KitCostHistoryEntry {
+  id: string;
+  previousCost: number;
+  newCost: number;
+  previousMarginPercent: number;
+  newMarginPercent: number;
+  suggestedPrice: number;
+  source: 'recalculo_automatico' | 'edicao_kit';
+  triggerProduct?: string | null;
+  createdAt: string;
+  createdBy: string;
 }
 
 export interface StockBatch {
@@ -236,6 +259,8 @@ export interface GlobalAlertSetting {
   notifyEmail: boolean;
   notifyWhatsapp: boolean;
   recipients: string[];
+  /** Margem mínima padrão (%) dos kits da empresa; cada kit pode ter a sua. */
+  minKitMarginPercent: number;
 }
 
 export interface CartItem {

@@ -28,6 +28,7 @@ const DEFAULT_ALERT_CONFIG: GlobalAlertSetting = {
   notifyEmail: true,
   notifyWhatsapp: true,
   recipients: [],
+  minKitMarginPercent: 30,
 };
 
 @Component({

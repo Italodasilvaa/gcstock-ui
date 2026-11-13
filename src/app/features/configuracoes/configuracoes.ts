@@ -61,6 +61,7 @@ export class Configuracoes {
     notifyEmail: true,
     notifyWhatsapp: true,
     recipients: [],
+    minKitMarginPercent: 30,
   };
   protected readonly newRecipient = signal('');
 
@@ -224,7 +225,8 @@ export class Configuracoes {
     if (!this.appState.requirePermission(PERMISSION.AlertsEdit)) return;
     this.api.updateAlertConfig(this.alertForm).subscribe({
       next: () => this.appState.triggerToast('Configurações de alertas sanitários salvas com sucesso.'),
-      error: () => this.appState.triggerToast('Não foi possível salvar as configurações. Tente novamente.'),
+      error: (err) =>
+        this.appState.triggerToast(err?.error?.message ?? 'Não foi possível salvar as configurações. Tente novamente.'),
     });
   }
 

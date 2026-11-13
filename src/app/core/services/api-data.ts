@@ -20,6 +20,7 @@ import {
   CompanyTenant,
   Employee,
   GlobalAlertSetting,
+  KitCostHistoryEntry,
   PaymentFeeSetting,
   PermissionInfo,
   ProductCategory,
@@ -197,6 +198,11 @@ export class ApiDataService {
 
   getKits(): Observable<BarbecueKit[]> {
     return this.http.get<BarbecueKit[]>(`${BASE}/kits-churrasco`);
+  }
+
+  /** Histórico de custo e margem do kit, do mais recente para o mais antigo. */
+  getKitCostHistory(kitId: string): Observable<KitCostHistoryEntry[]> {
+    return this.http.get<KitCostHistoryEntry[]>(`${BASE}/kits-churrasco/${kitId}/historico-custo`);
   }
 
   saveKit(kit: Partial<BarbecueKit>): Observable<BarbecueKit> {

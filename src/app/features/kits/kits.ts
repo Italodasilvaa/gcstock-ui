@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -6,7 +7,7 @@ import { ConfirmService } from '../../core/services/confirm.service';
 import { CartBridgeService } from '../../core/services/cart-bridge';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
-import { BarbecueKit, ProductItem } from '../../core/models/models';
+import { BarbecueKit, KitCostHistoryEntry, ProductItem } from '../../core/models/models';
 import { resizeImageToJpeg } from '../../core/utils/image-resize';
 
 /** Maior lado da foto enviada ao storage — reduz o tamanho sem perder qualidade nos cards. */
@@ -21,6 +22,8 @@ interface KitFormModel {
   suggestedPrice: number;
   totalWeightKg: number;
   imageUrl: string;
+  /** Margem mínima só deste kit (%); vazio = usa a margem mínima padrão da empresa (Configurações). */
+  minMarginPercent: number | null;
 }
 
 interface KitFormComponentRow {
@@ -42,6 +45,7 @@ function emptyForm(): KitFormModel {
     suggestedPrice: 0,
     totalWeightKg: 0,
     imageUrl: '',
+    minMarginPercent: null,
   };
 }
 
@@ -51,7 +55,7 @@ function emptyComponentRow(): KitFormComponentRow {
 
 @Component({
   selector: 'app-kits',
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   templateUrl: './kits.html',
 })
 export class Kits {
@@ -155,6 +159,7 @@ export class Kits {
       suggestedPrice: kit.suggestedPrice,
       totalWeightKg: kit.totalWeightKg,
       imageUrl: kit.imageUrl,
+      minMarginPercent: kit.usesCompanyMinMargin ? null : kit.minMarginPercent,
     };
     this.formComponents.set(
       kit.components.length > 0
@@ -274,6 +279,9 @@ export class Kits {
         marginPercent: Math.round(marginPercent * 10) / 10,
         totalWeightKg: this.form.totalWeightKg,
         imageUrl: this.form.imageUrl,
+        // Custo e margem acima são só a prévia da tela: o servidor recalcula pelo custo médio atual dos produtos.
+        // Vazio = usa a margem mínima da empresa (campo omitido no JSON).
+        minMarginPercent: this.form.minMarginPercent ?? undefined,
         componentsSummary,
         components: validComponents.map((c) => ({
           productId: c.productId,
@@ -299,6 +307,37 @@ export class Kits {
         },
         error: () => this.appState.triggerToast('Não foi possível salvar o kit. Tente novamente.'),
       });
+  }
+
+  // Histórico de custo e margem do kit
+  protected readonly historyKit = signal<BarbecueKit | null>(null);
+  protected readonly costHistory = signal<KitCostHistoryEntry[]>([]);
+  protected readonly isLoadingHistory = signal(false);
+
+  protected openCostHistory(kit: BarbecueKit): void {
+    this.historyKit.set(kit);
+    this.costHistory.set([]);
+    this.isLoadingHistory.set(true);
+    this.api.getKitCostHistory(kit.id).subscribe({
+      next: (rows) => {
+        this.costHistory.set(rows);
+        this.isLoadingHistory.set(false);
+      },
+      error: () => {
+        this.isLoadingHistory.set(false);
+        this.appState.triggerToast('Não foi possível carregar o histórico do kit.');
+      },
+    });
+  }
+
+  protected closeCostHistory(): void {
+    this.historyKit.set(null);
+  }
+
+  protected historySourceLabel(entry: KitCostHistoryEntry): string {
+    return entry.source === 'recalculo_automatico'
+      ? `Custo de ${entry.triggerProduct || 'um componente'} mudou`
+      : 'Edição do kit';
   }
 
   protected sellKit(kit: BarbecueKit): void {
