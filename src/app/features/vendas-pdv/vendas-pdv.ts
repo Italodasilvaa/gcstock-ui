@@ -545,8 +545,8 @@ export class VendasPdv implements OnInit {
     this.selectedPaymentId.set(option.id);
     this.passFeeToCustomer.set(true);
     this.installments.set(1);
+    // O cliente escolhido continua valendo ao trocar a forma de pagamento (entra no histórico dele em qualquer uma).
     if (option.mode !== 'a_prazo') {
-      this.selectedClientId.set(null);
       this.dueDate.set(this.defaultDueDate());
     }
   }
@@ -653,6 +653,8 @@ export class VendasPdv implements OnInit {
           });
 
           this.clearCart();
+          // Saldo em aberto e crédito disponível mudaram com a venda.
+          this.api.getClients().subscribe((list) => this.clients.set(list));
           this.appState.triggerToast(`Venda ${result.saleId} finalizada com sucesso!`);
         },
         error: (err: HttpErrorResponse) => {

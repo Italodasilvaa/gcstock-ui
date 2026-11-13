@@ -566,9 +566,58 @@ export interface Client {
   type: 'pf' | 'pj';
   fidelityPoints: number;
   creditLimit: number;
+  /** Total comprado, calculado das vendas (já descontadas as devoluções). */
   totalSpent: number;
   favoriteCuts: string;
   notes?: string;
+  /** Do total comprado, quanto já foi pago. */
+  totalPaid?: number;
+  /** Saldo em aberto (títulos a receber ainda não pagos): é o crédito já usado. */
+  openBalance?: number;
+  purchaseCount?: number;
+  firstPurchase?: string | null;
+  lastPurchase?: string | null;
+  averageTicket?: number;
+  /** Intervalo médio, em dias, entre compras; vazio com menos de 2 compras. */
+  frequencyDays?: number | null;
+  /** Limite menos o saldo em aberto (0 quando o limite não foi definido). */
+  creditAvailable?: number;
+  creditExceeded?: boolean;
+}
+
+export interface ClientPurchaseItem {
+  name: string;
+  qty: number;
+  unit: string;
+  subtotal: number;
+  returnedQty: number;
+}
+
+/** Compra do cliente em qualquer forma de pagamento. */
+export interface ClientPurchase {
+  saleId: string;
+  receiptNumber: string;
+  timestamp: string;
+  total: number;
+  returnedAmount: number;
+  paymentMode: string;
+  status: 'concluida' | 'cancelada';
+  /** Quanto desta compra o cliente ainda deve. */
+  openAmount: number;
+  items: ClientPurchaseItem[];
+}
+
+export interface ClientTopItem {
+  name: string;
+  unit: string;
+  qty: number;
+}
+
+export interface ClientHistory {
+  client: Client;
+  purchases: ClientPurchase[];
+  topProducts: ClientTopItem[];
+  topKits: ClientTopItem[];
 }
 
 export interface CardSettlementTitle {

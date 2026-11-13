@@ -16,6 +16,7 @@ import {
   MonthlyBalance,
   FinancialSummary,
   CardSettlementTitle,
+  ClientHistory,
   Client,
   CompanyTenant,
   Employee,
@@ -475,6 +476,11 @@ export class ApiDataService {
   // ---------------------------------------------------------------------
   // Clientes
   // ---------------------------------------------------------------------
+
+  /** Histórico completo do cliente: todas as compras, indicadores e o que mais compra. */
+  getClientHistory(id: string): Observable<ClientHistory> {
+    return this.http.get<ClientHistory>(`${BASE}/clientes/${id}/historico`);
+  }
 
   getClients(): Observable<Client[]> {
     return this.http.get<Client[]>(`${BASE}/clientes`);

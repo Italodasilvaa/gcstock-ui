@@ -23,6 +23,7 @@ export const PERMISSION = {
   SalesCreate: 'vendas.criar',
   /** Alterar o preço de um item no carrinho do PDV. */
   SalesEditPrice: 'vendas.alterar-preco',
+  SalesExceedCredit: 'vendas.exceder-limite',
   /** Cancelar (estornar) vendas já finalizadas. */
   SalesCancel: 'vendas.cancelar',
   // Clientes

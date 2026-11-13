@@ -4,7 +4,8 @@ import { ApiDataService } from '../../core/services/api-data';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
-import { Client } from '../../core/models/models';
+import { DatePipe } from '@angular/common';
+import { Client, ClientHistory } from '../../core/models/models';
 
 interface ClientFormModel {
   id?: string;
@@ -33,7 +34,7 @@ function emptyForm(): ClientFormModel {
 
 @Component({
   selector: 'app-clientes',
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   templateUrl: './clientes.html',
 })
 export class Clientes {
@@ -101,6 +102,49 @@ export class Clientes {
     return type === 'pj'
       ? 'bg-[#0F1F3D]/10 text-[#0F1F3D] border border-[#0F1F3D]/30'
       : 'bg-[#d8a34a]/10 text-[#8a6a2e] border border-[#d8a34a]/40';
+  }
+
+  // Histórico completo do cliente (todas as compras, qualquer forma de pagamento)
+  protected readonly history = signal<ClientHistory | null>(null);
+  protected readonly isLoadingHistory = signal(false);
+
+  protected openHistory(client: Client): void {
+    this.history.set(null);
+    this.isLoadingHistory.set(true);
+    this.historyOpen.set(true);
+    this.api.getClientHistory(client.id).subscribe({
+      next: (result) => {
+        this.history.set(result);
+        this.isLoadingHistory.set(false);
+      },
+      error: () => {
+        this.isLoadingHistory.set(false);
+        this.historyOpen.set(false);
+        this.appState.triggerToast('Não foi possível carregar o histórico do cliente.');
+      },
+    });
+  }
+
+  protected readonly historyOpen = signal(false);
+
+  protected closeHistory(): void {
+    this.historyOpen.set(false);
+  }
+
+  protected paymentLabel(mode: string): string {
+    const labels: Record<string, string> = {
+      pix: 'Pix',
+      dinheiro: 'Dinheiro',
+      debito: 'Débito',
+      credito_vista: 'Crédito à vista',
+      parcelado: 'Crédito parcelado',
+      a_prazo: 'A prazo',
+    };
+    return labels[mode] ?? mode;
+  }
+
+  protected frequencyLabel(client: Client): string {
+    return client.frequencyDays == null ? 'Poucas compras para calcular' : `A cada ${client.frequencyDays} dias, em média`;
   }
 
   protected openNewClientModal(): void {

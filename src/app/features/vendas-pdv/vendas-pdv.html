@@ -334,6 +334,27 @@
           </div>
         }
 
+        <!-- Cliente opcional nas demais formas de pagamento: entra no histórico de compras dele -->
+        @if (paymentMode() !== 'a_prazo') {
+          <div class="flex flex-col gap-1.5 p-2.5 rounded-lg border border-[#e4e2df] bg-[#f5f3f0]">
+            <label for="clientOptionalSelect" class="flex items-center gap-1.5 text-[12px] font-semibold text-[#1b1c1a]">
+              <span class="material-symbols-outlined text-[16px] text-[#d8a34a]">person</span>
+              Cliente (opcional)
+            </label>
+            <select
+              id="clientOptionalSelect"
+              [ngModel]="selectedClientId()"
+              (ngModelChange)="selectedClientId.set($event)"
+              class="w-full px-3 py-1.5 rounded-lg border border-[#e4e2df] text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40"
+            >
+              <option [ngValue]="null">Sem cliente (balcão)</option>
+              @for (client of clients(); track client.id) {
+                <option [ngValue]="client.id">{{ client.name }}</option>
+              }
+            </select>
+          </div>
+        }
+
         <!-- Cliente e vencimento para venda a prazo -->
         @if (paymentMode() === 'a_prazo') {
           <div class="flex flex-col gap-3 p-3 rounded-lg border border-[#d8a34a]/40 bg-[#d8a34a]/5">
@@ -352,6 +373,17 @@
                   <option [ngValue]="client.id">{{ client.name }} • {{ client.document }}</option>
                 }
               </select>
+              @if (selectedClient(); as chosen) {
+                @if (chosen.creditLimit > 0) {
+                  <span class="text-[11px]" [class]="chosen.creditExceeded || chargedTotal() > (chosen.creditAvailable ?? 0) ? 'text-[#ba1a1a] font-semibold' : 'text-[#827565]'">
+                    Limite {{ formatCurrency(chosen.creditLimit) }} • em aberto {{ formatCurrency(chosen.openBalance ?? 0) }} •
+                    disponível {{ formatCurrency(chosen.creditAvailable ?? 0) }}
+                    @if (chargedTotal() > (chosen.creditAvailable ?? 0)) { — esta venda passa do limite }
+                  </span>
+                } @else {
+                  <span class="text-[11px] text-[#827565]">Cliente sem limite de crédito definido.</span>
+                }
+              }
             </div>
 
             <div class="flex flex-col gap-1.5">

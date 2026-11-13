@@ -50,7 +50,7 @@
               <th class="text-left px-4 py-3 font-semibold">Telefone</th>
               <th class="text-left px-4 py-3 font-semibold">Fidelidade</th>
               <th class="text-right px-4 py-3 font-semibold">Limite de crédito</th>
-              <th class="text-right px-4 py-3 font-semibold">Total gasto</th>
+              <th class="text-right px-4 py-3 font-semibold">Comprado / em aberto</th>
               <th class="text-left px-4 py-3 font-semibold">Cortes favoritos</th>
               <th class="text-right px-4 py-3 font-semibold">Ações</th>
             </tr>
@@ -86,13 +86,34 @@
                     {{ client.fidelityPoints }} pts
                   </div>
                 </td>
-                <td class="px-4 py-3 text-right text-[#4f4537]">{{ formatCurrency(client.creditLimit) }}</td>
-                <td class="px-4 py-3 text-right font-bold text-[#0F1F3D]">{{ formatCurrency(client.totalSpent) }}</td>
+                <td class="px-4 py-3 text-right text-[#4f4537]">
+                  {{ client.creditLimit > 0 ? formatCurrency(client.creditLimit) : 'Sem limite' }}
+                  @if (client.creditLimit > 0) {
+                    <p class="text-[11px]" [class]="client.creditExceeded ? 'text-[#ba1a1a] font-bold' : 'text-[#827565]'">
+                      {{ client.creditExceeded ? 'Limite excedido' : 'Disponível ' + formatCurrency(client.creditAvailable ?? 0) }}
+                    </p>
+                  }
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <p class="font-bold text-[#0F1F3D]">{{ formatCurrency(client.totalSpent) }}</p>
+                  @if ((client.openBalance ?? 0) > 0) {
+                    <p class="text-[11px] font-semibold text-[#ba1a1a]">Em aberto {{ formatCurrency(client.openBalance ?? 0) }}</p>
+                  }
+                </td>
                 <td class="px-4 py-3 text-[#827565] max-w-[220px] truncate" [title]="client.favoriteCuts">
                   {{ client.favoriteCuts }}
                 </td>
                 <td class="px-4 py-3 text-right">
                   <div class="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      (click)="openHistory(client)"
+                      class="w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors text-[#0F1F3D] hover:bg-[#0F1F3D]/10"
+                      title="Histórico de compras"
+                      aria-label="Histórico de compras"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">receipt_long</span>
+                    </button>
                     <button
                       type="button"
                       [hidden]="!can(PERMISSION.ClientsEdit)"
@@ -250,6 +271,124 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+}
+
+<!-- Histórico completo do cliente -->
+@if (historyOpen()) {
+  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" (click)="closeHistory()">
+    <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl p-5 flex flex-col gap-4" (click)="$event.stopPropagation()">
+      @if (isLoadingHistory() || !history()) {
+        <p class="text-sm text-[#827565] py-6 text-center">Carregando histórico...</p>
+      } @else {
+        @let h = history()!;
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-[#1b1c1a]">{{ h.client.name }}</h2>
+            <p class="text-[12px] text-[#827565]">{{ h.client.document }} • {{ h.client.phone }}</p>
+          </div>
+          <button type="button" (click)="closeHistory()" class="text-[#827565] hover:text-[#1b1c1a] cursor-pointer" aria-label="Fechar">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-3">
+            <p class="text-[10px] uppercase font-bold text-[#827565]">Total comprado</p>
+            <p class="text-base font-black text-[#0F1F3D]">{{ formatCurrency(h.client.totalSpent) }}</p>
+          </div>
+          <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-3">
+            <p class="text-[10px] uppercase font-bold text-[#827565]">Já pago</p>
+            <p class="text-base font-black text-[#2e7d32]">{{ formatCurrency(h.client.totalPaid ?? 0) }}</p>
+          </div>
+          <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-3">
+            <p class="text-[10px] uppercase font-bold text-[#827565]">Em aberto</p>
+            <p class="text-base font-black" [class]="(h.client.openBalance ?? 0) > 0 ? 'text-[#ba1a1a]' : 'text-[#1b1c1a]'">{{ formatCurrency(h.client.openBalance ?? 0) }}</p>
+          </div>
+          <div class="rounded-xl border border-[#e4e2df] bg-[#f5f3f0] p-3">
+            <p class="text-[10px] uppercase font-bold text-[#827565]">Ticket médio</p>
+            <p class="text-base font-black text-[#1b1c1a]">{{ formatCurrency(h.client.averageTicket ?? 0) }}</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[12px] text-[#4f4537]">
+          <p><span class="font-semibold">Compras:</span> {{ h.client.purchaseCount ?? 0 }}</p>
+          <p><span class="font-semibold">Primeira:</span> {{ h.client.firstPurchase ? (h.client.firstPurchase | date:'dd/MM/yyyy') : '—' }}
+             • <span class="font-semibold">Última:</span> {{ h.client.lastPurchase ? (h.client.lastPurchase | date:'dd/MM/yyyy') : '—' }}</p>
+          <p><span class="font-semibold">Frequência:</span> {{ frequencyLabel(h.client) }}</p>
+          <p class="md:col-span-3">
+            <span class="font-semibold">Limite de crédito:</span>
+            {{ h.client.creditLimit > 0 ? formatCurrency(h.client.creditLimit) + ' • disponível ' + formatCurrency(h.client.creditAvailable ?? 0) : 'sem limite definido' }}
+            @if (h.client.creditExceeded) { <span class="text-[#ba1a1a] font-bold"> • limite excedido</span> }
+          </p>
+        </div>
+
+        @if (h.topProducts.length > 0 || h.topKits.length > 0) {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[12px]">
+            @if (h.topProducts.length > 0) {
+              <div>
+                <p class="font-bold text-[#1b1c1a] mb-1">Produtos mais comprados</p>
+                @for (item of h.topProducts; track item.name) {
+                  <p class="text-[#4f4537]">{{ item.name }} — {{ item.qty }} {{ item.unit }}</p>
+                }
+              </div>
+            }
+            @if (h.topKits.length > 0) {
+              <div>
+                <p class="font-bold text-[#1b1c1a] mb-1">Kits mais comprados</p>
+                @for (item of h.topKits; track item.name) {
+                  <p class="text-[#4f4537]">{{ item.name }} — {{ item.qty }} {{ item.unit }}</p>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div>
+          <p class="font-bold text-[#1b1c1a] text-sm mb-1">Compras</p>
+          @if (h.purchases.length === 0) {
+            <p class="text-sm text-[#827565] py-3">Nenhuma compra registrada para este cliente.</p>
+          } @else {
+            <div class="overflow-x-auto rounded-lg border border-[#e4e2df]">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="text-[10px] uppercase tracking-wider text-[#827565] font-bold bg-[#f5f3f0]">
+                    <th class="px-3 py-2">Data</th>
+                    <th class="px-3 py-2">Cupom</th>
+                    <th class="px-3 py-2">Pagamento</th>
+                    <th class="px-3 py-2">Itens</th>
+                    <th class="px-3 py-2 text-right">Total</th>
+                    <th class="px-3 py-2 text-right">Em aberto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (p of h.purchases; track p.saleId) {
+                    <tr class="border-t border-[#efeeeb]" [class.opacity-60]="p.status === 'cancelada'">
+                      <td class="px-3 py-2 text-[12px] text-[#4f4537]">{{ p.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td class="px-3 py-2 text-[12px] text-[#4f4537]">
+                        {{ p.receiptNumber }}
+                        @if (p.status === 'cancelada') { <span class="text-[#ba1a1a] font-bold">(cancelada)</span> }
+                      </td>
+                      <td class="px-3 py-2 text-[12px] text-[#4f4537]">{{ paymentLabel(p.paymentMode) }}</td>
+                      <td class="px-3 py-2 text-[12px] text-[#4f4537]">
+                        @for (item of p.items; track $index) {
+                          <span class="block">{{ item.qty }} {{ item.unit }} {{ item.name }}@if (item.returnedQty > 0) { <span class="text-[#8a6a2e]"> (devolvido {{ item.returnedQty }})</span> }</span>
+                        }
+                      </td>
+                      <td class="px-3 py-2 text-right text-[12px] font-semibold text-[#1b1c1a]" [class.line-through]="p.status === 'cancelada'">
+                        {{ formatCurrency(p.total) }}
+                        @if (p.returnedAmount > 0) { <span class="block text-[10px] text-[#8a6a2e]">devolvido {{ formatCurrency(p.returnedAmount) }}</span> }
+                      </td>
+                      <td class="px-3 py-2 text-right text-[12px]" [class]="p.openAmount > 0 ? 'text-[#ba1a1a] font-semibold' : 'text-[#827565]'">{{ p.openAmount > 0 ? formatCurrency(p.openAmount) : '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
     </div>
   </div>
 }
