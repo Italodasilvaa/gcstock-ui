@@ -7,6 +7,8 @@ import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { ProductCategory, ProductCostHistoryEntry, ProductItem } from '../../core/models/models';
 import { resizeImageToJpeg } from '../../core/utils/image-resize';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 interface ProductFormModel {
   id?: string;
@@ -52,7 +54,7 @@ function emptyForm(): ProductFormModel {
 
 @Component({
   selector: 'app-produtos',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, Paginator],
   templateUrl: './produtos.html',
 })
 export class Produtos {
@@ -339,4 +341,10 @@ export class Produtos {
       error: () => this.appState.triggerToast('Não foi possível excluir o produto. Tente novamente.'),
     });
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pager = createPager(() => this.filteredProducts());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerHistory = createPager(() => this.costHistory());
 }

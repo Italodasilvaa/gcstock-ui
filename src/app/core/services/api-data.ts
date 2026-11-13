@@ -43,6 +43,10 @@ import { TokenStorageService } from './token-storage';
 
 const BASE = environment.apiUrl;
 
+/** A API recusou a operação por regra de negócio (400, 403, 404 ou 409): vira null. Qualquer outro erro (rede, 5xx) segue como erro. */
+const refusalToNull = (err: HttpErrorResponse) =>
+  [400, 403, 404, 409].includes(err.status) ? of(null) : throwError(() => err);
+
 /**
  * Cliente HTTP da GC Stock API. Substitui o antigo MockDataService (localStorage) mantendo,
  * onde possível, os mesmos nomes/formas de método — a diferença é que cada chamada agora
@@ -106,9 +110,10 @@ export class ApiDataService {
   }
 
   switchCompany(companyId: string): Observable<AuthSession | null> {
+    // null = a API recusou a troca (não é dono, empresa de outro grupo); falha de rede ou erro de servidor chega como erro, com mensagem.
     return this.http
       .post<AuthSession>(`${BASE}/tenants/switch`, { companyId })
-      .pipe(catchError(() => of(null)));
+      .pipe(catchError(refusalToNull));
   }
 
   getBranches(): Observable<TenantBranch[]> {
@@ -136,7 +141,7 @@ export class ApiDataService {
   transferEmployee(employeeId: string, targetCompanyId: string): Observable<Employee | null> {
     return this.http
       .post<Employee>(`${BASE}/funcionarios/${employeeId}/transferir`, { targetCompanyId })
-      .pipe(catchError(() => of(null)));
+      .pipe(catchError(refusalToNull));
   }
 
   /** Catálogo de permissões que podem ser atribuídas a funcionários. */
@@ -356,10 +361,9 @@ export class ApiDataService {
     return this.http.put<AccountsPayableTitle>(`${BASE}/financeiro/contas-a-pagar/${id}/categoria`, { category });
   }
 
-  settlePayable(id: string, bankAccount: string, paymentMode: string): Observable<AccountsPayableTitle | null> {
+  settlePayable(id: string, bankAccount: string, paymentMode: string): Observable<AccountsPayableTitle> {
     return this.http
-      .post<AccountsPayableTitle>(`${BASE}/financeiro/contas-a-pagar/${id}/baixar`, { bankAccount, paymentMode })
-      .pipe(catchError(() => of(null)));
+      .post<AccountsPayableTitle>(`${BASE}/financeiro/contas-a-pagar/${id}/baixar`, { bankAccount, paymentMode });
   }
 
   getReceivables(): Observable<AccountsReceivableTitle[]> {
@@ -370,10 +374,9 @@ export class ApiDataService {
     return this.http.post<AccountsReceivableTitle>(`${BASE}/financeiro/clientes-a-receber`, item);
   }
 
-  settleReceivable(id: string): Observable<AccountsReceivableTitle | null> {
+  settleReceivable(id: string): Observable<AccountsReceivableTitle> {
     return this.http
-      .post<AccountsReceivableTitle>(`${BASE}/financeiro/clientes-a-receber/${id}/liquidar`, {})
-      .pipe(catchError(() => of(null)));
+      .post<AccountsReceivableTitle>(`${BASE}/financeiro/clientes-a-receber/${id}/liquidar`, {});
   }
 
   getCardSettlements(): Observable<CardSettlementTitle[]> {

@@ -68,7 +68,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (purchase of filteredPurchases(); track purchase.id) {
+            @for (purchase of pager.pageItems(); track purchase.id) {
               <tr
                 (click)="toggleExpand(purchase)"
                 class="border-t border-[#efeeeb] hover:bg-[#fbf9f6] cursor-pointer transition-colors"
@@ -238,7 +238,7 @@
 
       <!-- Mobile cards -->
       <div class="md:hidden divide-y divide-[#efeeeb]">
-        @for (purchase of filteredPurchases(); track purchase.id) {
+        @for (purchase of pager.pageItems(); track purchase.id) {
           <div class="p-4" (click)="toggleExpand(purchase)">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
@@ -326,6 +326,7 @@
           </div>
         }
       </div>
+      <app-paginator [pager]="pager" />
     }
   </div>
 </div>

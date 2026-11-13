@@ -6,6 +6,8 @@ import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { DatePipe } from '@angular/common';
 import { Client, ClientHistory } from '../../core/models/models';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 interface ClientFormModel {
   id?: string;
@@ -34,7 +36,7 @@ function emptyForm(): ClientFormModel {
 
 @Component({
   selector: 'app-clientes',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, Paginator],
   templateUrl: './clientes.html',
 })
 export class Clientes {
@@ -208,4 +210,10 @@ export class Clientes {
         error: () => this.appState.triggerToast('Não foi possível salvar o cliente. Tente novamente.'),
       });
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pager = createPager(() => this.filteredClients());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerPurchases = createPager(() => this.history()?.purchases ?? []);
 }

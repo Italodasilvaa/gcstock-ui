@@ -11,10 +11,12 @@ import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from 
 import { formatRelativeTimestamp } from '../../core/utils/format-timestamp';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 import { formatQuantity, formatTotalsByUnit } from '../../core/utils/format-quantity';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 @Component({
   selector: 'app-estoque',
-  imports: [DatePipe, FormsModule, DateRangeFilter],
+  imports: [DatePipe, FormsModule, DateRangeFilter, Paginator],
   templateUrl: './estoque.html',
 })
 export class Estoque {
@@ -324,4 +326,13 @@ export class Estoque {
   protected timestampLabel(iso: string): string {
     return formatRelativeTimestamp(iso);
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerBatches = createPager(() => this.sortedBatches());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerLosses = createPager(() => this.filteredLosses());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerMovements = createPager(() => this.sortedMovements());
 }

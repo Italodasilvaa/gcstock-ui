@@ -8,6 +8,8 @@ import { SaleHistory } from '../../core/models/models';
 import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from '../../core/utils/date-range';
 import { formatQuantity } from '../../core/utils/format-quantity';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 type StatusFilter = 'todas' | 'concluida' | 'cancelada';
 
@@ -22,7 +24,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 @Component({
   selector: 'app-historico-vendas',
-  imports: [FormsModule, DateRangeFilter],
+  imports: [FormsModule, DateRangeFilter, Paginator],
   templateUrl: './historico-vendas.html',
 })
 export class HistoricoVendas {
@@ -239,4 +241,7 @@ export class HistoricoVendas {
   protected hasUnknownPrices(sale: SaleHistory): boolean {
     return sale.items.some((item) => !item.priceKnown);
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pager = createPager(() => this.filtered());
 }

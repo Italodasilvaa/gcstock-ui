@@ -106,7 +106,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (m of c.movements; track $index) {
+              @for (m of pagerCash.pageItems(); track $index) {
                 <tr class="bg-[#faf9f7]">
                   <td class="px-3 py-2 rounded-l-xl text-[#4f4537] whitespace-nowrap">{{ m.date | date: 'dd/MM/yyyy' }}</td>
                   <td class="px-3 py-2 text-[#4f4537]">{{ movementLabel(m.kind) }}</td>
@@ -123,6 +123,7 @@
             </tbody>
           </table>
         </div>
+        <app-paginator [pager]="pagerCash" />
       </div>
     } @else {
       <p class="p-6 text-sm text-[#827565]">Carregando caixa...</p>
@@ -149,7 +150,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (item of contributions(); track item.id) {
+          @for (item of pagerContributions.pageItems(); track item.id) {
             <tr class="bg-[#faf9f7]">
               <td class="px-3 py-2.5 rounded-l-xl text-[#4f4537] whitespace-nowrap">{{ item.date | date: 'dd/MM/yyyy' }}</td>
               <td class="px-3 py-2.5 font-semibold text-[#1b1c1a]">{{ item.description }}</td>
@@ -188,6 +189,7 @@
         </tbody>
       </table>
     </div>
+    <app-paginator [pager]="pagerContributions" />
   </div>
 
   <!-- Atalho para o fechamento mensal -->
@@ -247,7 +249,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (item of filteredExpenses(); track item.id) {
+          @for (item of pagerExpenses.pageItems(); track item.id) {
             <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
               <td class="px-3 py-3 rounded-l-xl">
                 <p class="font-semibold text-[#1b1c1a]">{{ item.description }}</p>
@@ -327,6 +329,7 @@
         </tbody>
       </table>
     </div>
+    <app-paginator [pager]="pagerExpenses" />
   </div>
 
   <!-- Folha de Pagamento -->

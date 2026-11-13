@@ -46,7 +46,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (employee of employees(); track employee.id) {
+          @for (employee of pagerEmployees.pageItems(); track employee.id) {
             <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors" [class.opacity-50]="!employee.active">
               <td class="px-3 py-3 rounded-l-xl font-semibold text-[#1b1c1a]">{{ employee.name }}</td>
               <td class="px-3 py-3 text-[#4f4537]">{{ employee.email }}</td>
@@ -113,6 +113,7 @@
         </tbody>
       </table>
     </div>
+    <app-paginator [pager]="pagerEmployees" />
   </div>
 
   <!-- Taxas de Pagamento -->

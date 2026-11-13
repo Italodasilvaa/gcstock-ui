@@ -81,7 +81,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (sale of filtered(); track sale.id) {
+            @for (sale of pager.pageItems(); track sale.id) {
               <tr
                 class="border-t border-[#efeeeb] hover:bg-[#faf9f7] cursor-pointer"
                 [class.opacity-70]="sale.status === 'cancelada'"
@@ -243,6 +243,7 @@
           </tbody>
         </table>
       </div>
+      <app-paginator [pager]="pager" />
     }
   </div>
 </div>

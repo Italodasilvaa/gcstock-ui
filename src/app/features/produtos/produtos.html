@@ -70,7 +70,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (product of filteredProducts(); track product.id) {
+          @for (product of pager.pageItems(); track product.id) {
             <tr class="border-b border-[#efeeeb] last:border-b-0 hover:bg-[#faf9f7] transition-colors align-top">
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
@@ -164,6 +164,7 @@
         </tbody>
       </table>
     </div>
+    <app-paginator [pager]="pager" />
   </div>
 </div>
 
@@ -488,7 +489,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (row of costHistory(); track row.id) {
+              @for (row of pagerHistory.pageItems(); track row.id) {
                 <tr class="border-t border-[#efeeeb]">
                   <td class="px-3 py-2 text-[12px] text-[#4f4537]">{{ row.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
                   <td class="px-3 py-2 text-right text-[12px] text-[#4f4537]">{{ formatCost(row.previousCost) }}</td>
@@ -503,6 +504,7 @@
             </tbody>
           </table>
         </div>
+        <app-paginator [pager]="pagerHistory" />
       }
     </div>
   </div>

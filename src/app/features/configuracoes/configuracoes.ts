@@ -6,6 +6,8 @@ import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { IconPicker } from '../../shared/icon-picker/icon-picker';
 import { PaymentFeeSetting, GlobalAlertSetting, Employee, CompanyTenant, PermissionInfo } from '../../core/models/models';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 interface EmployeeFormModel {
   id?: string;
@@ -24,7 +26,7 @@ function emptyEmployeeForm(): EmployeeFormModel {
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [FormsModule, IconPicker],
+  imports: [FormsModule, IconPicker, Paginator],
   templateUrl: './configuracoes.html',
 })
 export class Configuracoes {
@@ -373,17 +375,24 @@ export class Configuracoes {
     if (!employee || !this.transferTargetCompanyId) return;
 
     const targetCompany = this.siblingCompanies().find((c) => c.id === this.transferTargetCompanyId);
-    this.api.transferEmployee(employee.id, this.transferTargetCompanyId).subscribe((updated) => {
-      if (!updated) {
-        this.appState.triggerToast('Não foi possível transferir: a empresa de destino precisa ser do mesmo administrador.');
-        return;
-      }
+    this.api.transferEmployee(employee.id, this.transferTargetCompanyId).subscribe({
+      next: (updated) => {
+        if (!updated) {
+          this.appState.triggerToast('Não foi possível transferir: o funcionário e a empresa de destino precisam ser da sua empresa e do seu grupo.');
+          return;
+        }
 
-      this.refreshEmployees();
-      this.appState.triggerToast(
-        `"${employee.name}" foi transferido para ${targetCompany?.tradeName ?? 'a empresa selecionada'}.`,
-      );
-      this.closeTransferModal();
+        this.refreshEmployees();
+        this.appState.triggerToast(
+          `"${employee.name}" foi transferido para ${targetCompany?.tradeName ?? 'a empresa selecionada'}.`,
+        );
+        this.closeTransferModal();
+      },
+      error: (err: { error?: { message?: string } }) =>
+        this.appState.triggerToast(err?.error?.message ?? 'Não foi possível transferir o funcionário. Tente novamente.'),
     });
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerEmployees = createPager(() => this.employees());
 }

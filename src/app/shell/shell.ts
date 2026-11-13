@@ -60,14 +60,18 @@ export class Shell implements OnDestroy {
   }
 
   protected switchCompany(companyId: string): void {
-    this.appState.switchCompany(companyId).subscribe((updated) => {
-      if (updated) {
-        this.isCompanyModalOpen.set(false);
-        this.refreshCompanies();
-        this.appState.triggerToast(`Ambiente alterado para ${updated.company.tradeName}!`);
-      } else {
-        this.appState.triggerToast('Não foi possível trocar de empresa. Tente novamente.');
-      }
+    this.appState.switchCompany(companyId).subscribe({
+      next: (updated) => {
+        if (updated) {
+          this.isCompanyModalOpen.set(false);
+          this.refreshCompanies();
+          this.appState.triggerToast(`Ambiente alterado para ${updated.company.tradeName}!`);
+        } else {
+          this.appState.triggerToast('Não foi possível trocar de empresa: só o dono pode trocar, entre empresas do mesmo grupo.');
+        }
+      },
+      error: (err: { error?: { message?: string } }) =>
+        this.appState.triggerToast(err?.error?.message ?? 'Não foi possível trocar de empresa. Tente novamente.'),
     });
   }
 

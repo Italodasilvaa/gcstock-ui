@@ -9,6 +9,8 @@ import { AppStateService } from '../../core/services/app-state';
 import { ProductItem, PurchaseEntry } from '../../core/models/models';
 import { DateRange, emptyDateRange, isWithinDateRange } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 /** Valor especial do <select> de produto que abre o mini-formulário de cadastro rápido. */
 const NEW_PRODUCT_OPTION = '__new__';
@@ -83,7 +85,7 @@ function emptyItemRow(): PurchaseFormItemRow {
 
 @Component({
   selector: 'app-compras',
-  imports: [FormsModule, DatePipe, DateRangeFilter],
+  imports: [FormsModule, DatePipe, DateRangeFilter, Paginator],
   templateUrl: './compras.html',
 })
 export class Compras {
@@ -507,4 +509,7 @@ export class Compras {
         ),
     });
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pager = createPager(() => this.filteredPurchases());
 }

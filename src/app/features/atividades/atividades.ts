@@ -4,10 +4,12 @@ import { ApiDataService } from '../../core/services/api-data';
 import { AuditLogEntry, Employee } from '../../core/models/models';
 import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 @Component({
   selector: 'app-atividades',
-  imports: [FormsModule, DateRangeFilter],
+  imports: [FormsModule, DateRangeFilter, Paginator],
   templateUrl: './atividades.html',
 })
 export class Atividades {
@@ -195,4 +197,7 @@ export class Atividades {
         return 'bg-[#4caf50]/10 text-[#4caf50]';
     }
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pager = createPager(() => this.filteredLog());
 }

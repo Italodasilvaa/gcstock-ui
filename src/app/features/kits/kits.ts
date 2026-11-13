@@ -9,6 +9,8 @@ import { AppStateService } from '../../core/services/app-state';
 import { PERMISSION } from '../../core/models/permissions';
 import { BarbecueKit, KitCostHistoryEntry, ProductItem } from '../../core/models/models';
 import { resizeImageToJpeg } from '../../core/utils/image-resize';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 /** Maior lado da foto enviada ao storage — reduz o tamanho sem perder qualidade nos cards. */
 const MAX_IMAGE_SIDE = 800;
@@ -55,7 +57,7 @@ function emptyComponentRow(): KitFormComponentRow {
 
 @Component({
   selector: 'app-kits',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, Paginator],
   templateUrl: './kits.html',
 })
 export class Kits {
@@ -364,4 +366,10 @@ export class Kits {
       error: () => this.appState.triggerToast('Não foi possível excluir o kit. Tente novamente.'),
     });
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pager = createPager(() => this.kits());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerHistory = createPager(() => this.costHistory());
 }

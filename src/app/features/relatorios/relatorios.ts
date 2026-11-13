@@ -10,6 +10,8 @@ import {
 import { DateRange, emptyDateRange, isWithinDateRange } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 import { formatTotalsByUnit } from '../../core/utils/format-quantity';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 interface CategorySummary {
   category: string;
@@ -38,7 +40,7 @@ interface MovementSummary {
 
 @Component({
   selector: 'app-relatorios',
-  imports: [DateRangeFilter],
+  imports: [DateRangeFilter, Paginator],
   templateUrl: './relatorios.html',
 })
 export class Relatorios {
@@ -249,4 +251,13 @@ export class Relatorios {
         return 'Alerta de estoque';
     }
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerSuppliers = createPager(() => this.supplierSummaries());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerKits = createPager(() => this.kitsByMargin());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerClients = createPager(() => this.clientsBySpend());
 }

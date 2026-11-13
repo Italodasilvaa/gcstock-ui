@@ -124,7 +124,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (batch of sortedBatches(); track batch.id) {
+            @for (batch of pagerBatches.pageItems(); track batch.id) {
               <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
                 <td class="px-3 py-3 rounded-l-xl">
                   <div class="flex flex-col">
@@ -167,6 +167,7 @@
           </tbody>
         </table>
       </div>
+      <app-paginator [pager]="pagerBatches" />
     </div>
   }
 
@@ -208,7 +209,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (loss of filteredLosses(); track loss.id) {
+              @for (loss of pagerLosses.pageItems(); track loss.id) {
                 <tr class="bg-[#faf9f7]" [class.opacity-60]="loss.status === 'desfeita'">
                   <td class="px-3 py-3 rounded-l-xl text-[#4f4537] whitespace-nowrap">{{ loss.date | date: 'dd/MM/yyyy' }}</td>
                   <td class="px-3 py-3">
@@ -250,6 +251,7 @@
             </tbody>
           </table>
         </div>
+        <app-paginator [pager]="pagerLosses" />
       }
     </div>
   }
@@ -263,7 +265,7 @@
       </p>
 
       <div class="flex flex-col">
-        @for (movement of sortedMovements(); track movement.id; let last = $last) {
+        @for (movement of pagerMovements.pageItems(); track movement.id; let last = $last) {
           <div class="flex gap-4" [class.pb-5]="!last" [class.mb-5]="!last" [class.border-b]="!last" [class.border-[#e4e2df]]="!last">
             <div class="flex flex-col items-center shrink-0">
               <div
@@ -306,6 +308,7 @@
           <p class="text-center text-[#827565] py-8">Nenhuma movimentação registrada.</p>
         }
       </div>
+    <app-paginator [pager]="pagerMovements" />
     </div>
   }
 </div>

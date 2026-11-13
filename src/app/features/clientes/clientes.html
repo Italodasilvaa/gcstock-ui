@@ -56,7 +56,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (client of filteredClients(); track client.id) {
+            @for (client of pager.pageItems(); track client.id) {
               <tr class="border-t border-[#e4e2df] hover:bg-[#f5f3f0]/50 transition-colors">
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
@@ -141,6 +141,7 @@
           </tbody>
         </table>
       </div>
+      <app-paginator [pager]="pager" />
     </div>
   }
 </div>
@@ -363,7 +364,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (p of h.purchases; track p.saleId) {
+                  @for (p of pagerPurchases.pageItems(); track p.saleId) {
                     <tr class="border-t border-[#efeeeb]" [class.opacity-60]="p.status === 'cancelada'">
                       <td class="px-3 py-2 text-[12px] text-[#4f4537]">{{ p.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
                       <td class="px-3 py-2 text-[12px] text-[#4f4537]">
@@ -386,6 +387,7 @@
                 </tbody>
               </table>
             </div>
+            <app-paginator [pager]="pagerPurchases" />
           }
         </div>
       }

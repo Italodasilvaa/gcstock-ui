@@ -10,6 +10,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AccountsPayableTitle, CapitalContribution, CashMovement, CashSummary, Employee } from '../../core/models/models';
 import { DateRange, emptyDateRange, isWithinDateRange, monthToDateRange } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 type ExpenseCategory = 'outros' | 'equipamento';
 /** Aporte = dinheiro que você colocou na empresa (entra no caixa, +); Despesa = gasto (sai do caixa, −), inclusive equipamento. */
@@ -44,7 +46,7 @@ function emptyExpenseForm(): ExpenseFormModel {
 
 @Component({
   selector: 'app-gestao-empresa',
-  imports: [FormsModule, DatePipe, DateRangeFilter],
+  imports: [FormsModule, DatePipe, DateRangeFilter, Paginator],
   templateUrl: './gestao-empresa.html',
 })
 export class GestaoEmpresa {
@@ -484,4 +486,13 @@ export class GestaoEmpresa {
   protected goToEmployees(): void {
     this.router.navigateByUrl('/configuracoes');
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerCash = createPager(() => this.cash()?.movements ?? []);
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerContributions = createPager(() => this.contributions());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerExpenses = createPager(() => this.filteredExpenses());
 }

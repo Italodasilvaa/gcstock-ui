@@ -20,6 +20,8 @@ import {
 import { DateRange, emptyDateRange, isDateRangeActive, isWithinDateRange, todayLocalIso } from '../../core/utils/date-range';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 import { formatQuantity } from '../../core/utils/format-quantity';
+import { createPager } from '../../shared/pagination/pager';
+import { Paginator } from '../../shared/pagination/paginator';
 
 type FinanceiroTab = 'resultado' | 'dre' | 'pagar' | 'receber' | 'cartoes' | 'mensal' | 'lotes' | 'balanco';
 
@@ -114,7 +116,7 @@ function monthLabelFromKey(monthKey: string): string {
 
 @Component({
   selector: 'app-financeiro',
-  imports: [FormsModule, DatePipe, DateRangeFilter],
+  imports: [FormsModule, DatePipe, DateRangeFilter, Paginator],
   templateUrl: './financeiro.html',
 })
 export class Financeiro implements OnInit {
@@ -579,15 +581,14 @@ export class Financeiro implements OnInit {
     });
     if (!confirmed) return;
     this.api.settlePayable(item.id, 'Conta Padrão', 'Manual').subscribe({
-      next: (updated) => {
-        if (!updated) {
-          this.appState.triggerToast('Não foi possível baixar o título. Tente novamente.');
-          return;
-        }
+      next: () => {
         this.refreshPayables();
         this.appState.triggerToast(`Título "${item.description}" baixado com sucesso.`);
       },
-      error: () => this.appState.triggerToast('Não foi possível baixar o título. Tente novamente.'),
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        if (err?.status === 403) return; // o interceptor já avisa que falta permissão
+        this.appState.triggerToast(err?.error?.message ?? 'Não foi possível baixar o título. Tente novamente.');
+      },
     });
   }
 
@@ -745,15 +746,14 @@ export class Financeiro implements OnInit {
     });
     if (!confirmed) return;
     this.api.settleReceivable(item.id).subscribe({
-      next: (updated) => {
-        if (!updated) {
-          this.appState.triggerToast('Não foi possível liquidar o título. Tente novamente.');
-          return;
-        }
+      next: () => {
         this.refreshReceivables();
         this.appState.triggerToast(`Título de "${item.clientOrOrigin}" marcado como recebido.`);
       },
-      error: () => this.appState.triggerToast('Não foi possível liquidar o título. Tente novamente.'),
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        if (err?.status === 403) return; // o interceptor já avisa que falta permissão
+        this.appState.triggerToast(err?.error?.message ?? 'Não foi possível liquidar o título. Tente novamente.');
+      },
     });
   }
 
@@ -870,4 +870,16 @@ export class Financeiro implements OnInit {
       },
     });
   }
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerLots = createPager(() => this.lotProfits());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerPayables = createPager(() => this.filteredPayables());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerReceivables = createPager(() => this.filteredReceivables());
+
+  /** Paginação da lista (15, 30, 50 ou 100 por página). Declarada por último: depende dos filtros acima. */
+  protected readonly pagerCards = createPager(() => this.filteredCardSettlements());
 }

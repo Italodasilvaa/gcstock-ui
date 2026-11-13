@@ -132,7 +132,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (item of supplierSummaries(); track item.supplier) {
+            @for (item of pagerSuppliers.pageItems(); track item.supplier) {
               <tr class="bg-[#f5f3f0]/60 hover:bg-[#f5f3f0] transition-colors">
                 <td class="px-3 py-3 rounded-l-xl font-semibold text-[#1b1c1a]">{{ item.supplier }}</td>
                 <td class="px-3 py-3 text-[#4f4537]">{{ item.ordersCount }}</td>
@@ -152,6 +152,7 @@
           </tbody>
         </table>
       </div>
+      <app-paginator [pager]="pagerSuppliers" />
     </div>
 
     <!-- Kits mais rentáveis -->
@@ -163,7 +164,7 @@
       <p class="text-xs text-[#827565] mb-4">Kits de churrasco ordenados por margem de contribuição.</p>
 
       <div class="flex flex-col">
-        @for (kit of kitsByMargin(); track kit.id; let last = $last) {
+        @for (kit of pagerKits.pageItems(); track kit.id; let last = $last) {
           <div
             class="flex items-center justify-between gap-3"
             [class.pb-4]="!last"
@@ -190,6 +191,7 @@
           <p class="text-center text-[#827565] py-6">Nenhum kit cadastrado.</p>
         }
       </div>
+      <app-paginator [pager]="pagerKits" />
     </div>
 
     <!-- Top clientes por gasto -->
@@ -201,7 +203,7 @@
       <p class="text-xs text-[#827565] mb-4">Clientes ordenados pelo total gasto acumulado.</p>
 
       <div class="flex flex-col gap-4">
-        @for (client of clientsBySpend(); track client.id) {
+        @for (client of pagerClients.pageItems(); track client.id) {
           <div class="flex flex-col gap-1.5">
             <div class="flex items-center justify-between gap-2 text-sm">
               <div class="flex items-center gap-2 min-w-0">
@@ -223,6 +225,7 @@
           <p class="text-center text-[#827565] py-6">Nenhum cliente cadastrado.</p>
         }
       </div>
+      <app-paginator [pager]="pagerClients" />
     </div>
   </div>
 </div>
