@@ -1,0 +1,145 @@
+# Esteira do front-end (GC Stock UI): valida, gera a imagem (nginx) e publica no Swarm da VPS.
+#
+# Fluxo:  feature -> Pull Request (só valida) -> branch "staging" (publica em homologação) -> branch "production" (publica em produção).
+# Cada ambiente é construído com a URL da API dele (angular.json: configuração "staging" ou "production").
+
+trigger:
+  branches:
+    include:
+      - production
+      - staging
+
+# Pull Request: roda só a validação (tipos + build), sem gerar imagem nem publicar.
+pr:
+  branches:
+    include:
+      - main
+      - staging
+      - production
+
+variables:
+  RegistryUrl: "registry.iwsolutions.cloud"
+  RegistryConnection: "registry.iwsolutions.cloud"
+  UiImageName: "gcstock-ui"
+  DockerTag: "$(Build.BuildId)"
+  ${{ if eq(variables['Build.SourceBranchName'], 'production') }}:
+    Environment: "production"
+    BuildConfiguration: "production"
+    StackName: "gcstock-ui-prd"
+    HostDomain: "app.iwsolutions.cloud"
+  ${{ if eq(variables['Build.SourceBranchName'], 'staging') }}:
+    Environment: "staging"
+    BuildConfiguration: "staging"
+    StackName: "gcstock-ui-nprd"
+    HostDomain: "app-nprd.iwsolutions.cloud"
+  ${{ if and(ne(variables['Build.SourceBranchName'], 'production'), ne(variables['Build.SourceBranchName'], 'staging')) }}:
+    BuildConfiguration: "production"
+
+pool:
+  vmImage: "ubuntu-latest"
+
+stages:
+  - stage: Build
+    displayName: "Validar e gerar imagem"
+    jobs:
+      - job: BuildAndPush
+        displayName: "tsc + ng build + docker build/push"
+        steps:
+          - task: NodeTool@0
+            displayName: "Instalar Node 22"
+            inputs:
+              versionSpec: "22.x"
+
+          - script: npm ci
+            displayName: "npm ci"
+
+          - script: npm run lint
+            displayName: "Checagem de tipos (tsc)"
+
+          - script: npx ng build --configuration $(BuildConfiguration)
+            displayName: "ng build ($(BuildConfiguration))"
+
+          # Só gera e envia a imagem nas branches de publicação (Pull Request para aqui).
+          - task: Docker@2
+            displayName: "Build e push da imagem do front-end"
+            condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+            inputs:
+              containerRegistry: "$(RegistryConnection)"
+              repository: "$(UiImageName)"
+              command: "buildAndPush"
+              Dockerfile: "deploy/ui.Dockerfile"
+              buildContext: "."
+              arguments: "--build-arg BUILD_CONFIGURATION=$(BuildConfiguration)"
+              tags: |
+                $(DockerTag)
+                latest-$(Environment)
+
+  - stage: Deploy
+    displayName: "Deploy no Swarm ($(Environment))"
+    dependsOn: Build
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: DeployStack
+        displayName: "Deploy da stack do front-end"
+        # Em "production" configure aprovação manual no Environment (Azure DevOps > Pipelines > Environments > Approvals).
+        environment: "$(Environment)"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Job de deployment não baixa o código sozinho: é preciso para ler o deploy/stacks/stack.yml.
+                - checkout: self
+
+                - task: Bash@3
+                  displayName: "Gerar stack.yml com placeholders substituídos"
+                  inputs:
+                    targetType: "inline"
+                    script: |
+                      set -e
+                      sed \
+                        -e "s|__REGISTRY_URL__|$(RegistryUrl)|g" \
+                        -e "s|__UI_IMAGE_NAME__|$(UiImageName)|g" \
+                        -e "s|__DOCKER_TAG__|$(DockerTag)|g" \
+                        -e "s|__SERVICE_NAME__|$(StackName)|g" \
+                        -e "s|__HOST_DOMAIN__|$(HostDomain)|g" \
+                        $(Build.SourcesDirectory)/deploy/stacks/stack.yml > $(Build.ArtifactStagingDirectory)/stack.ui.$(Environment).yml
+
+                - task: PublishBuildArtifacts@1
+                  displayName: "Publicar stack.yml gerado"
+                  inputs:
+                    PathtoPublish: "$(Build.ArtifactStagingDirectory)/stack.ui.$(Environment).yml"
+                    ArtifactName: "stack-ui-$(Environment)"
+
+                - task: CopyFilesOverSSH@0
+                  displayName: "Copiar stack.yml para o host do Swarm"
+                  inputs:
+                    sshEndpoint: "swarm-$(Environment)"
+                    sourceFolder: "$(Build.ArtifactStagingDirectory)"
+                    contents: "stack.ui.$(Environment).yml"
+                    targetFolder: "/tmp/gcstock-deploy"
+
+                - task: SSH@0
+                  displayName: "docker stack deploy"
+                  inputs:
+                    sshEndpoint: "swarm-$(Environment)"
+                    runOptions: "commands"
+                    commands: |
+                      docker stack deploy --with-registry-auth -c /tmp/gcstock-deploy/stack.ui.$(Environment).yml $(StackName)
+
+                # Confere se o site respondeu depois da publicação; se não responder, a esteira falha (o Swarm já volta
+                # sozinho para a versão anterior: update_config.failure_action = rollback).
+                - task: Bash@3
+                  displayName: "Verificar saúde do site"
+                  inputs:
+                    targetType: "inline"
+                    script: |
+                      for i in `seq 1 24`; do
+                        if curl -fsS "https://$(HostDomain)/health" > /dev/null; then
+                          echo "Front-end no ar em https://$(HostDomain)"
+                          exit 0
+                        fi
+                        echo "Aguardando o front-end responder ($i/24)..."
+                        sleep 5
+                      done
+                      echo "O front-end não respondeu em https://$(HostDomain)/health"
+                      exit 1

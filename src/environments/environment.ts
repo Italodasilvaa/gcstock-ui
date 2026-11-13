@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  // Ajuste para a URL pública da GC Stock API em produção (ex.: via reverse proxy no mesmo domínio).
-  apiUrl: '/api/v1',
+  // Produção: a API publicada na VPS (stack gcstock-prd). Homologação usa environment.staging.ts.
+  apiUrl: 'https://api.iwsolutions.cloud/api/v1',
 };

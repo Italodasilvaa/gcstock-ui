@@ -1,0 +1,35 @@
+version: "3.8"
+
+# Stack do front-end (GC Stock UI) na VPS: nginx atrás do Traefik, igual à API.
+# Uma stack por ambiente (gcstock-ui-prd / gcstock-ui-nprd), publicada pelo azure-pipelines.yml.
+
+services:
+  ui:
+    image: __REGISTRY_URL__/__UI_IMAGE_NAME__:__DOCKER_TAG__
+    environment:
+      TZ: America/Sao_Paulo
+    networks:
+      - public    # Traefik
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        order: start-first
+        failure_action: rollback
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.__SERVICE_NAME__.rule=Host(`__HOST_DOMAIN__`)"
+        - "traefik.http.routers.__SERVICE_NAME__.entrypoints=websecure"
+        - "traefik.http.routers.__SERVICE_NAME__.tls.certresolver=myresolver"
+        - "traefik.http.services.__SERVICE_NAME__.loadbalancer.server.port=8080"
+
+networks:
+  public:
+    external: true
