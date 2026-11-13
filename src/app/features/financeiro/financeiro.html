@@ -367,7 +367,11 @@
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
           <!-- DRE -->
           <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-4 md:p-6 xl:col-span-1">
-            <h2 class="text-base font-bold text-[#1b1c1a] mb-3">Demonstrativo (DRE)</h2>
+            <h2 class="text-base font-bold text-[#1b1c1a] mb-1">Demonstrativo (DRE)</h2>
+            <p class="text-[11px] text-[#827565] mb-3">
+              Regime de competência: vendas e devoluções entram na data em que aconteceram, despesas na data de emissão, e as
+              antecipações de cartão na data da antecipação. O Caixa mostra o dinheiro nas datas de pagamento e recebimento.
+            </p>
             <div class="flex flex-col text-sm">
               <div class="flex justify-between py-2"><span class="text-[#4f4537]">Vendas (receita bruta)</span><span class="font-semibold text-[#1b1c1a]">{{ formatCurrency(s.grossRevenue) }}</span></div>
               <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Taxas de cartão</span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-s.fees) }}</span></div>
@@ -377,6 +381,7 @@
               <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Despesas operacionais</span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-s.operatingExpenses) }}</span></div>
               <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Folha de pagamento</span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-s.payroll) }}</span></div>
               <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Perdas e quebras @if (s.lossCount > 0) {<span class="text-[11px] text-[#827565]">({{ s.lossCount }})</span>}</span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-s.losses) }}</span></div>
+              <div class="flex justify-between py-2 border-t border-[#efeeeb]"><span class="text-[#4f4537]">(−) Despesas financeiras <span class="text-[11px] text-[#827565]">(antecipação de cartão)</span></span><span class="font-semibold text-[#ba1a1a]">{{ formatCurrency(-(s.financialExpenses ?? 0)) }}</span></div>
               <div class="flex justify-between py-2.5 border-t-2 border-[#1b1c1a] mt-1"><span class="font-black text-[#1b1c1a]">(=) Resultado do período</span><span class="font-black" [class]="s.netResult >= 0 ? 'text-[#2e7d32]' : 'text-[#ba1a1a]'">{{ formatCurrency(s.netResult) }}</span></div>
             </div>
             @if (s.capitalExpenses > 0) {

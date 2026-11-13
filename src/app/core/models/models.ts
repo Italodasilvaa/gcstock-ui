@@ -250,6 +250,8 @@ export interface PaymentFeeSetting {
   icon: string;
   /** Posição na lista de Configurações e nos cards do PDV (definida pelo backend). */
   sortOrder?: number;
+  /** Taxa (%) para antecipar recebíveis desta modalidade, sobre o valor líquido da parcela. */
+  anticipationFeePercent?: number;
 }
 
 export interface GlobalAlertSetting {
@@ -400,6 +402,8 @@ export interface FinancialSummary {
   stockValue: number;
   productProfits: ProductProfit[];
   estimatedCostItems: number;
+  /** Custo das antecipações de cartão feitas no período (despesa financeira). */
+  financialExpenses?: number;
 }
 
 /** Perda de estoque (vencimento, quebra, furto...) com o valor do prejuízo (quantidade × custo informado). */
@@ -457,6 +461,7 @@ export interface MonthlyBalance {
   netResult: number;
   purchasesTotal: number;
   capitalExpenses: number;
+  financialExpenses?: number;
 }
 
 /** Lucro de um lote: receita líquida do que saiu dele − custo do lote − perdas. */

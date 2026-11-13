@@ -499,6 +499,23 @@
         </div>
 
         <div>
+          <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Taxa de antecipação (%)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            max="99.99"
+            [ngModel]="fee.anticipationFeePercent ?? 2.5"
+            (ngModelChange)="fee.anticipationFeePercent = $event"
+            name="feeAnticipationFeePercent"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-[#e4e2df] text-sm focus:outline-none focus:ring-2 focus:ring-[#d8a34a]/40 focus:border-[#d8a34a]"
+          />
+          <p class="text-[11px] text-[#827565] mt-1">
+            Cobrada sobre o valor líquido da parcela quando você antecipa um recebível desta forma de pagamento. Vira despesa financeira na DRE.
+          </p>
+        </div>
+
+        <div>
           <label class="block text-xs font-bold text-[#4f4537] mb-1.5">Prazo de Liquidação</label>
           <input
             type="text"

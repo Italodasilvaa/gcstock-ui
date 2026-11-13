@@ -142,6 +142,7 @@ export class Configuracoes {
       settlementTerm: '',
       active: true,
       icon: 'credit_card',
+      anticipationFeePercent: 2.5,
     });
   }
 

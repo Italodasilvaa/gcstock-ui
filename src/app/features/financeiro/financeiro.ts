@@ -852,7 +852,7 @@ export class Financeiro implements OnInit {
     if (!this.appState.requirePermission(PERMISSION.CardsAnticipate)) return;
     const confirmed = await this.confirmDialog.ask({
       title: 'Antecipar este recebível?',
-      message: 'Uma taxa de antecipação será descontada do valor.',
+      message: 'Você recebe hoje o valor líquido da parcela menos a taxa de antecipação da forma de pagamento (Configurações). Esse custo entra na DRE como despesa financeira.',
       detail: `${item.acquirer} • ${this.formatCurrency(item.netAmount)}`,
       confirmLabel: 'Antecipar',
       tone: 'warning',
@@ -864,7 +864,10 @@ export class Financeiro implements OnInit {
         this.refreshCardSettlements();
         this.appState.triggerToast(`Recebível da ${item.acquirer} antecipado com sucesso.`);
       },
-      error: () => this.appState.triggerToast('Não foi possível antecipar o recebível. Tente novamente.'),
+      error: (err: { status?: number; error?: { message?: string } }) => {
+        if (err?.status === 403) return; // o interceptor já avisa que falta permissão
+        this.appState.triggerToast(err?.error?.message ?? 'Não foi possível antecipar o recebível. Tente novamente.');
+      },
     });
   }
 }
