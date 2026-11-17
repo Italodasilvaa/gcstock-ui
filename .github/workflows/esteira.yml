@@ -82,10 +82,18 @@ jobs:
             deploy/stacks/stack.yml > "stack.ui.$ENVIRONMENT.yml"
 
       - name: Configurar SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          # Aceita a chave em texto (-----BEGIN ...) ou em base64 de uma linha só (mais seguro para copiar e colar).
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy
+          else
+            printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_deploy
+          fi
           chmod 600 ~/.ssh/id_deploy
+          ssh-keygen -y -f ~/.ssh/id_deploy > /dev/null || { echo "VPS_SSH_KEY invalida. Gere em base64 de uma linha: base64 -w0 ~/gh_deploy2"; exit 1; }
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Copiar stack.yml para a VPS
