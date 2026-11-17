@@ -1,0 +1,110 @@
+# Esteira do front-end (GC Stock UI): valida, gera a imagem (nginx) e publica no Swarm da VPS.
+#
+# Fluxo: feature -> Pull Request (só valida) -> branch "stg" (publica em homologação) -> branch "prod" (publica em produção).
+# Cada ambiente é construído com a URL da API dele (angular.json: configuração "staging" ou "production").
+# Segredos e configuração do repositório: veja deploy/PIPELINE.md.
+
+name: Esteira da UI
+
+on:
+  push:
+    branches: [stg, prod]
+  pull_request:
+    branches: [main, stg, prod]
+
+concurrency:
+  group: esteira-ui-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY_URL: registry.iwsolutions.cloud
+  UI_IMAGE: gcstock-ui
+
+jobs:
+  build:
+    name: Validar (tipos e build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - name: Checagem de tipos (tsc)
+        run: npm run lint
+      - name: ng build
+        run: npx ng build --configuration ${{ github.ref_name == 'stg' && 'staging' || 'production' }}
+
+  deploy:
+    name: Publicar (${{ github.ref_name == 'prod' && 'produção' || 'homologação' }})
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Em "production", configure Required reviewers no Environment (Settings > Environments) para exigir aprovação.
+    environment: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+    env:
+      ENVIRONMENT: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+      BUILD_CONFIGURATION: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+      STACK_NAME: ${{ github.ref_name == 'prod' && 'gcstock-ui-prd' || 'gcstock-ui-nprd' }}
+      HOST_DOMAIN: ${{ github.ref_name == 'prod' && 'app.iwsolutions.cloud' || 'app-nprd.iwsolutions.cloud' }}
+      DOCKER_TAG: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build e push da imagem do front-end
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/ui.Dockerfile
+          push: true
+          build-args: BUILD_CONFIGURATION=${{ env.BUILD_CONFIGURATION }}
+          tags: |
+            ${{ env.REGISTRY_URL }}/${{ env.UI_IMAGE }}:${{ env.DOCKER_TAG }}
+            ${{ env.REGISTRY_URL }}/${{ env.UI_IMAGE }}:latest-${{ env.ENVIRONMENT }}
+
+      - name: Gerar stack.yml com placeholders substituídos
+        run: |
+          sed \
+            -e "s|__REGISTRY_URL__|$REGISTRY_URL|g" \
+            -e "s|__UI_IMAGE_NAME__|$UI_IMAGE|g" \
+            -e "s|__DOCKER_TAG__|$DOCKER_TAG|g" \
+            -e "s|__SERVICE_NAME__|$STACK_NAME|g" \
+            -e "s|__HOST_DOMAIN__|$HOST_DOMAIN|g" \
+            deploy/stacks/stack.yml > "stack.ui.$ENVIRONMENT.yml"
+
+      - name: Configurar SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copiar stack.yml para a VPS
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "mkdir -p /tmp/gcstock-deploy"
+          scp -i ~/.ssh/id_deploy "stack.ui.$ENVIRONMENT.yml" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/gcstock-deploy/"
+
+      - name: docker stack deploy
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "docker stack deploy --with-registry-auth -c /tmp/gcstock-deploy/stack.ui.$ENVIRONMENT.yml $STACK_NAME"
+
+      # Se o site não responder, a esteira falha (o Swarm já volta sozinho: update_config.failure_action = rollback).
+      - name: Verificar saúde do site
+        run: |
+          for i in $(seq 1 24); do
+            if curl -fsS "https://$HOST_DOMAIN/health" > /dev/null; then
+              echo "Front-end no ar em https://$HOST_DOMAIN"; exit 0
+            fi
+            echo "Aguardando o front-end responder ($i/24)..."; sleep 5
+          done
+          echo "O front-end nao respondeu em https://$HOST_DOMAIN/health"; exit 1
