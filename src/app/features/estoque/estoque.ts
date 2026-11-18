@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiDataService } from '../../core/services/api-data';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { AppStateService } from '../../core/services/app-state';
@@ -16,7 +17,7 @@ import { Paginator } from '../../shared/pagination/paginator';
 
 @Component({
   selector: 'app-estoque',
-  imports: [DatePipe, FormsModule, DateRangeFilter, Paginator],
+  imports: [DatePipe, FormsModule, RouterLink, DateRangeFilter, Paginator],
   templateUrl: './estoque.html',
 })
 export class Estoque {

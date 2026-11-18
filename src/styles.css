@@ -36,3 +36,47 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #827565;
 }
+
+/* Impressão / "Salvar como PDF" (ex.: Tabela de Preços): só o conteúdo da página, sem menu e barra. */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  app-sidebar,
+  app-navbar,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  .print-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+  .print-sheet .overflow-x-auto {
+    overflow: visible !important;
+  }
+  .print-sheet thead {
+    display: table-header-group;
+  }
+  .print-sheet tr {
+    break-inside: avoid;
+  }
+  .print-group h3 {
+    break-after: avoid;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
