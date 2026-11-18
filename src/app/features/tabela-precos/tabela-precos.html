@@ -194,9 +194,6 @@
                           @case ('stock') {
                             <span class="whitespace-nowrap">{{ formatQty(p.stock, p.unit) }}</span>
                           }
-                          @case ('minStock') {
-                            <span class="whitespace-nowrap">{{ formatQty(p.minStock, p.unit) }}</span>
-                          }
                           @case ('status') {
                             @if (isAvailable(p)) {
                               <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#e3f2e5] text-[#1e6b2a] whitespace-nowrap">Disponível</span>
@@ -212,20 +209,8 @@
                               <span class="text-[#827565]">—</span>
                             }
                           }
-                          @case ('lot') {
-                            <span class="block truncate" [title]="p.lotNumber">{{ p.lotNumber || '—' }}</span>
-                          }
                           @case ('supplier') {
                             {{ p.supplier || '—' }}
-                          }
-                          @case ('storage') {
-                            {{ p.storageTemp || '—' }}
-                          }
-                          @case ('subLocation') {
-                            {{ p.subLocation || '—' }}
-                          }
-                          @case ('perishable') {
-                            {{ p.isPerishable ? 'Sim' : 'Não' }}
                           }
                         }
                       </td>

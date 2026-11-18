@@ -22,14 +22,9 @@ type ColumnKey =
   | 'sellingPrice'
   | 'costPrice'
   | 'stock'
-  | 'minStock'
   | 'status'
   | 'expiry'
-  | 'lot'
-  | 'supplier'
-  | 'storage'
-  | 'subLocation'
-  | 'perishable';
+  | 'supplier';
 
 interface PriceColumn {
   key: ColumnKey;
@@ -53,14 +48,9 @@ const COLUMNS: PriceColumn[] = [
   { key: 'sellingPrice', label: 'Preço de venda', weight: 13, align: 'right', default: true },
   { key: 'costPrice', label: 'Preço de custo', weight: 13, align: 'right', default: false },
   { key: 'stock', label: 'Quantidade', weight: 11, align: 'right', default: false },
-  { key: 'minStock', label: 'Estoque mínimo', weight: 11, align: 'right', default: false },
   { key: 'status', label: 'Situação', weight: 14, align: 'center', default: true },
   { key: 'expiry', label: 'Vencimento', weight: 15, align: 'left', default: true },
-  { key: 'lot', label: 'Lote', weight: 11, align: 'left', default: false },
   { key: 'supplier', label: 'Fornecedor', weight: 16, align: 'left', default: false },
-  { key: 'storage', label: 'Armazenamento', weight: 14, align: 'left', default: false },
-  { key: 'subLocation', label: 'Localização', weight: 12, align: 'left', default: false },
-  { key: 'perishable', label: 'Perecível', weight: 9, align: 'center', default: false },
 ];
 
 const COLUMNS_STORAGE_KEY = 'gcstock.tabela-precos.colunas';
