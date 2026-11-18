@@ -32,7 +32,7 @@
           <h2 class="text-base font-bold text-[#1b1c1a]">Dados da Empresa</h2>
           <p class="text-xs text-[#827565]">Informações cadastrais da empresa ativa.</p>
         </div>
-        @if (isOwner()) {
+        @if (canEditCompany()) {
           <button
             type="button"
             (click)="openCompanyForm()"

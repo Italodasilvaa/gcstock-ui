@@ -116,7 +116,7 @@ export class ApiDataService {
       .pipe(catchError(refusalToNull));
   }
 
-  /** Altera os dados cadastrais da empresa ativa (só o dono; a API responde 403 para funcionário). */
+  /** Altera os dados cadastrais da empresa ativa (dono ou perfil Administrador; a API responde 403 para os demais). */
   updateCurrentCompany(data: {
     corporateName: string;
     tradeName: string;

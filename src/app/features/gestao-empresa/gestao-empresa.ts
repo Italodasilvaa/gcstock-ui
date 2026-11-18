@@ -61,9 +61,12 @@ export class GestaoEmpresa {
   }
   private readonly router = inject(Router);
 
-  // ---------------------------------------------------------------- dados cadastrais da empresa (só o dono edita)
+  // ---------------------------------------------------------------- dados cadastrais da empresa
   protected readonly company = computed(() => this.appState.session()?.company ?? null);
-  protected readonly isOwner = computed(() => this.appState.isOwner());
+  /** Edita: o dono ou funcionário com perfil Administrador (a API valida o mesmo). Gerente e operador só veem. */
+  protected readonly canEditCompany = computed(
+    () => this.appState.isOwner() || this.appState.session()?.user.role === 'admin',
+  );
   protected readonly isCompanyFormOpen = signal(false);
   protected readonly isSavingCompanyData = signal(false);
   protected readonly companyFormError = signal<string | null>(null);
@@ -77,7 +80,7 @@ export class GestaoEmpresa {
 
   protected openCompanyForm(): void {
     const c = this.company();
-    if (!c || !this.isOwner()) return;
+    if (!c || !this.canEditCompany()) return;
     this.companyForm = {
       corporateName: c.corporateName,
       tradeName: c.tradeName,
