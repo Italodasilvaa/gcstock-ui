@@ -66,6 +66,9 @@ body {
   .print-sheet .overflow-x-auto {
     overflow: visible !important;
   }
+  .print-sheet .price-table {
+    min-width: 0 !important;
+  }
   .print-sheet thead {
     display: table-header-group;
   }

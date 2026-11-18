@@ -106,7 +106,16 @@
             <span class="text-[#827565] font-medium normal-case tracking-normal">({{ group.products.length }})</span>
           </h3>
           <div class="overflow-x-auto">
-            <table class="w-full text-[13px] border-collapse">
+            <!-- Larguras fixas e iguais em todas as categorias, para as colunas ficarem alinhadas. -->
+            <table class="price-table w-full min-w-[680px] table-fixed text-[13px] border-collapse">
+              <colgroup>
+                <col class="w-[12%]" />
+                <col class="w-[38%]" />
+                <col class="w-[7%]" />
+                <col class="w-[15%]" />
+                <col class="w-[13%]" />
+                <col class="w-[15%]" />
+              </colgroup>
               <thead>
                 <tr class="bg-[#f5f3f0] text-[11px] uppercase text-[#4f4537]">
                   <th class="text-left font-semibold px-2 py-2">Código</th>
@@ -120,7 +129,7 @@
               <tbody>
                 @for (p of group.products; track p.id) {
                   <tr class="border-b border-[#efeeeb]">
-                    <td class="px-2 py-2 text-[#827565] whitespace-nowrap">{{ p.code || p.sku }}</td>
+                    <td class="px-2 py-2 text-[#827565] truncate" [title]="p.code || p.sku">{{ p.code || p.sku }}</td>
                     <td class="px-2 py-2 text-[#1b1c1a] font-medium">
                       {{ p.name }}
                       @if (p.isPromo) {
