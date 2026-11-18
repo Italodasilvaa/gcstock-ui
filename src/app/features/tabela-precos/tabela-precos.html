@@ -39,7 +39,8 @@
   </div>
 
   <!-- Filtros (não saem no PDF) -->
-  <div class="no-print bg-white rounded-2xl border border-[#e4e2df] shadow-xs p-4 flex flex-col md:flex-row md:items-center gap-3">
+  <div class="no-print bg-white rounded-2xl border border-[#e4e2df] shadow-xs p-4 flex flex-col gap-4">
+  <div class="flex flex-col md:flex-row md:items-center gap-3">
     <div class="relative flex-1">
       <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#827565] text-[18px]">search</span>
       <input
@@ -69,6 +70,40 @@
       />
       Somente disponíveis
     </label>
+  </div>
+
+    <!-- Campos que aparecem na tabela (e no PDF) -->
+    <div class="pt-3 border-t border-[#efeeeb]">
+      <div class="flex items-center justify-between gap-3 mb-2 flex-wrap">
+        <span class="text-xs font-bold uppercase tracking-wide text-[#4f4537]">Campos da tabela</span>
+        <div class="flex items-center gap-3 text-xs">
+          <button type="button" (click)="selectAllColumns()" class="font-semibold text-[#7f5700] hover:underline cursor-pointer">
+            Marcar todos
+          </button>
+          <button type="button" (click)="resetColumns()" class="font-semibold text-[#7f5700] hover:underline cursor-pointer">
+            Voltar ao padrão
+          </button>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-x-5 gap-y-2">
+        @for (col of allColumns; track col.key) {
+          <label
+            class="inline-flex items-center gap-2 text-sm select-none"
+            [class]="col.required ? 'text-[#827565] cursor-not-allowed' : 'text-[#1b1c1a] cursor-pointer'"
+            [title]="col.required ? 'Campo obrigatório' : ''"
+          >
+            <input
+              type="checkbox"
+              [checked]="isColumnSelected(col.key)"
+              [disabled]="col.required"
+              (change)="toggleColumn(col, $any($event.target).checked)"
+              class="w-4 h-4 accent-[#7f5700]"
+            />
+            {{ col.label }}
+          </label>
+        }
+      </div>
+    </div>
   </div>
 
   <!-- Documento (é o que sai no PDF) -->
@@ -107,54 +142,95 @@
           </h3>
           <div class="overflow-x-auto">
             <!-- Larguras fixas e iguais em todas as categorias, para as colunas ficarem alinhadas. -->
-            <table class="price-table w-full min-w-[760px] table-fixed text-[13px] border-collapse">
+            <table
+              class="price-table w-full table-fixed text-[13px] border-collapse"
+              [style.min-width.px]="tableMinWidth()"
+            >
               <colgroup>
-                <col class="w-[12%]" />
-                <col class="w-[35%]" />
-                <col class="w-[6%]" />
-                <col class="w-[15%]" />
-                <col class="w-[16%]" />
-                <col class="w-[16%]" />
+                @for (col of visibleColumns(); track col.key) {
+                  <col [style.width.%]="col.widthPercent" />
+                }
               </colgroup>
               <thead>
                 <tr class="bg-[#f5f3f0] text-[11px] uppercase text-[#4f4537]">
-                  <th class="text-left font-semibold px-2 py-2">Código</th>
-                  <th class="text-left font-semibold px-2 py-2">Produto</th>
-                  <th class="text-center font-semibold px-2 py-2">Un.</th>
-                  <th class="text-right font-semibold px-2 py-2">Preço de venda</th>
-                  <th class="text-center font-semibold px-2 py-2">Situação</th>
-                  <th class="text-left font-semibold px-2 py-2">Vencimento</th>
+                  @for (col of visibleColumns(); track col.key) {
+                    <th class="font-semibold px-2 py-2" [class]="alignClass(col)">{{ col.label }}</th>
+                  }
                 </tr>
               </thead>
               <tbody>
                 @for (p of group.products; track p.id) {
                   <tr class="border-b border-[#efeeeb]">
-                    <td class="px-2 py-2 text-[#827565] truncate" [title]="p.code || p.sku">{{ p.code || p.sku }}</td>
-                    <td class="px-2 py-2 text-[#1b1c1a] font-medium">
-                      {{ p.name }}
-                      @if (p.isPromo) {
-                        <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ffdeae] text-[#7f5700]">PROMO</span>
-                      }
-                    </td>
-                    <td class="px-2 py-2 text-center text-[#4f4537]">{{ p.unit }}</td>
-                    <td class="px-2 py-2 text-right font-bold text-[#0F1F3D] whitespace-nowrap">
-                      {{ formatCurrency(p.sellingPrice) }}
-                    </td>
-                    <td class="px-2 py-2 text-center">
-                      @if (isAvailable(p)) {
-                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#e3f2e5] text-[#1e6b2a]">Disponível</span>
-                      } @else {
-                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#fde3e3] text-[#ba1a1a]">Indisponível</span>
-                      }
-                    </td>
-                    <td class="px-2 py-2 whitespace-nowrap">
-                      @if (hasExpiry(p)) {
-                        <span class="text-[#1b1c1a]">{{ p.nearestExpiry | date: 'dd/MM/yyyy' }}</span>
-                        <span class="block text-[11px]" [class]="expiryClass(p)">{{ expiryLabel(p) }}</span>
-                      } @else {
-                        <span class="text-[#827565]">—</span>
-                      }
-                    </td>                  </tr>
+                    @for (col of visibleColumns(); track col.key) {
+                      <td class="px-2 py-2 align-top text-[#4f4537]" [class]="alignClass(col)">
+                        @switch (col.key) {
+                          @case ('code') {
+                            <span class="block truncate text-[#827565]" [title]="p.code">{{ p.code || '—' }}</span>
+                          }
+                          @case ('sku') {
+                            <span class="block truncate text-[#827565]" [title]="p.sku">{{ p.sku || '—' }}</span>
+                          }
+                          @case ('ean') {
+                            <span class="block truncate text-[#827565]" [title]="p.ean">{{ p.ean || '—' }}</span>
+                          }
+                          @case ('name') {
+                            <span class="text-[#1b1c1a] font-medium">{{ p.name }}</span>
+                            @if (p.isPromo) {
+                              <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ffdeae] text-[#7f5700]">PROMO</span>
+                            }
+                          }
+                          @case ('category') {
+                            {{ p.category || '—' }}
+                          }
+                          @case ('unit') {
+                            {{ p.unit }}
+                          }
+                          @case ('sellingPrice') {
+                            <span class="font-bold text-[#0F1F3D] whitespace-nowrap">{{ formatCurrency(p.sellingPrice) }}</span>
+                          }
+                          @case ('costPrice') {
+                            <span class="whitespace-nowrap">{{ formatCurrency(p.costPrice) }}</span>
+                          }
+                          @case ('stock') {
+                            <span class="whitespace-nowrap">{{ formatQty(p.stock, p.unit) }}</span>
+                          }
+                          @case ('minStock') {
+                            <span class="whitespace-nowrap">{{ formatQty(p.minStock, p.unit) }}</span>
+                          }
+                          @case ('status') {
+                            @if (isAvailable(p)) {
+                              <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#e3f2e5] text-[#1e6b2a] whitespace-nowrap">Disponível</span>
+                            } @else {
+                              <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#fde3e3] text-[#ba1a1a] whitespace-nowrap">Indisponível</span>
+                            }
+                          }
+                          @case ('expiry') {
+                            @if (hasExpiry(p)) {
+                              <span class="text-[#1b1c1a] whitespace-nowrap">{{ p.nearestExpiry | date: 'dd/MM/yyyy' }}</span>
+                              <span class="block text-[11px]" [class]="expiryClass(p)">{{ expiryLabel(p) }}</span>
+                            } @else {
+                              <span class="text-[#827565]">—</span>
+                            }
+                          }
+                          @case ('lot') {
+                            <span class="block truncate" [title]="p.lotNumber">{{ p.lotNumber || '—' }}</span>
+                          }
+                          @case ('supplier') {
+                            {{ p.supplier || '—' }}
+                          }
+                          @case ('storage') {
+                            {{ p.storageTemp || '—' }}
+                          }
+                          @case ('subLocation') {
+                            {{ p.subLocation || '—' }}
+                          }
+                          @case ('perishable') {
+                            {{ p.isPerishable ? 'Sim' : 'Não' }}
+                          }
+                        }
+                      </td>
+                    }
+                  </tr>
                 }
               </tbody>
             </table>
