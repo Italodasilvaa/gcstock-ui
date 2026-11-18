@@ -155,7 +155,10 @@ export class Compras {
   private loadCategories(): void {
     this.api.getCategories().subscribe({
       next: (list) => this.categoryNames.set(list.map((c) => c.name)),
-      error: () => this.categoryNames.set([]),
+      error: (err) => {
+        this.categoryNames.set([]);
+        this.appState.notifyLoadError(err, 'as categorias');
+      },
     });
   }
 

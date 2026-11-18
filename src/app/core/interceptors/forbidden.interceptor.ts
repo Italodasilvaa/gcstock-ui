@@ -15,7 +15,7 @@ export const forbiddenInterceptor: HttpInterceptorFn = (req, next) => {
       error: (error: unknown) => {
         if (error instanceof HttpErrorResponse && error.status === 403) {
           setTimeout(() =>
-            injector.get(AppStateService).triggerToast('Você não tem permissão para realizar esta ação.'),
+            injector.get(AppStateService).toastError('Você não tem permissão para realizar esta ação.'),
           );
         }
       },

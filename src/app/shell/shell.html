@@ -1,16 +1,4 @@
 <div class="min-h-screen bg-[#f5f3f0] text-[#1b1c1a] font-sans antialiased flex flex-col">
-  <!-- Toast Notification: z-index acima de qualquer modal/overlay (modais usam até z-[200]). -->
-  @if (appState.toastMessage()) {
-    <div
-      role="status"
-      aria-live="polite"
-      class="fixed bottom-6 right-6 z-[9999] bg-[#0F1F3D] text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-[#d8a34a]/40 animate-in fade-in slide-in-from-bottom duration-200"
-    >
-      <span class="material-symbols-outlined text-[#4caf50] text-[22px]">check_circle</span>
-      <span class="text-[13px] font-medium">{{ appState.toastMessage() }}</span>
-    </div>
-  }
-
   <!-- Fixed Left Navigation Sidebar (off-canvas no mobile, sempre visível em `lg:` para cima) -->
   <app-sidebar
     [isOpen]="isMobileMenuOpen()"

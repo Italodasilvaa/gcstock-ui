@@ -210,7 +210,10 @@ export class GestaoEmpresa {
         this.cash.set(summary);
         this.isLoadingCash.set(false);
       },
-      error: () => this.isLoadingCash.set(false),
+      error: (err) => {
+        this.isLoadingCash.set(false);
+        this.appState.notifyLoadError(err, 'o caixa da empresa');
+      },
     });
   }
 
