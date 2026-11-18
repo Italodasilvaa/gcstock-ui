@@ -12,6 +12,13 @@
     </div>
 
     <div class="flex items-center gap-3 flex-wrap">
+      <a
+        routerLink="/tabela-precos"
+        class="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-[#0F1F3D] hover:bg-[#16294F] text-white text-xs font-bold rounded-xl cursor-pointer transition-colors shadow-xs"
+      >
+        <span class="material-symbols-outlined text-[18px]">request_quote</span>
+        Tabela de preços
+      </a>
       <button
         type="button"
         [hidden]="!can(PERMISSION.LossesCreate)"

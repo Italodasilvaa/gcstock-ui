@@ -29,6 +29,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/estoque/estoque').then((m) => m.Estoque),
       },
       {
+        path: 'tabela-precos',
+        loadComponent: () =>
+          import('./features/tabela-precos/tabela-precos').then((m) => m.TabelaPrecos),
+      },
+      {
         path: 'compras',
         loadComponent: () => import('./features/compras/compras').then((m) => m.Compras),
       },
