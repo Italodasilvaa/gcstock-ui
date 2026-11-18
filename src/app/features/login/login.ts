@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -28,6 +29,7 @@ export class Login {
   protected rememberMe = true;
   protected readonly loginError = signal<string | null>(null);
   protected readonly showLoginPassword = signal(false);
+  protected readonly isLoggingIn = signal(false);
 
   // Register state
   protected corporateName = '';
@@ -58,35 +60,47 @@ export class Login {
   }
 
   protected handleLogin(): void {
+    if (this.isLoggingIn()) return;
     this.loginError.set(null);
 
-    if (!this.loginEmail) {
-      this.loginError.set('Informe o e-mail de acesso da sua empresa.');
+    if (!this.loginEmail.trim()) {
+      this.showLoginError('Informe o e-mail de acesso da sua empresa.', 'warning');
+      return;
+    }
+    if (!this.loginPassword) {
+      this.showLoginError('Informe a sua senha.', 'warning');
       return;
     }
 
-    this.appState.login(this.loginEmail, this.loginPassword).subscribe({
+    this.isLoggingIn.set(true);
+    this.appState.login(this.loginEmail.trim(), this.loginPassword).subscribe({
       next: (session) => {
+        this.isLoggingIn.set(false);
         if (session) {
-          this.appState.triggerToast(`Bem-vindo ao GC Stock, ${session.company.tradeName}!`);
+          this.appState.triggerToast(`Bem-vindo ao GC Stock, ${session.company.tradeName}!`, 'success');
           this.router.navigateByUrl('/dashboard');
         } else {
-          this.loginError.set('E-mail ou senha inválidos. Crie o cadastro da sua empresa na aba ao lado.');
+          this.showLoginError('E-mail ou senha inválidos. Confira os dados ou cadastre sua empresa na aba ao lado.');
         }
       },
-      error: (err) => {
-        this.loginError.set(
-          err?.status === 429
-            ? (err.error?.message ?? 'Muitas tentativas de login. Tente novamente em alguns minutos.')
-            : 'Não foi possível conectar ao servidor da GC Stock API. Tente novamente em instantes.',
-        );
+      error: (err: HttpErrorResponse) => {
+        this.isLoggingIn.set(false);
+        // A mensagem já vem legível do errorInterceptor (sem conexão, servidor fora, muitas tentativas...).
+        this.showLoginError(err.error?.message ?? 'Não foi possível conectar ao servidor. Tente novamente em instantes.');
       },
     });
   }
 
+  /** Erro do login: fica no formulário e também vai para o toast, com o motivo. */
+  private showLoginError(message: string, kind: 'error' | 'warning' = 'error'): void {
+    this.loginError.set(message);
+    this.appState.triggerToast(message, kind);
+  }
+
   protected handleRegisterCompany(): void {
+    if (this.isRegistering()) return;
     if (!this.corporateName || !this.document || !this.ownerName || !this.email) {
-      alert('Preencha os campos obrigatórios para cadastrar sua empresa.');
+      this.appState.toastWarning('Preencha os campos obrigatórios para cadastrar sua empresa: razão social, CNPJ/CPF, responsável e e-mail.');
       return;
     }
 
@@ -114,12 +128,10 @@ export class Login {
           this.appState.triggerToast(`Bem-vindo ao GC Stock, ${session.company.tradeName}!`);
           this.router.navigateByUrl('/dashboard');
         },
-        error: (err) => {
+        error: (err: HttpErrorResponse) => {
           this.isRegistering.set(false);
-          alert(
-            err?.status === 403 || err?.status === 429
-              ? (err.error?.message ?? 'Não foi possível cadastrar sua empresa.')
-              : 'Não foi possível cadastrar sua empresa. Tente novamente.',
+          this.appState.toastError(
+            err.error?.message ?? 'Não foi possível cadastrar sua empresa. Tente novamente.',
           );
         },
       });

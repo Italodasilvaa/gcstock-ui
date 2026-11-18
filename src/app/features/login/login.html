@@ -52,6 +52,8 @@
         <!-- LOGIN TAB -->
         @if (activeTab() === 'login') {
           <form (ngSubmit)="handleLogin()" class="flex flex-col gap-4">
+            <!-- Durante o login os campos ficam travados (o loading fica no botão). -->
+            <fieldset [disabled]="isLoggingIn()" class="contents">
             <div>
               <label class="block text-xs font-bold text-[#4f4537] mb-1.5">E-mail de acesso</label>
               <input
@@ -89,6 +91,7 @@
               <input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe" class="accent-[#d8a34a]" />
               Manter conectado neste dispositivo
             </label>
+            </fieldset>
 
             @if (loginError()) {
               <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#ffdad6]/60 text-[#ba1a1a] text-xs font-medium">
@@ -99,9 +102,16 @@
 
             <button
               type="submit"
-              class="w-full py-2.5 rounded-lg bg-[#0F1F3D] hover:bg-[#16294F] text-white text-sm font-bold cursor-pointer transition-colors shadow-xs"
+              [disabled]="isLoggingIn()"
+              [attr.aria-busy]="isLoggingIn()"
+              class="w-full py-2.5 rounded-lg bg-[#0F1F3D] hover:bg-[#16294F] text-white text-sm font-bold cursor-pointer transition-colors shadow-xs inline-flex items-center justify-center gap-2 disabled:opacity-80 disabled:cursor-wait"
             >
-              Entrar no GC Stock
+              @if (isLoggingIn()) {
+                <span class="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true"></span>
+                Entrando...
+              } @else {
+                Entrar no GC Stock
+              }
             </button>
           </form>
         }
@@ -286,9 +296,14 @@
             <button
               type="submit"
               [disabled]="isRegistering()"
-              class="w-full py-2.5 rounded-lg bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-sm font-bold cursor-pointer transition-colors shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+              class="w-full py-2.5 rounded-lg bg-[#d8a34a] hover:bg-[#c79238] text-[#583b00] text-sm font-bold cursor-pointer transition-colors shadow-xs inline-flex items-center justify-center gap-2 disabled:opacity-80 disabled:cursor-wait"
             >
-              {{ isRegistering() ? 'Cadastrando empresa...' : 'Criar minha conta no GC Stock' }}
+              @if (isRegistering()) {
+                <span class="w-4 h-4 rounded-full border-2 border-[#583b00]/30 border-t-[#583b00] animate-spin" aria-hidden="true"></span>
+                Cadastrando empresa...
+              } @else {
+                Criar minha conta no GC Stock
+              }
             </button>
           </form>
         }

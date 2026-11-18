@@ -186,6 +186,16 @@
         <p class="text-[11px] text-[#827565] mt-0.5">caixa + a receber + estoque − despesas a pagar</p>
       </div>
     </div>
+  } @else if (isLoadingCash()) {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-6 text-center text-sm text-[#827565]">
+      Carregando a saúde financeira...
+    </div>
+  } @else {
+    <div class="bg-white rounded-xl md:rounded-2xl border border-[#e4e2df] shadow-xs p-6 text-center">
+      <span class="material-symbols-outlined text-[28px] text-[#d3c4b2]">monitoring</span>
+      <p class="text-sm font-semibold text-[#1b1c1a] mt-1">Sem dados financeiros para exibir</p>
+      <p class="text-xs text-[#827565] mt-0.5">Não há informações de caixa para o período selecionado.</p>
+    </div>
   }
 
   <!-- Caixa da empresa no período -->

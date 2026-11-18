@@ -1,9 +1,31 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Service, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { AuthSession, CompanyTenant } from '../models/models';
 import { ApiDataService } from './api-data';
 import { TokenStorageService } from './token-storage';
+import { httpErrorMessage } from '../utils/http-error';
+
+export type ToastKind = 'success' | 'warning' | 'error';
+
+export interface Toast {
+  message: string;
+  kind: ToastKind;
+  /** Muda a cada aviso, para a animação reiniciar mesmo com o mesmo texto. */
+  id: number;
+}
+
+const ERROR_HINTS =
+  /não foi possível|nao foi possivel|erro|falh|inválid|permissão|não é possível|não pode|insuficiente|excede|sem conexão|incorret|recusad|expirou|não encontrad/i;
+const WARNING_HINTS =
+  /^(informe|preencha|selecione|escolha|aguarde|adicione|cadastre|confirme)\b|precisa|existem |sem estoque|ajustad|apenas /i;
+
+function inferToastKind(message: string): ToastKind {
+  if (ERROR_HINTS.test(message)) return 'error';
+  if (WARNING_HINTS.test(message)) return 'warning';
+  return 'success';
+}
 
 /**
  * Estado compartilhado da sessão/UI (sessão ativa, toast de notificação).
@@ -17,7 +39,7 @@ export class AppStateService {
   private readonly router = inject(Router);
 
   readonly session = signal<AuthSession | null>(null);
-  readonly toastMessage = signal<string | null>(null);
+  readonly toast = signal<Toast | null>(null);
 
   private toastTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -103,11 +125,43 @@ export class AppStateService {
     return !!user && !user.employeeId;
   }
 
-  triggerToast(message: string): void {
-    this.toastMessage.set(message);
+  /**
+   * Mostra um aviso no canto da tela. Sem `kind`, o tipo é deduzido do texto (as telas antigas só passam a mensagem):
+   * falha/erro → vermelho, orientação ("Informe...", "Escolha...") → amarelo, o resto → verde.
+   * Código novo deve passar o tipo ou usar `toastError` / `toastWarning`.
+   */
+  triggerToast(message: string, kind?: ToastKind): void {
+    const resolved = kind ?? inferToastKind(message);
+    this.toast.set({ message, kind: resolved, id: ++this.toastSeq });
     if (this.toastTimeoutId) clearTimeout(this.toastTimeoutId);
-    this.toastTimeoutId = setTimeout(() => this.toastMessage.set(null), 3500);
+    // Erro fica mais tempo na tela: o usuário precisa ler o motivo.
+    const duration = resolved === 'error' ? 7000 : resolved === 'warning' ? 5000 : 3500;
+    this.toastTimeoutId = setTimeout(() => this.toast.set(null), duration);
   }
+
+  toastError(message: string): void {
+    this.triggerToast(message, 'error');
+  }
+
+  /**
+   * Falha ao carregar dados de uma tela: toast vermelho com o motivo.
+   * 403 não repete o aviso (o forbiddenInterceptor já mostrou "sem permissão").
+   */
+  notifyLoadError(error: unknown, what = 'os dados'): void {
+    if (error instanceof HttpErrorResponse && error.status === 403) return;
+    this.toastError(httpErrorMessage(error, `Não foi possível carregar ${what}. Tente novamente em instantes.`));
+  }
+
+  toastWarning(message: string): void {
+    this.triggerToast(message, 'warning');
+  }
+
+  dismissToast(): void {
+    if (this.toastTimeoutId) clearTimeout(this.toastTimeoutId);
+    this.toast.set(null);
+  }
+
+  private toastSeq = 0;
 
   /**
    * `all` (padrão, clique em Sair): encerra a sessão em todas as abas abertas.

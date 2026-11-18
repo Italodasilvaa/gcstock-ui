@@ -190,7 +190,10 @@ export class Financeiro implements OnInit {
         this.lotProfits.set(list);
         this.isLoadingLots.set(false);
       },
-      error: () => this.isLoadingLots.set(false),
+      error: (err) => {
+        this.isLoadingLots.set(false);
+        this.appState.notifyLoadError(err, 'o resultado por lote');
+      },
     });
   }
 
@@ -201,7 +204,10 @@ export class Financeiro implements OnInit {
         this.monthlyBalance.set(list);
         this.isLoadingBalance.set(false);
       },
-      error: () => this.isLoadingBalance.set(false),
+      error: (err) => {
+        this.isLoadingBalance.set(false);
+        this.appState.notifyLoadError(err, 'o balanço mensal');
+      },
     });
   }
 

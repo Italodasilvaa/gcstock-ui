@@ -30,10 +30,18 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) =>
     }),
   );
 
+/** Mensagem para quando a API não mandou `message`: todo erro chega à tela (e ao toast) com um motivo legível. */
 function friendlyMessage(status: number): string | null {
   if (status === 0) return 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
+  if (status === 400) return 'Os dados enviados são inválidos. Confira os campos e tente de novo.';
+  if (status === 401) return 'Sua sessão expirou. Entre novamente para continuar.';
+  if (status === 403) return 'Você não tem permissão para realizar esta ação.';
+  if (status === 404) return 'O registro não foi encontrado. Ele pode ter sido excluído.';
+  if (status === 408 || status === 504) return 'O servidor demorou para responder. Tente novamente em instantes.';
+  if (status === 409) return 'Conflito com outra alteração feita no mesmo registro. Atualize a tela e tente de novo.';
   if (status === 413) return 'Os dados enviados são grandes demais.';
   if (status === 429) return 'Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.';
   if (status >= 500) return 'Erro inesperado no servidor. Tente novamente em instantes.';
+  if (status >= 400) return `Não foi possível concluir a operação (código ${status}).`;
   return null;
 }

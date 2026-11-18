@@ -192,9 +192,10 @@ export class TabelaPrecos {
         this.generatedAt.set(new Date());
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.loadError.set(true);
         this.isLoading.set(false);
+        this.appState.notifyLoadError(err, 'os produtos');
       },
     });
   }

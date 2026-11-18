@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiDataService } from '../../../core/services/api-data';
+import { AppStateService } from '../../../core/services/app-state';
 import { Dashboard, DashPeriodRevenue } from '../../../core/models/models';
 
 type Tab = 'comercial' | 'financeiro' | 'estoque' | 'kits';
@@ -16,6 +17,7 @@ const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
 })
 export class DashboardIndicators {
   private readonly api = inject(ApiDataService);
+  private readonly appState = inject(AppStateService);
 
   protected readonly data = signal<Dashboard | null>(null);
   protected readonly isLoading = signal(true);
@@ -57,9 +59,10 @@ export class DashboardIndicators {
         this.data.set(result);
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.hasError.set(true);
         this.isLoading.set(false);
+        this.appState.notifyLoadError(err, 'os indicadores');
       },
     });
   }
