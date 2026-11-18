@@ -116,6 +116,19 @@ export class ApiDataService {
       .pipe(catchError(refusalToNull));
   }
 
+  /** Altera os dados cadastrais da empresa ativa (dono ou perfil Administrador; a API responde 403 para os demais). */
+  updateCurrentCompany(data: {
+    corporateName: string;
+    tradeName: string;
+    document: string;
+    phone: string;
+    segment: string;
+    city: string;
+    state: string;
+  }): Observable<CompanyTenant> {
+    return this.http.put<CompanyTenant>(`${BASE}/tenants/current`, data);
+  }
+
   getBranches(): Observable<TenantBranch[]> {
     return this.http.get<TenantBranch[]>(`${BASE}/tenants/filiais`);
   }

@@ -1,7 +1,7 @@
 import { Service, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
-import { AuthSession } from '../models/models';
+import { AuthSession, CompanyTenant } from '../models/models';
 import { ApiDataService } from './api-data';
 import { TokenStorageService } from './token-storage';
 
@@ -66,6 +66,13 @@ export class AppStateService {
   /** Renova o token da sessão atual — chamado quando o usuário confirma presença no aviso de inatividade. */
   renewToken(): Observable<AuthSession | null> {
     return this.api.renewToken().pipe(tap((session) => session && this.applySession(session)));
+  }
+
+  /** Salva os dados cadastrais da empresa ativa e atualiza a sessão (nome no menu, barra superior etc.). */
+  updateCurrentCompany(data: Parameters<ApiDataService['updateCurrentCompany']>[0]): Observable<CompanyTenant> {
+    return this.api.updateCurrentCompany(data).pipe(
+      tap((company) => this.session.update((s) => (s && s.company.id === company.id ? { ...s, company } : s))),
+    );
   }
 
   private applySession(session: AuthSession): void {
