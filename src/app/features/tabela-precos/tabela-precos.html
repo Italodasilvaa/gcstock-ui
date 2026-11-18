@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-5 md:gap-6">
   <!-- Barra de ações (não sai no PDF) -->
-  <div class="no-print flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+  <div class="no-print page-header">
     <div>
       <h1 class="text-xl md:text-2xl font-bold text-[#1b1c1a] flex items-center gap-2">
         <span class="material-symbols-outlined text-[#d8a34a] text-2xl">request_quote</span>
@@ -10,7 +10,7 @@
         Produtos do estoque com preço de venda, situação e vencimento. Uso interno da equipe.
       </p>
     </div>
-    <div class="flex items-center gap-2 flex-wrap">
+    <div class="page-actions">
       <a
         routerLink="/estoque"
         class="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-white border border-[#e4e2df] hover:bg-[#efeeeb] text-[#1b1c1a] text-xs font-semibold rounded-xl cursor-pointer transition-colors"
