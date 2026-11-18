@@ -9,6 +9,7 @@ import { PERMISSION } from '../../core/models/permissions';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AccountsPayableTitle, CapitalContribution, CashMovement, CashSummary, Employee } from '../../core/models/models';
 import { DateRange, emptyDateRange, isWithinDateRange, monthToDateRange } from '../../core/utils/date-range';
+import { COMPANY_SEGMENTS } from '../../core/utils/company-segments';
 import { DateRangeFilter } from '../../shared/date-range-filter/date-range-filter';
 import { createPager } from '../../shared/pagination/pager';
 import { Paginator } from '../../shared/pagination/paginator';
@@ -59,6 +60,80 @@ export class GestaoEmpresa {
     return this.appState.can(permission);
   }
   private readonly router = inject(Router);
+
+  // ---------------------------------------------------------------- dados cadastrais da empresa (só o dono edita)
+  protected readonly company = computed(() => this.appState.session()?.company ?? null);
+  protected readonly isOwner = computed(() => this.appState.isOwner());
+  protected readonly isCompanyFormOpen = signal(false);
+  protected readonly isSavingCompanyData = signal(false);
+  protected readonly companyFormError = signal<string | null>(null);
+  protected companyForm = { corporateName: '', tradeName: '', document: '', phone: '', segment: '', city: '', state: '' };
+
+  /** Segmentos da lista + o atual, caso a empresa tenha um que não está mais na lista. */
+  protected readonly segmentOptions = computed(() => {
+    const current = this.company()?.segment;
+    return current && !COMPANY_SEGMENTS.includes(current) ? [current, ...COMPANY_SEGMENTS] : COMPANY_SEGMENTS;
+  });
+
+  protected openCompanyForm(): void {
+    const c = this.company();
+    if (!c || !this.isOwner()) return;
+    this.companyForm = {
+      corporateName: c.corporateName,
+      tradeName: c.tradeName,
+      document: c.document,
+      phone: c.phone,
+      segment: c.segment,
+      city: c.city,
+      state: c.state,
+    };
+    this.companyFormError.set(null);
+    this.isCompanyFormOpen.set(true);
+  }
+
+  protected closeCompanyForm(): void {
+    if (!this.isSavingCompanyData()) this.isCompanyFormOpen.set(false);
+  }
+
+  protected saveCompanyData(): void {
+    const f = this.companyForm;
+    if (!f.corporateName.trim() || !f.document.trim()) {
+      this.companyFormError.set('Preencha a razão social e o CNPJ/CPF.');
+      return;
+    }
+    if (f.state.trim().length !== 2) {
+      this.companyFormError.set('Informe a UF com 2 letras.');
+      return;
+    }
+
+    this.companyFormError.set(null);
+    this.isSavingCompanyData.set(true);
+    this.appState
+      .updateCurrentCompany({
+        corporateName: f.corporateName.trim(),
+        tradeName: f.tradeName.trim(),
+        document: f.document.trim(),
+        phone: f.phone.trim(),
+        segment: f.segment,
+        city: f.city.trim(),
+        state: f.state.trim().toUpperCase(),
+      })
+      .subscribe({
+        next: (updated) => {
+          this.isSavingCompanyData.set(false);
+          this.isCompanyFormOpen.set(false);
+          this.appState.triggerToast(`Dados de ${updated.tradeName} atualizados.`);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isSavingCompanyData.set(false);
+          this.companyFormError.set(
+            err.status === 400 || err.status === 403
+              ? (err.error?.message ?? 'Não foi possível salvar os dados da empresa.')
+              : 'Não foi possível salvar os dados da empresa. Tente novamente.',
+          );
+        },
+      });
+  }
 
   protected readonly payables = signal<AccountsPayableTitle[]>([]);
   protected readonly contributions = signal<CapitalContribution[]>([]);

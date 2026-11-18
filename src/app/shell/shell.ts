@@ -8,6 +8,7 @@ import { AppStateService } from '../core/services/app-state';
 import { ApiDataService } from '../core/services/api-data';
 import { IdleSessionService } from '../core/services/idle-session';
 import { CompanyTenant } from '../core/models/models';
+import { COMPANY_SEGMENTS } from '../core/utils/company-segments';
 
 @Component({
   selector: 'app-shell',
@@ -78,12 +79,7 @@ export class Shell implements OnDestroy {
   }
 
   // ---------------------------------------------------------------- cadastrar nova empresa (sem sair do app)
-  protected readonly segments = [
-    'Açougue Boutique & Carnes Nobres',
-    'Casa de Carnes & Cortes Nobres',
-    'Frigorífico & Distribuidora B2B',
-    'Steakhouse & Restaurante',
-  ];
+  protected readonly segments = COMPANY_SEGMENTS;
   protected readonly isNewCompanyFormOpen = signal(false);
   protected readonly isSavingCompany = signal(false);
   protected readonly newCompanyError = signal<string | null>(null);
