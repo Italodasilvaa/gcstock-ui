@@ -13,7 +13,7 @@ interface PriceGroup {
 
 /**
  * Tabela de preços para uso interno dos funcionários: produtos do estoque com preço de venda,
- * situação (disponível ou não), vencimento e dados de armazenamento. Kits não entram.
+ * situação (disponível ou não), vencimento. Kits não entram.
  * O PDF é gerado pela impressão do navegador ("Salvar como PDF"); o CSS de impressão esconde o menu.
  */
 @Component({

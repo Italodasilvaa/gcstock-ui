@@ -115,8 +115,6 @@
                   <th class="text-right font-semibold px-2 py-2">Preço de venda</th>
                   <th class="text-center font-semibold px-2 py-2">Situação</th>
                   <th class="text-left font-semibold px-2 py-2">Vencimento</th>
-                  <th class="text-left font-semibold px-2 py-2">Lote</th>
-                  <th class="text-left font-semibold px-2 py-2">Armazenamento</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,10 +145,7 @@
                       } @else {
                         <span class="text-[#827565]">—</span>
                       }
-                    </td>
-                    <td class="px-2 py-2 text-[#4f4537]">{{ p.lotNumber || '—' }}</td>
-                    <td class="px-2 py-2 text-[#4f4537]">{{ p.storageTemp || '—' }}</td>
-                  </tr>
+                    </td>                  </tr>
                 }
               </tbody>
             </table>
