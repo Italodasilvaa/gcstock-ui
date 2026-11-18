@@ -1,4 +1,5 @@
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterOutlet } from '@angular/router';
 import { Sidebar } from './sidebar/sidebar';
 import { Navbar } from './navbar/navbar';
@@ -10,7 +11,7 @@ import { CompanyTenant } from '../core/models/models';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, Sidebar, Navbar, ApiConsole],
+  imports: [FormsModule, RouterOutlet, Sidebar, Navbar, ApiConsole],
   templateUrl: './shell.html',
 })
 export class Shell implements OnDestroy {
@@ -19,6 +20,7 @@ export class Shell implements OnDestroy {
   protected readonly appState = inject(AppStateService);
   protected readonly idleSession = inject(IdleSessionService);
 
+  protected readonly activeCompanyId = computed(() => this.appState.session()?.company.id ?? '');
   protected readonly isCompanyModalOpen = signal(false);
   protected readonly showApiConsole = signal(false);
   protected readonly isMobileMenuOpen = signal(false);
@@ -75,9 +77,97 @@ export class Shell implements OnDestroy {
     });
   }
 
+  // ---------------------------------------------------------------- cadastrar nova empresa (sem sair do app)
+  protected readonly segments = [
+    'Açougue Boutique & Carnes Nobres',
+    'Casa de Carnes & Cortes Nobres',
+    'Frigorífico & Distribuidora B2B',
+    'Steakhouse & Restaurante',
+  ];
+  protected readonly isNewCompanyFormOpen = signal(false);
+  protected readonly isSavingCompany = signal(false);
+  protected readonly newCompanyError = signal<string | null>(null);
+  protected newCompany = this.emptyNewCompany();
+
+  private emptyNewCompany() {
+    return {
+      corporateName: '',
+      tradeName: '',
+      document: '',
+      phone: '',
+      segment: 'Açougue Boutique & Carnes Nobres',
+      city: '',
+      state: 'SP',
+      ownerPassword: '',
+    };
+  }
+
+  /**
+   * Abre o cadastro dentro do app. Antes isto fazia logout e mandava para a tela de login.
+   * A API vincula a nova empresa ao mesmo dono quando recebe o e-mail dele com a senha atual,
+   * por isso pedimos a confirmação da senha.
+   */
   protected registerNewCompany(): void {
+    if (!this.isOwnerSession()) return;
+    this.newCompany = this.emptyNewCompany();
+    this.newCompanyError.set(null);
     this.isCompanyModalOpen.set(false);
-    this.logout();
+    this.isNewCompanyFormOpen.set(true);
+  }
+
+  protected closeNewCompanyForm(): void {
+    if (this.isSavingCompany()) return;
+    this.isNewCompanyFormOpen.set(false);
+  }
+
+  protected saveNewCompany(): void {
+    const session = this.appState.session();
+    const form = this.newCompany;
+    if (!session) return;
+    if (!form.corporateName.trim() || !form.document.trim()) {
+      this.newCompanyError.set('Preencha a razão social e o CNPJ/CPF.');
+      return;
+    }
+    if (!form.ownerPassword) {
+      this.newCompanyError.set('Confirme sua senha para cadastrar a empresa.');
+      return;
+    }
+
+    this.newCompanyError.set(null);
+    this.isSavingCompany.set(true);
+    this.appState
+      .registerCompany({
+        corporateName: form.corporateName.trim(),
+        tradeName: form.tradeName.trim() || form.corporateName.trim(),
+        document: form.document.trim(),
+        ownerName: session.user.name,
+        email: session.user.email,
+        password: form.ownerPassword,
+        phone: form.phone.trim() || session.company.phone,
+        segment: form.segment,
+        city: form.city.trim() || session.company.city,
+        state: form.state,
+        employees: [],
+      })
+      .subscribe({
+        next: (created) => {
+          this.isSavingCompany.set(false);
+          this.isNewCompanyFormOpen.set(false);
+          this.refreshCompanies();
+          this.router.navigateByUrl('/dashboard');
+          this.appState.triggerToast(`Empresa ${created.company.tradeName} cadastrada. Você já está nela.`);
+        },
+        error: (err: { status?: number; error?: { message?: string } }) => {
+          this.isSavingCompany.set(false);
+          this.newCompanyError.set(
+            err?.status === 403
+              ? 'Senha incorreta. Informe a senha que você usa para entrar no GC Stock.'
+              : err?.status === 429
+                ? (err.error?.message ?? 'Muitas tentativas. Tente novamente em alguns minutos.')
+                : 'Não foi possível cadastrar a empresa. Tente novamente.',
+          );
+        },
+      });
   }
 
   protected logout(): void {
